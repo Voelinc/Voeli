@@ -1,0 +1,21 @@
+{
+  "name": "voeli-translate-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloudflare Worker that proxies OpenAI translation calls for the Voeli chat app, gated by Firebase Auth and per-user daily quotas.",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240620.0",
+    "typescript": "^5.5.0",
+    "wrangler": "^3.65.0"
+  },
+  "dependencies": {
+    "jose": "^5.6.0"
+  }
+}

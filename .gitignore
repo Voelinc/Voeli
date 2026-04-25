@@ -1,0 +1,27 @@
+# Node / package managers
+node_modules/
+*.log
+npm-debug.log*
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+
+# Cloudflare Wrangler
+.wrangler/
+.dev.vars
+.env
+.env.*
+!.env.example
+
+# Local preview tooling (keep launch.json + static-server.js committed —
+# they're useful for new contributors. Ignore anything Claude generates ad-hoc
+# and anything user-specific.)
+.claude/scratch/
+.claude/agents/
+.claude/settings.local.json
