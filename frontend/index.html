@@ -287,8 +287,18 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
   font-weight:700;letter-spacing:.05em;text-transform:uppercase;flex-shrink:0;white-space:nowrap;}
 .lc-gen.gen-z{background:#ede9fe;color:#6d28d9;}
 .lc-gen.gen-mill{background:#e0f2fe;color:#0369a1;}
+.lc-gen.gen-x{background:#fef3c7;color:#92400e;}
 .lc-gen.gen-uni{background:#f0fdf4;color:#166534;}
-.lc-gen.gen-old{background:#fef3c7;color:#92400e;}
+.lc-gen-toggle{display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;border-radius:50%;border:1px solid var(--line);
+  background:var(--panel-2);color:var(--muted);font-size:13px;font-weight:400;
+  cursor:pointer;flex-shrink:0;padding:0;line-height:1;font-family:inherit;
+  transition:transform .2s cubic-bezier(.4,0,.2,1),background .15s ease,color .15s ease,border-color .15s ease;}
+.lc-gen-toggle:hover{background:var(--panel);color:var(--ink);}
+.lc-gen-toggle.open{background:var(--ink);color:var(--panel);border-color:var(--ink);transform:rotate(45deg);}
+.lc-gen-tags{display:none;align-items:center;gap:4px;flex-wrap:wrap;}
+.lc-gen-tags.show{display:inline-flex;animation:tagFadeIn .2s ease;}
+@keyframes tagFadeIn{from{opacity:0;transform:translateX(-4px);}to{opacity:1;transform:translateX(0);}}
 .mrow{display:flex;margin-bottom:1px;}
 .mrow.me{justify-content:flex-end;}
 .mrow.them{justify-content:flex-start;}
@@ -1362,6 +1372,46 @@ const SLANG_EN = [
   { pattern:/\bi feel like you (never|don'?t)\b/i,         phrase:"i feel like you never/don't",  a:"emotional confession opener — vulnerability + accusation of a pattern, the hardest combination to say", b:"neutral expression of a personal feeling — misses that this is a threshold statement", reason:"'I feel like' softens the accusation enough to say it, but the 'never/don't' makes it a pattern. Both parts need to survive translation." },
   { pattern:/\bi'?m so done[.!?~\s]*$/i,                   phrase:"i'm so done",                  a:"resignation or frustration at its peak — I have nothing left to give this",                            b:"casual expression of being finished — loses the emotional exhaustion",               reason:"Quiet delivery makes this heavier, not lighter. In a conflict context, 'so done' is the sound of someone who stopped fighting.",                  vietnameseEquiv:"Chán lắm rồi",  dismissScope:"contact" },
   { pattern:/\bwhy do you always\b/i,                      phrase:"why do you always",            a:"conflict pattern accusation — not asking a question, expressing pain at a recurring dynamic",           b:"genuine inquiry about behavior — misses the frustration underneath",                 reason:"Nobody asking this is really looking for an answer — they're telling you something hurts. The question form is just a shield.",                   vietnameseEquiv:"Sao lúc nào cũng vậy", dismissScope:"contact" },
+
+  // ── Batch 1: Gen Z / Mil dual-meaning traps ──────────────────────────
+  { pattern:/\b(it'?s|i'?m|we'?re|you'?re|they'?re|he'?s|she'?s)\s+cooked[.!?~\s]*$|\bcooked it[.!?~\s]*$/i, phrase:"cooked",          a:"either crushed it perfectly OR completely ruined — the context decides which",         b:"literal cooking — preparing food",                                       reason:"Dual-direction Gen Z slang. 'You cooked' = nailed it; 'we're cooked' = we're done for. Same word, opposite meanings. Context (success vs disaster) is the only signal.",                                  vietnameseEquiv:"Đỉnh / Toang",   dismissScope:"global" },
+  { pattern:/\bcrash(ed|ing)?\s+out[.!?~\s]*$/i,                                                          phrase:"crash out",        a:"losing emotional control publicly — a meltdown moment",                                  b:"vehicle or airplane crash — sounds like an accident report",            reason:"Gen Z phrase for a public emotional collapse. Translated literally it sounds like someone wrecked their car. The emotional sense is the only correct read in casual chat.",                              vietnameseEquiv:"Toang luôn",     dismissScope:"global" },
+  { pattern:/\bi'?m weak[.!?~\s]*$/i,                                                                      phrase:"I'm weak",         a:"laughing so hard I can barely function — pure humor",                                    b:"physical illness or actual weakness — sounds like a health emergency",  reason:"Same family as 'I'm dead' — Gen Z hyperbole for being floored by something funny. Translated literally it sounds medical. The laughter sense is the only correct read.",                                vietnameseEquiv:"Cười muốn xỉu",  dismissScope:"global" },
+  { pattern:/\bhits different[.!?~\s]*$/i,                                                                 phrase:"hits different",   a:"feels uniquely special, more than the standard version",                                 b:"literal physical hitting — sounds violent",                              reason:"Gen Z way of marking something as exceptional. Word-for-word translation sounds like an attack. The 'specialness' meaning has no relation to physical impact.",                                          vietnameseEquiv:"Khác hẳn",       dismissScope:"global" },
+  { pattern:/\b(you|she|he|they)\s+ate (that|it)[.!?~\s]*$|\bate and left no crumbs[.!?~\s]*$/i,           phrase:"ate that",         a:"executed perfectly — nailed the performance",                                            b:"literally consumed something — confusing in every other language",      reason:"Drag/Gen Z performance praise. Eating doesn't mean success in most cultures — Vietnamese has 'Đỉnh' which carries the same praise without the food imagery.",                                            vietnameseEquiv:"Đỉnh luôn",      dismissScope:"global" },
+  { pattern:/\bbussin[.!?~\s]*$|\bbussin bussin\b/i,                                                       phrase:"bussin",           a:"really good — usually about food, sometimes broader praise",                             b:"literal 'busting/breaking' — sounds aggressive",                         reason:"Gen Z food-praise word. The literal verb sense is destructive; the slang sense is wholly positive. No Vietnamese single-word equivalent — 'Ngon vãi' carries the food praise.",                          vietnameseEquiv:"Ngon vãi",       dismissScope:"global" },
+  { pattern:/\b(it'?s|that'?s|this is|so)\s+mid[.!?~\s]*$/i,                                               phrase:"mid",              a:"mediocre, nothing special — a verdict of unimpressive",                                  b:"the middle of something — a position word, not a judgment",             reason:"Gen Z dismissive verdict. The taste-judgment meaning is invisible if read literally. Vietnamese 'Tầm tầm' captures the same dismissive tone.",                                                            vietnameseEquiv:"Tầm tầm",        dismissScope:"global" },
+  { pattern:/\bsus[.!?~\s]*$|\b(that'?s|you'?re|he'?s|she'?s|they'?re)\s+sus\b/i,                          phrase:"sus",              a:"suspicious in a playful, low-stakes way — Among Us slang",                              b:"the verb 'to suspect' or formal 'suspicious' — too serious",            reason:"Gen Z borrowed it from the game Among Us — playful suspicion, not an accusation. The clipped form is the whole point; the full word would change the register.",                                       vietnameseEquiv:"Đáng nghi",      dismissScope:"global" },
+  { pattern:/\b(it'?s|that'?s)\s+killer[.!?~\s]*$|\b(absolute|total|real)\s+killer[.!?~\s]*$/i,             phrase:"killer",           a:"amazing, awesome — Gen X praise that survived",                                          b:"a person who kills — alarming when literal",                            reason:"Most dangerous literal misread on this list. 'That movie was killer' translated word-for-word sounds like a confession. Vietnamese 'Đỉnh' carries the praise safely.",                                  vietnameseEquiv:"Đỉnh",           dismissScope:"global" },
+  { pattern:/\b(that'?s|you'?re|i'?m|he'?s|she'?s)\s+sick[.!?~\s]*$/i,                                     phrase:"sick (slang)",     a:"awesome, impressive — Gen X/Mil praise still in use",                                    b:"physically ill — confusing in any other context",                       reason:"'That trick was sick' = excellent. Translated literally, it sounds like a health complaint. One of the oldest dual-meaning traps in English slang.",                                                     vietnameseEquiv:"Đỉnh / Xịn",     dismissScope:"global" },
+  { pattern:/\b(what a|that'?s a|total)\s+bummer[.!?~\s]*$/i,                                              phrase:"bummer",           a:"that's disappointing — soft Gen X word for letdown",                                     b:"literal 'a bum' — sounds like an insult about a homeless person",       reason:"Gen X word for disappointment. The literal noun reading sounds derogatory toward unhoused people. Vietnamese 'Buồn ghê' carries the disappointment without the slur risk.",                            vietnameseEquiv:"Buồn ghê",       dismissScope:"global" },
+  { pattern:/\bi'?m shook[.!?~\s]*$|\b(absolutely|completely|literally)\s+shook[.!?~\s]*$/i,                phrase:"shook",            a:"shocked, deeply surprised — emotional impact",                                           b:"physically shaken — sounds like trauma",                                reason:"Mil-era slang for emotional shock. Literal meaning suggests violence or trauma. Vietnamese 'Sốc thật sự' captures the surprise without the physical reading.",                                          vietnameseEquiv:"Sốc thật sự",    dismissScope:"global" },
+
+  // ── Batch 2: Millennial dating & internet traps (tight patterns to avoid false positives) ──
+  { pattern:/\b(got|been|she|he|they|i was|i got|just got|been being)\s+ghosted\b|\b(she|he|they)\s+ghosted (me|him|her|us|them)\b/i, phrase:"ghosted",          a:"someone suddenly stopped responding without explanation",                                b:"a literal ghost / haunting — paranormal, not relational",                reason:"Mil dating term for being abandoned mid-conversation. Vietnamese has no direct slang — 'Bơ' (cold-shoulder) carries the same dismissal energy.",                                                          vietnameseEquiv:"Bị bơ",          dismissScope:"global" },
+  { pattern:/\b(got|been|is|was|she'?s|he'?s|they'?re|you'?re)\s+canceled\b|\bthe canceled\b|\bcancel(ed|ling) culture\b/i,            phrase:"canceled",         a:"publicly called out and rejected by a community — social consequence",                   b:"an event/booking cancellation — purely logistical",                      reason:"Mil/Gen Z social slang. Literal reading sounds like a calendar update. The social-consequence meaning is invisible without context like 'culture' or 'got'.",                                          vietnameseEquiv:"Bị tẩy chay",    dismissScope:"global" },
+  { pattern:/\bthirst trap[.!?~\s]*$|\bthirst trap(s|ping)\b/i,                                                                        phrase:"thirst trap",      a:"a deliberately attractive post designed to get attention/likes",                         b:"a literal trap for thirsty animals — sounds like hunting",               reason:"Mil internet term. Two-word phrase makes it unambiguous. No Vietnamese slang equivalent — the concept is purely Western social-media culture.",                                                       vietnameseEquiv:"Đăng ảnh câu like",  dismissScope:"global" },
+  { pattern:/\b(what a|absolute|total|such a|he'?s a|she'?s a|they'?re a) snack[.!?~\s]*$|\b(what a|absolute|total|such a|he'?s a|she'?s a) snack\b/i, phrase:"snack",            a:"an attractive person — visual compliment",                                               b:"a literal food snack — confusing in any other context",                  reason:"Mil/Gen Z compliment. Pattern only fires after possessive/article phrases ('he's a snack') so 'I had a snack' won't trigger.",                                                                       vietnameseEquiv:"Ngon mắt",       dismissScope:"global" },
+  { pattern:/\bhangry\b/i,                                                                                                              phrase:"hangry",           a:"hungry-induced anger — irritability from low blood sugar",                               b:"nonsense word with no literal meaning in other languages",               reason:"Mil portmanteau (hungry + angry). No literal reading exists, so it's safe to detect anywhere. Vietnamese has no equivalent compound — 'Đói cáu' captures the same pairing.",                          vietnameseEquiv:"Đói cáu",        dismissScope:"global" },
+  { pattern:/\b(that was|absolute|total|so|too|really|pretty)\s+savage\b|\bsavage (move|burn|reply|comeback|response|af)\b/i,           phrase:"savage",           a:"brutally witty or no-holds-barred — admiration for ruthless honesty",                    b:"a violent or uncivilized person — historically loaded, offensive when literal",          reason:"Mil/Gen Z compliment for cutting wit. Literal noun reading carries colonial baggage. Pattern requires intensifier or specific noun ('savage burn') so it won't fire on history-class contexts.",       vietnameseEquiv:"Cay cú quá",     dismissScope:"global" },
+  { pattern:/\b(she'?s|he'?s|they'?re|so|too|kinda|pretty)\s+ratchet\b|\b(that'?s|this is)\s+(so|too)?\s*ratchet\b/i,                  phrase:"ratchet",          a:"messy, out of control, low-class energy",                                                b:"a mechanical wrench/tool — pure hardware",                               reason:"Mil/Gen Z descriptor for chaotic-trashy vibes. Pattern requires possessive or copula ('she's ratchet') so toolbox contexts won't fire.",                                                              vietnameseEquiv:"Lôi thôi",       dismissScope:"global" },
+  { pattern:/\bstay woke\b|\b(so|too|very|getting|so-called)\s+woke\b|\bwoke\s+(culture|crowd|agenda|left|right|mob|mind|generation)\b|\b(she'?s|he'?s|they'?re|you'?re)\s+woke\b/i, phrase:"woke",             a:"socially and politically aware — Mil-coined activism term",                              b:"past tense of 'wake' — sleeping vs. awake",                              reason:"The most ambiguous word in this batch. Pattern is tight: only fires on 'stay woke', 'X woke crowd/culture', 'so woke', 'she's woke' etc. Will NOT fire on 'I just woke up' or 'woke at 6am'.",         vietnameseEquiv:"Có ý thức xã hội", dismissScope:"global" },
+  { pattern:/\b(stop|you'?re|you keep|he'?s|she'?s|they'?re)\s+gaslighting\b|\bgaslighting me\b|\bgaslit\b/i,                          phrase:"gaslighting",      a:"manipulating someone into doubting their own perception of reality",                     b:"a literal gas + lighting — pure noun phrase about fuel and lamps",        reason:"Mil therapy-speak that went mainstream. The manipulation meaning is now dominant in English; literal reading is essentially gone. Vietnamese has no slang equivalent — borrows 'gaslighting' directly.", vietnameseEquiv:"Thao túng tâm lý", dismissScope:"global" },
+  { pattern:/\bbreadcrumb(ing|ed)\b|\bbreadcrumbs from\b/i,                                                                            phrase:"breadcrumbing",    a:"giving someone just enough attention to keep them interested, no real follow-through",  b:"literally leaving bread crumbs — Hansel & Gretel imagery",                reason:"Mil dating term. Literal sense is fairy-tale; the dating-tactic meaning is the real one. Vietnamese has no slang equivalent — the concept is Western dating-app culture.",                              vietnameseEquiv:"Câu kéo nhẹ nhàng", dismissScope:"global" },
+  { pattern:/\bsoft launch(ing|ed)?\b/i,                                                                                                phrase:"soft launch",      a:"subtly revealing a relationship — partial photos, no face shown, vague captions",       b:"a low-key product launch — pure marketing term",                          reason:"Gen Z/Mil relationship-reveal slang. Literal reading is corporate marketing. Pattern fires on the verb form 'soft launching' too. Vietnamese has no slang equivalent.",                                vietnameseEquiv:"Hé lộ nhẹ",      dismissScope:"global" },
+  { pattern:/\bhard launch(ing|ed)?\b/i,                                                                                                phrase:"hard launch",      a:"fully publicly revealing a relationship — face shown, named, official",                  b:"a major product launch — pure marketing term",                            reason:"Pair with soft launch. Same dual: relationship reveal vs. marketing. Pattern fires on verb form too.",                                                                                                  vietnameseEquiv:"Công khai chính thức", dismissScope:"global" },
+
+  // ── Batch 3: Gen X dual-meaning traps ──────────────────────────
+  { pattern:/\b(that'?s|so|totally|absolutely|pretty)\s+gnarly\b|\bgnarly (wave|trick|move|stunt|dude)\b/i,                            phrase:"gnarly",           a:"intense, extreme, awesome — surfer/skater praise",                                       b:"literally twisted/knotted — sounds like wood or rope",                   reason:"Gen X surf/skate slang. Literal reading describes a misshapen tree. Pattern requires intensifier or specific noun so generic 'gnarly knot' contexts won't fire.",                                      vietnameseEquiv:"Đỉnh quá",       dismissScope:"global" },
+  { pattern:/\b(that'?s|this is|totally|so)\s+bogus\b|\bbogus (excuse|claim|story|move)\b/i,                                            phrase:"bogus",            a:"unfair, fake, BS — Gen X dismissal",                                                     b:"obscure word that reads as nonsense in other languages",                 reason:"Gen X word for unfairness/fakeness. Vietnamese has no direct slang — 'Xạo' (Gen X VN) carries the same 'BS' energy.",                                                                                  vietnameseEquiv:"Xạo quá",        dismissScope:"global" },
+  { pattern:/\b(it'?s|that'?s|you'?re|she'?s|he'?s)\s+da bomb\b|\bda bomb diggity\b/i,                                                  phrase:"da bomb",          a:"the absolute best — Gen X superlative praise",                                           b:"a literal explosive device — sounds like a threat",                      reason:"Most dangerous Gen X dual on this list. 'You're da bomb' translated literally sounds violent. Pattern requires possessive/copula so it won't fire on actual bomb-related news.",                       vietnameseEquiv:"Đỉnh nhất",      dismissScope:"global" },
+  { pattern:/\bgag me with a spoon\b/i,                                                                                                  phrase:"gag me with a spoon", a:"that's disgusting — Valley Girl theatrical disgust",                                     b:"literal choking with a utensil — sounds violent",                        reason:"Valley Girl Gen X. The literal reading is alarming; the slang sense is pure theatrical eye-roll. Multi-word phrase makes it unambiguous.",                                                            vietnameseEquiv:"Ghê quá",        dismissScope:"global" },
+  { pattern:/\beat my shorts\b/i,                                                                                                        phrase:"eat my shorts",    a:"forget you / get lost — Bart Simpson playful dismissal",                                 b:"literally consuming clothing — confusing and gross",                     reason:"Bart Simpson catchphrase. Literal reading is bizarre; the dismissal sense is affectionate. Multi-word makes it safe.",                                                                                vietnameseEquiv:"Đi chỗ khác",    dismissScope:"global" },
+  { pattern:/\bdon'?t have a cow\b|\bhaving a cow\b/i,                                                                                  phrase:"don't have a cow", a:"calm down, don't overreact — soft de-escalation",                                        b:"literal cow ownership/birth — agricultural confusion",                   reason:"Gen X way to soften 'calm down'. Literal reading is about livestock. Multi-word makes it safe to detect anywhere.",                                                                                   vietnameseEquiv:"Bình tĩnh đi",   dismissScope:"global" },
+  { pattern:/\bbite me[.!?~\s]*$/i,                                                                                                      phrase:"bite me",          a:"leave me alone — playful dismissal between people who know each other",                  b:"literal biting — sounds aggressive or sexual",                           reason:"Gen X playful kiss-off. End-of-message anchor prevents matching 'don't let the dog bite me' or similar.",                                                                                              vietnameseEquiv:"Đi đi",          dismissScope:"global" },
+  { pattern:/\btake a chill pill\b/i,                                                                                                    phrase:"take a chill pill", a:"relax, calm down — soft Gen X de-escalation",                                            b:"an actual pill or medication — sounds like a drug recommendation",       reason:"Gen X catchphrase. Literal reading sounds like advice to take medication. Multi-word makes it unambiguous.",                                                                                          vietnameseEquiv:"Bình tĩnh đi",   dismissScope:"global" },
+  { pattern:/\b(that'?s|so|totally|absolutely|wicked)\s+wicked\b|\bwicked (good|sick|cool|smart|fast|awesome)\b/i,                       phrase:"wicked (slang)",   a:"amazing, excellent — Northeast US Gen X praise",                                         b:"evil, sinister — the standard dictionary meaning",                       reason:"Gen X slang especially in Boston/Northeast. Literal reading is morally negative. Pattern requires intensifier or paired adjective so 'wicked witch' contexts won't fire.",                              vietnameseEquiv:"Đỉnh thật sự",   dismissScope:"global" },
+  { pattern:/\b(that'?s|so|totally|absolutely)\s+bodacious\b|\bbodacious (babe|wave|move)\b/i,                                           phrase:"bodacious",        a:"attractive / impressive — Gen X surfer praise",                                          b:"archaic/nonsense word — reads as gibberish in other languages",          reason:"Gen X surf slang. Literal reading doesn't really exist; the slang is the only meaning, but it's so dated it confuses readers without context.",                                                       vietnameseEquiv:"Quá đỉnh",       dismissScope:"global" },
 ];
 
 const SLANG_VI = [
@@ -1430,6 +1480,30 @@ const SLANG_VI = [
   { pattern:/chán đời[.!?~\s]*$/i,            phrase:"Chán đời",               a:"world-weary exhaustion — overwhelmed by everything right now, not just one thing",                          b:"literal 'bored of life' — sounds dramatic or concerning when it's usually someone venting",              reason:"Not depression — accumulated weariness with the weight of everything at once. Equivalent of 'I'm so over it' in English. Both signal someone who has been carrying too much for too long and finally said it.", englishEquiv:"i'm so over it",                     dismissScope:"contact" },
   { pattern:/nhớ không chịu được[.!?~\s]*$/i, phrase:"Nhớ không chịu được",    a:"intense longing — the missing has become physical, not just emotional",                                      b:"literal 'can't bear to miss' — sounds like a complaint about being bothered by something",               reason:"'Nhớ' (miss/long for) + 'không chịu được' (can't bear/endure) = the absence has crossed into something painful. Equivalent of 'I miss you so much it hurts' — both say the missing has become unbearable.", englishEquiv:"i miss you so much it hurts",        dismissScope:"contact" },
   { pattern:/ghét lắm[.!?~\s]*$/i,           phrase:"Ghét lắm",               a:"deep affection disguised as annoyance — between close people this means the opposite of what it says",      b:"genuine strong dislike — reads as a real insult if the relationship is misread",                         reason:"'Ghét' (hate) + 'lắm' (so much) — between close friends or partners said with warmth, this flips completely. Equivalent of 'you're the worst' said affectionately — both are terms of endearment wearing insult clothing.", englishEquiv:"you're the worst",              dismissScope:"contact" },
+
+  // ── Batch 4: Vietnamese Gen Z dual-meaning traps ──────────────────────────
+  { pattern:/\btoang(\s+rồi|\s+luôn)?[.!?~\s]*$/i,                                  phrase:"Toang",        a:"it's all over / things are completely ruined — disaster acknowledgment with a shrug",      b:"reads as nonsense in English — the literal verb is 'to crack open'",                  reason:"Gen Z VN word for total failure with comedic resignation. No literal meaning carries over. English equivalent 'we're cooked' captures the same shrug-at-disaster energy.",                   englishEquiv:"we're cooked",     dismissScope:"global" },
+  { pattern:/\bbó tay[.!?~\s]*$|\bbó tay với\b/i,                                   phrase:"Bó tay",       a:"I give up / I literally cannot — surrender after trying",                                  b:"literal 'tied hands' — sounds like restraint, abuse, or being physically held",       reason:"Gen Z VN surrender phrase. Word-for-word translation sounds violent. The slang sense is pure 'I'm out of ideas.' English equivalent 'I can't' carries the same defeat without alarm.",      englishEquiv:"I can't",          dismissScope:"global" },
+  { pattern:/\băn hành\b/i,                                                          phrase:"Ăn hành",      a:"taking a beating / getting harsh criticism — absurd-funny framing of suffering",           b:"literal 'eating onions' — confusing food reference",                                   reason:"Gen Z VN slang. Frames hardship as an absurd meal you're forced to eat. No English food idiom matches; 'getting roasted' carries the same self-deprecating beat-taking energy.",            englishEquiv:"getting roasted",  dismissScope:"global" },
+  { pattern:/\b(phải|đang|đi)\s+cày\b|\bcày (đêm|cả đêm|sml)\b/i,                  phrase:"Cày",          a:"grinding — studying or working extremely hard, often through the night",                   b:"literal 'to plow' — agricultural verb",                                                reason:"Gen Z VN usage of an old farming verb. Literal sense is fields and oxen; slang sense is hustle culture. English 'lock in' or 'grinding' carries the focused-work energy.",                  englishEquiv:"grinding",         dismissScope:"global" },
+  { pattern:/\b(hơi|quá|thằng|con|đồ|mày)\s+lầy\b|\blầy lội\b/i,                   phrase:"Lầy",          a:"playfully stubborn troublemaker — affectionate accusation of being a chaotic friend",       b:"reads as nonsense or vaguely negative in other languages",                            reason:"Gen Z VN affectionate label. No English single word captures it — 'menace' (in the affectionate Gen Z sense) is the closest equivalent.",                                                  englishEquiv:"such a menace",    dismissScope:"global" },
+  { pattern:/\b(đi|cùng|nay)\s+xõa\b|\bxõa thôi\b|\bxõa đi\b/i,                    phrase:"Xõa",          a:"let loose — permission to forget responsibilities and have fun",                            b:"literal 'to let down (hair)' — confusing without context",                            reason:"Gen Z VN release-valve word. Used after stressful periods to signal 'time to enjoy.' English 'let loose' carries the same release energy.",                                                englishEquiv:"let loose",        dismissScope:"global" },
+  { pattern:/\b(đang|đừng|hay|chỉ|chuyên)\s+cà khịa\b|\bcà khịa nhau\b/i,           phrase:"Cà khịa",      a:"playful teasing / friendly banter — pre-emptively flagged as joking, not serious",          b:"easily mistaken for genuine sarcasm or insult without the cultural context",          reason:"Gen Z VN word for affectionate trolling. The whole point is 'don't take this seriously.' English 'just roasting' captures the same playful-not-serious teasing.",                          englishEquiv:"just roasting",    dismissScope:"global" },
+  { pattern:/\bchém gió\b/i,                                                         phrase:"Chém gió",     a:"talking big / exaggerating — calling out tall tales with affection",                       b:"literal 'cutting wind' — confusing physical imagery",                                  reason:"Gen Z VN call-out for exaggeration. Word-for-word translation is meaningless. English 'capping' (Gen Z) carries the same accusation of BS-talking.",                                       englishEquiv:"capping",          dismissScope:"global" },
+  { pattern:/\bmãi mận\b/i,                                                          phrase:"Mãi mận",      a:"looking great / impressive — admiration for appearance, humor, or vibe",                    b:"literal 'forever salty/savory' — food metaphor that doesn't translate",               reason:"Gen Z VN praise word borrowed from 'mặn mà' (savory/charming). English has no flavor-based compliment; 'iconic' carries the same lasting-impressiveness.",                                  englishEquiv:"iconic",           dismissScope:"global" },
+  { pattern:/\bmãi keo\b|\bmãi mận mãi keo\b/i,                                      phrase:"Mãi keo",      a:"ride or die / inseparable bond — friendship oath",                                          b:"literal 'forever glue' — sticky substance, no relational sense",                       reason:"Gen Z VN friendship phrase. The glue metaphor doesn't carry over. English 'ride or die' captures the same forever-loyalty energy.",                                                       englishEquiv:"ride or die",      dismissScope:"global" },
+
+  // ── Batch 5: Vietnamese Millennial & Gen X dual-meaning traps ──────────────────────────
+  { pattern:/\b(hơi|quá|thật|đồ|sao mà)\s+sến\b|\bsến súa\b|\bphim sến\b|\bnhạc sến\b/i,            phrase:"Sến",          a:"overly sentimental / cheesy in a fond, dated way — old-school romantic-drama energy",     b:"reads as dismissive without the cultural context of Vietnamese romance-drama era",   reason:"Mil VN word for old-fashioned cheesy romance. Affectionate when used among friends; sounds harsh translated literally. English 'cheesy' captures the warm-mocking tone.",                  englishEquiv:"cheesy",            dismissScope:"global" },
+  { pattern:/\b(hơi|quá|thật|đồ|nhìn|sao mà)\s+quê\b|\bquê quê\b|\bquê mùa\b/i,                     phrase:"Quê",          a:"uncool, country-style, out of fashion — urban-vs-rural style judgment",                  b:"literally 'hometown/countryside' — sounds like a geography or family word",          reason:"Mil VN class/style judgment. Tight pattern — only fires when paired with intensifier or 'mùa' suffix, so 'về quê' (going home) won't trigger.",                                            englishEquiv:"basic",             dismissScope:"global" },
+  { pattern:/\b(hơi|quá|thật|đồ|sao mà)\s+chảnh\b|\bchảnh chọe\b/i,                                  phrase:"Chảnh",        a:"stuck-up / attitude-y — calling out someone's social performance",                       b:"reads as opaque without cultural context",                                            reason:"Mil VN call-out for snootiness. Often gendered. English 'stuck-up' carries the same deflation energy.",                                                                                    englishEquiv:"stuck-up",          dismissScope:"global" },
+  { pattern:/\b(bị|đang|nó|cô|anh|em|hắn)\s+bơ\b|\bbơ luôn\b|\bbơ tao\b|\bbơ tôi\b/i,                phrase:"Bơ",           a:"to ignore / give the cold shoulder — deliberate silence as rejection",                   b:"literally 'butter' — sounds like a food word",                                        reason:"Mil VN word for being iced out. Tight pattern requires subject pronoun or specific verb framing, so 'mua bơ' (buy butter) won't trigger. English 'ghosting' carries the same rejection.",  englishEquiv:"ghosting me",       dismissScope:"global" },
+  { pattern:/\b(rất|máu|hơi|quá)\s+máu\b|\bmáu lắm\b|\bmáu nhỉ\b/i,                                   phrase:"Máu",          a:"passionate / really into something — Gen X enthusiasm marker",                           b:"literally 'blood' — sounds violent or medical",                                       reason:"Gen X VN passion marker. Word-for-word translation sounds alarming. Tight pattern — only fires with intensifier or sentence-final particle, so medical/literal 'máu' won't trigger.",       englishEquiv:"all in",            dismissScope:"global" },
+  { pattern:/\bsố má\b/i,                                                                              phrase:"Số má",        a:"having reputation / street cred — known on the streets",                                 b:"literally 'fate cheek' — meaningless word-for-word",                                  reason:"Gen X VN reputation flex. The compound word has no literal meaning that carries over. English 'street cred' captures the same earned-respect energy.",                                     englishEquiv:"street cred",       dismissScope:"global" },
+  { pattern:/\bchặt chém\b|\bbị chặt\b|\bchặt giá\b/i,                                                phrase:"Chặt chém",    a:"overcharging / ripping someone off — usually about market or tourist prices",            b:"literally 'to chop and slash' — sounds violent",                                      reason:"Gen X VN market-economy word. Word-for-word translation sounds like assault. The pricing-overcharge sense is the only correct read.",                                                      englishEquiv:"price gouging",     dismissScope:"global" },
+  { pattern:/\b(đồ|thằng|con|hắn|nó|sao mà|đừng)\s+xạo\b|\bxạo ke\b|\bxạo lờ\b|\bnói xạo\b/i,         phrase:"Xạo",          a:"lying, full of it — casual call-out for BS-talking",                                     b:"reads as unclear without context — vague accusation",                                 reason:"Gen X VN word for liar. Tight pattern requires subject pronoun, intensifier, or paired suffix, so it won't fire on unrelated text.",                                                       englishEquiv:"capping",           dismissScope:"global" },
+  { pattern:/\bgiang hồ\b/i,                                                                            phrase:"Giang hồ",     a:"the streets / underworld credibility — street-tough lifestyle",                          b:"literally 'rivers and lakes' — sounds like a geography term",                          reason:"Gen X VN street-credibility word. Word-for-word translation is geographic nonsense. English 'street life' or 'thug life' carries the same underworld energy.",                              englishEquiv:"street life",       dismissScope:"global" },
+  { pattern:/\b(đang|đừng|hay|chỉ|chuyên)\s+làm màu\b|\blàm màu thôi\b/i,                            phrase:"Làm màu",      a:"putting on a show / being fake-impressive — calling out performative behavior",          b:"literally 'doing color' — meaningless word-for-word",                                 reason:"Gen X VN call-out for performative fakery. Word-for-word translation has no meaning. English 'putting on a show' captures the fake-display energy.",                                       englishEquiv:"putting on a show", dismissScope:"global" },
 ];
 
 function detectSlang(text, direction){
@@ -1438,25 +1512,144 @@ function detectSlang(text, direction){
 }
 
 // ─── Generation lookup ────────────────────────────────
-// Returns the generation tag + CSS class for a given slang phrase.
-// Three tiers: Gen Z (youngest), Millennial (mid), Older gen, Universal (all ages).
+// Returns generation tag(s) + CSS class for a given slang phrase.
+// Values can be a single string OR an array — phrases that are genuinely
+// shared across generations (e.g. "lowkey" used by both Mils and Gen Z) get arrays.
+// Tiers: Gen Z (youngest), Millennial (mid), Gen X, Universal (all ages).
+//
+// Sourced from /dictionary-cleaned.md (deduped phrase lists) and
+// /dictionary-overlaps.md (cross-gen primary-owner assignments).
 const _GEN_MAP = {
-  // ── Gen Z ──
-  "I'm dead":"gen-z","I can't":"gen-z","I'm screaming":"gen-z","that slaps":"gen-z",
-  "that's fire":"gen-z","no cap":"gen-z","it's giving":"gen-z","slay":"gen-z",
-  "that's insane":"gen-z","iconic":"gen-z","lowkey":"gen-z","I'm obsessed":"gen-z",
-  "Chết con rồi":"gen-z","Đỉnh":"gen-z","Đỉnh vãi":"gen-z","Đỉnh luôn":"gen-z",
-  "Oke oke oke":"gen-z","Xỉu luôn":"gen-z","Thật luôn":"gen-z",
-  "Có vibe":"gen-z","Nghiện luôn":"gen-z","Mặn":"gen-z","Cũng hơi":"gen-z",
-  // ── Millennial ──
+  // ═══════════════════════════════════════════════════════════
+  // ENGLISH
+  // ═══════════════════════════════════════════════════════════
+
+  // ── Gen Z (TikTok era, post-2020 internet, originated Gen Z) ──
+  "I'm dead":["gen-z","gen-mill"],"I can't":"gen-z","I'm screaming":"gen-z","that slaps":"gen-z",
+  "that's fire":"gen-z","that's insane":"gen-z","I'm obsessed":"gen-z",
+  "bussin":"gen-z","mid":"gen-z","ate":"gen-z","ate that":"gen-z","ate and left no crumbs":"gen-z",
+  "delulu":"gen-z","hits different":"gen-z","say less":"gen-z","touch grass":"gen-z",
+  "era":"gen-z","caught in 4K":"gen-z","ick":"gen-z","caught an ick":"gen-z","ick list":"gen-z","no ick":"gen-z",
+  "sneaky link":"gen-z","brain rot":"gen-z","demure":"gen-z","brat":"gen-z","glaze":"gen-z",
+  "mewing":"gen-z","sigma":"gen-z","looksmaxxing":"gen-z","aura":"gen-z","aura farming":"gen-z",
+  "that girl":"gen-z","we move":"gen-z","mother":"gen-z","pop off":"gen-z","lock in":"gen-z",
+  "skibidi":"gen-z","gyatt":"gen-z","rizz":"gen-z","rizz up":"gen-z","W rizz":"gen-z","rizzler":"gen-z",
+  "cap":"gen-z","no shot":"gen-z","sheesh":"gen-z","slaps":"gen-z","based":"gen-z","cheugy":"gen-z",
+  "fire":"gen-z","feral":"gen-z","chaotic":"gen-z","unalive":"gen-z","NPC":"gen-z","rent free":"gen-z",
+  "let him cook":"gen-z","crash out":"gen-z","cooked":"gen-z","yeet":"gen-z","sus":"gen-z",
+  "BFFR":"gen-z","ASL":"gen-z","FR":"gen-z","NGL":"gen-z","POV":"gen-z","FYP":"gen-z",
+  "choppelganger":"gen-z","404 coded":"gen-z","moots":"gen-z","unc":"gen-z","zaddy":"gen-z","twin":"gen-z",
+  "bestie":"gen-z","bruh":"gen-z","stan":"gen-z","OTP":"gen-z","real":"gen-z","that's so real":"gen-z",
+  "imposter":"gen-z","I'm weak":"gen-z","on god":"gen-z","and I oop":"gen-z","sip tea":"gen-z","spill":"gen-z",
+  "the tea":"gen-z","ratio":"gen-z","big W":"gen-z","big L":"gen-z","L":"gen-z","W":"gen-z",
+  "side character":"gen-z","girlboss":"gen-z","understood the assignment":"gen-z","understood the vision":"gen-z",
+  "understood the brief":"gen-z","understood the vibe":"gen-z","understood the moment":"gen-z",
+  "no thoughts head empty":"gen-z","slay queen":"gen-z","we love to see it":"gen-z","OK but":"gen-z",
+  "it's not giving":"gen-z","it's the":"gen-z",
+
+  // ── Cross-gen: Gen Z + Millennial (shared usage) ──
+  "no cap":["gen-z","gen-mill"],"it's giving":["gen-z","gen-mill"],"slay":["gen-z","gen-mill"],
+  "iconic":["gen-z","gen-mill"],"lowkey":["gen-z","gen-mill"],"highkey":["gen-z","gen-mill"],
+  "lit":["gen-z","gen-mill"],"snatched":["gen-z","gen-mill"],"vibe check":["gen-z","gen-mill"],
+  "periodt":["gen-z","gen-mill"],"gatekeep":["gen-z","gen-mill"],"main character":["gen-z","gen-mill"],
+  "villain era":["gen-z","gen-mill"],"soft launch":["gen-z","gen-mill"],"hard launch":["gen-z","gen-mill"],
+  "roman empire":["gen-z","gen-mill"],"bed rotting":["gen-z","gen-mill"],"girl dinner":["gen-z","gen-mill"],
+  "girl math":["gen-z","gen-mill"],"deinfluencing":["gen-z","gen-mill"],"dead":["gen-z","gen-mill"],
+  "sending me":["gen-z","gen-mill"],
+
+  // ── Millennial (originated Mil, 2000s-2010s internet) ──
   "killed it":"gen-mill","welp":"gen-mill","cool cool cool":"gen-mill",
   "that's sick":"gen-mill","I'm so over it":"gen-mill","noted":"gen-mill",
   "must be nice":"gen-mill","I could scream":"gen-mill",
+  "I can't even":"gen-mill","adulting":"gen-mill","adulting is hard":"gen-mill","FOMO":"gen-mill","YOLO":"gen-mill",
+  "on fleek":"gen-mill","blessed":"gen-mill","squad":"gen-mill","squad goals":"gen-mill","goals":"gen-mill",
+  "basic":"gen-mill","throwing shade":"gen-mill","shade":"gen-mill","tea":"gen-mill","extra":"gen-mill",
+  "ghost":"gen-mill","salty":"gen-mill","woke":"gen-mill","canceled":"gen-mill","hangry":"gen-mill",
+  "thirsty":"gen-mill","thirst trap":"gen-mill","clap back":"gen-mill","quiet quitting":"gen-mill",
+  "therapy speak":"gen-mill","soft life":"gen-mill","hot take":"gen-mill","doom scrolling":"gen-mill",
+  "touch base":"gen-mill","circle back":"gen-mill","no worries":"gen-mill","vibe":"gen-mill",
+  "big mood":"gen-mill","totes":"gen-mill","totes adorbs":"gen-mill","bae":"gen-mill","bye Felicia":"gen-mill",
+  "receipts":"gen-mill","ratchet":"gen-mill","savage":"gen-mill","ship":"gen-mill","shook":"gen-mill",
+  "snack":"gen-mill","werk":"gen-mill","yasss":"gen-mill","humblebrag":"gen-mill","it me":"gen-mill",
+  "ugh same":"gen-mill","obvi":"gen-mill","cray":"gen-mill","perf":"gen-mill","gucci":"gen-mill",
+  "GOAT":"gen-mill","fam":"gen-mill","mood":"gen-mill","Netflix and chill":"gen-mill","left on read":"gen-mill",
+  "all the things":"gen-mill","literally":"gen-mill","honestly":"gen-mill","cool beans":"gen-mill",
+  "phubbing":"gen-mill","eboy":"gen-mill","egirl":"gen-mill","situationship":"gen-mill",
+  "breadcrumbing":"gen-mill","benching":"gen-mill","orbiting":"gen-mill","zombie":"gen-mill",
+  "micro-aggression":"gen-mill","gaslighting":"gen-mill","trauma dump":"gen-mill",
+
+  // ── Gen X (80s-90s, MTV/mall/skate/Valley Girl era) ──
+  "such an airhead":"gen-x","forget it":"gen-x",
+  "whatever":"gen-x","whatevs":"gen-x","as if":"gen-x","talk to the hand":"gen-x",
+  "talk to the hand because the face ain't listening":"gen-x","duh":"gen-x","no duh":"gen-x","psych":"gen-x",
+  "radical":"gen-x","rad":"gen-x","bogus":"gen-x","gnarly":"gen-x","totally":"gen-x","totally tubular":"gen-x",
+  "tubular":"gen-x","trippin":"gen-x","word":"gen-x","word to your mother":"gen-x","my bad":"gen-x",
+  "bail":"gen-x","chill":"gen-x","take a chill pill":"gen-x","poser":"gen-x","burn":"gen-x","fly":"gen-x",
+  "all that and a bag of chips":"gen-x","hyped":"gen-x","wack":"gen-x","I'm not mad about it":"gen-x",
+  "that tracks":"gen-x","do the math":"gen-x","it is what it is":"gen-x","no shade":"gen-x","hard pass":"gen-x",
+  "big yikes":"gen-x","low key obsessed":"gen-x","not gonna lie":"gen-x","plot twist":"gen-x","zero chill":"gen-x",
+  "this ain't it":"gen-x","dude":"gen-x","bummer":"gen-x","lame":"gen-x","hella":"gen-x","stoked":"gen-x",
+  "psyched":"gen-x","wicked":"gen-x","wicked sick":"gen-x","bodacious":"gen-x","da bomb":"gen-x",
+  "bomb diggity":"gen-x","cowabunga":"gen-x","gag me with a spoon":"gen-x","oh my god, gag me":"gen-x",
+  "groddy":"gen-x","groady":"gen-x","grody to the max":"gen-x","yo":"gen-x","yuppie":"gen-x",
+  "headbanger":"gen-x","whammy":"gen-x","cool to the max":"gen-x","to the max":"gen-x","dweeb":"gen-x",
+  "nerd":"gen-x","geek":"gen-x","spaz":"gen-x","dork":"gen-x","bite me":"gen-x","eat my shorts":"gen-x",
+  "don't have a cow":"gen-x","peace out":"gen-x","later":"gen-x","catch you on the flip side":"gen-x",
+  "fer sure":"gen-x","like, totally":"gen-x","airhead":"gen-x","righteous":"gen-x","killer":"gen-x",
+  "sick":"gen-x","shred":"gen-x","thrash":"gen-x","hang loose":"gen-x","bag":"gen-x","scene":"gen-x",
+  "old school":"gen-x","kicking it old school":"gen-x","down low":"gen-x","DL":"gen-x","keep it on the DL":"gen-x",
+
+  // ═══════════════════════════════════════════════════════════
+  // VIETNAMESE
+  // ═══════════════════════════════════════════════════════════
+
+  // ── Gen Z VN (TikTok/Zalo era) ──
+  "Chết con rồi":"gen-z","Đỉnh":"gen-z","Đỉnh vãi":"gen-z","Đỉnh luôn":"gen-z",
+  "Oke oke oke":"gen-z","Xỉu luôn":"gen-z","Thật luôn":"gen-z",
+  "Có vibe":"gen-z","Nghiện luôn":"gen-z","Mặn":"gen-z","Cũng hơi":"gen-z",
+  "VCL":"gen-z","Nch":"gen-z","Đm":"gen-z","ib":"gen-z","tks":"gen-z","ok thôi":"gen-z","hmm":"gen-z",
+  "U là tr":"gen-z","J dz tr":"gen-z","Ối dồi ôi":"gen-z","Giận tím người":"gen-z","Gòy soq":"gen-z",
+  "Chằm Zn":"gen-z","Ông trời":"gen-z","Ồ trời":"gen-z","Chết mất":"gen-z",
+  "Đỉnh của chóp":"gen-z","Mãi mận":"gen-z","Mãi keo":"gen-z","Mãi mận mãi keo":"gen-z",
+  "Xinh quá":"gen-z","Đẹp trai quá":"gen-z","Ngầu":"gen-z","Slay":"gen-z","Flex":"gen-z",
+  "Gấu":"gen-z","Thả thính":"gen-z","Crush":["gen-z","gen-mill"],"Cặp đôi":"gen-z","Chia tay":"gen-z",
+  "Hẹn hò":"gen-z","Friendzone":"gen-z","Cà khịa":"gen-z","Lầy":"gen-z","Xõa":"gen-z",
+  "Bánh bèo":"gen-z","Cày":"gen-z","Dizz":"gen-z","Lemỏn":"gen-z","GATO":"gen-z","Gét gô":"gen-z",
+  "Bó tay":"gen-z","Toang":"gen-z","Chém gió":"gen-z","Sống ảo":["gen-z","gen-mill"],"Ăn hành":"gen-z",
+  "Xu cà na":"gen-z","Đọc số tài khoản":"gen-z","Bóc trúng sít rịt":"gen-z",
+  "Bà nói thiệt hả bà Thơ?":"gen-z","Hi các mom":"gen-z",
+  "Hướng nội suốt phần đời còn lại":"gen-z","Cơm nước gì chưa người đẹp?":"gen-z",
+  "Cột sống":"gen-z","Ngu vừa thôi":"gen-z","Alo alo":"gen-z",
+
+  // ── Millennial VN (Yahoo Messenger / early Facebook era) ──
   "Não cá vàng":"gen-mill","Nghe đã tai":"gen-mill","Cười muốn chết":"gen-mill",
   "Hiểu rồi thôi":"gen-mill","Sướng thật nhỉ":"gen-mill",
-  // ── Older gen ──
-  "such an airhead":"gen-old","forget it":"gen-old",
-  // ── Universal ──
+  "Ổn áp":"gen-mill","Thoải mái":"gen-mill","Nhàn":"gen-mill","Mặc kệ":"gen-mill","Tùy":"gen-mill",
+  "Ừ thôi":"gen-mill","Không sao":"gen-mill","Được rồi":"gen-mill","Xong rồi":"gen-mill",
+  "Tám":"gen-mill","Buôn chuyện":"gen-mill","Chém":"gen-mill","Bắt sóng":"gen-mill","Hợp gu":"gen-mill",
+  "Chạy theo":"gen-mill","Theo đuổi":"gen-mill","Tán tỉnh":"gen-mill","Bơ":"gen-mill",
+  "Chảnh":"gen-mill","Chảnh chọe":"gen-mill","Điệu":"gen-mill","Sến":"gen-mill","Quê":"gen-mill",
+  "Xịn":"gen-mill","Xịn xò":"gen-mill","Xứng đôi":"gen-mill","Ăn chơi":"gen-mill",
+  "Nhậu":"gen-mill","Cụng ly":"gen-mill","Dzô dzô":"gen-mill","Trăm phần trăm":"gen-mill","La cà":"gen-mill",
+  "Nick":"gen-mill","Status":"gen-mill","Share":"gen-mill","Tag":"gen-mill","Like dạo":"gen-mill",
+  "Câu like":"gen-mill","Ảnh ảo":"gen-mill","Deadline gấp":"gen-mill","Báo cáo":"gen-mill",
+  "Họp hành":"gen-mill","Làm thêm":"gen-mill","Sếp":"gen-mill","Sếp lớn":"gen-mill","Đồng nghiệp":"gen-mill",
+  "Nghỉ phép":"gen-mill","Stress":["gen-mill","gen-x"],
+
+  // ── Gen X VN (post-reunification, Đổi Mới era) ──
+  "Mần":"gen-x","Làm ăn":"gen-x","Buôn bán":"gen-x","Chạy xe ôm":"gen-x","Chạy chợ":"gen-x",
+  "Cò":"gen-x","Chặt chém":"gen-x","Bị chặt":"gen-x","Trả giá":"gen-x","Hàng xịn":"gen-x","Hàng nhái":"gen-x",
+  "Chơi với nhau":"gen-x","Bạn bè tốt":"gen-x","Nhậu nhẹt":"gen-x","Nhâm nhi":"gen-x",
+  "Thằng đó":"gen-x","Con đó":"gen-x","Dân chơi":"gen-x","Giang hồ":"gen-x","Máu":"gen-x",
+  "Số má":"gen-x","Chơi đẹp":"gen-x","Chơi xấu":"gen-x",
+  "Khổ lắm":"gen-x","Cực khổ":"gen-x","Vất vả":"gen-x","Vượt qua":"gen-x","Chịu đựng":"gen-x",
+  "Thời đó khó khăn lắm":"gen-x","Thời bao cấp":"gen-x","Đổi Mới":"gen-x","Tự lực":"gen-x",
+  "Lo cho gia đình":"gen-x","Đồ ngốc":"gen-x","Đồ khùng":"gen-x","Xạo":"gen-x","Xạo ke":"gen-x",
+  "Chơi trội":"gen-x","Làm màu":"gen-x","Hỗn":"gen-x","Láo":"gen-x","Vô lễ":"gen-x","Thứ đó":"gen-x",
+
+  // ═══════════════════════════════════════════════════════════
+  // UNIVERSAL (all ages — emotional core, traditional idioms, proverbs)
+  // ═══════════════════════════════════════════════════════════
   "shut up":"gen-uni","oh my god":"gen-uni","I hate you":"gen-uni",
   "you're the worst":"gen-uni","I could cry":"gen-uni","that's so cute":"gen-uni",
   "I know, I know":"gen-uni","whatever you want":"gen-uni","fine then":"gen-uni",
@@ -1470,6 +1663,10 @@ const _GEN_MAP = {
   "Muốn khóc quá":"gen-uni","Ghét cái mặt":"gen-uni","Đồ tệ":"gen-uni",
   "Em mệt rồi":"gen-uni","Chán đời":"gen-uni","Bỏ cuộc rồi":"gen-uni",
   "Thôi được rồi":"gen-uni","Ghét lắm":"gen-uni","Hết chịu nổi":"gen-uni",
+  // Traditional English idioms (timeless, used across generations)
+  "kick the bucket":"gen-uni","bought the farm":"gen-uni","cost an arm and a leg":"gen-uni",
+  "under the weather":"gen-uni","raining cats and dogs":"gen-uni","losing your marbles":"gen-uni",
+  "have a conniption fit":"gen-uni","hit the hay":"gen-uni",
   // Vietnamese proverbs — timeless, all ages
   "Cây có cội, nước có nguồn":"gen-uni",
   "Ăn quả nhớ kẻ trồng cây":"gen-uni",
@@ -1478,21 +1675,25 @@ const _GEN_MAP = {
   "Một miếng khi đói bằng một gói khi no":"gen-uni",
   "Lời nói chẳng mất tiền mua":"gen-uni",
 };
-const _GEN_LABEL = { "gen-z":"Gen Z", "gen-mill":"Millennial", "gen-old":"Older gen", "gen-uni":"All ages" };
+const _GEN_LABEL = { "gen-z":"Gen Z", "gen-mill":"Millennial", "gen-x":"Gen X", "gen-uni":"All ages" };
 function getPhraseGen(phrase){
-  const cls = _GEN_MAP[phrase] || 'gen-uni';
-  return { cls, label: _GEN_LABEL[cls] };
+  const raw = _GEN_MAP[phrase] || 'gen-uni';
+  const classes = Array.isArray(raw) ? raw : [raw];
+  return classes.map(cls => ({ cls, label: _GEN_LABEL[cls] }));
 }
 
 function buildLearnChip(match){
-  const g = getPhraseGen(match.phrase);
+  const gens = getPhraseGen(match.phrase);
+  const tagsHtml = gens.map(g => `<span class="lc-gen ${g.cls}">${g.label}</span>`).join('');
   return `<div class="learn-chip">
     <span class="lc-icon">💬</span>
     <span class="lc-new-label">New phrase</span>
     <span class="lc-phrase">"${esc(match.phrase)}"</span>
     <span class="lc-sep">—</span>
     <span class="lc-meaning">${esc(match.a)}</span>
-    <span class="lc-gen ${g.cls}">${g.label}</span>
+    <button type="button" class="lc-gen-toggle" aria-label="Show generation"
+      onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('show');">+</button>
+    <span class="lc-gen-tags">${tagsHtml}</span>
   </div>`;
 }
 
@@ -1690,7 +1891,7 @@ async function fetchDictionaryUpdates() {
         direction: e.direction,
         meaning:   e.meaning,
         ai_result: e.ai_result,
-        gen:       e.gen,       // 'gen-z' | 'gen-mill' | 'gen-old'
+        gen:       e.gen,       // 'gen-z' | 'gen-mill' | 'gen-x'
         gen_label: e.gen_label, // server computes this fresh each pull — aging is automatic
         addedAt:   e.approved_at,
       };
@@ -2961,13 +3162,13 @@ const DEMO_SCENARIOS = [
     })
   },
   {
-    // "Kick the bucket" — older generation idiom for dying, sounds like literal bucket kicking
+    // "Kick the bucket" — traditional idiom for dying, sounds like literal bucket kicking
     match: t => /kick(ed)?\s+the\s+bucket|kicking\s+the\s+bucket/i.test(t),
     result: (dir) => ({
       transcript: "He kicked the bucket last year.",
       detectedEmotion: "neutral",
       detectedTone: { en: "A casual, slightly darkly humorous way older English speakers refer to someone dying.", vi: "Cách nói thông thường, hơi mang tính hài hước tối tăm mà người lớn tuổi nói tiếng Anh dùng để chỉ ai đó qua đời." },
-      toneSignals: { en: ["Death idiom common among older generations", "Less formal than 'passed away', less blunt than 'died'"], vi: ["Thành ngữ về cái chết phổ biến ở thế hệ lớn tuổi", "Ít trang trọng hơn 'qua đời', ít thẳng thắn hơn 'chết'"] },
+      toneSignals: { en: ["Death idiom common among traditional speakers", "Less formal than 'passed away', less blunt than 'died'"], vi: ["Thành ngữ về cái chết phổ biến ở truyền thống", "Ít trang trọng hơn 'qua đời', ít thẳng thắn hơn 'chết'"] },
       category: "other",
       options: [
         { emotion:"neutral",  translation:"Ông ấy qua đời năm ngoái.", literalFlow:null, backTranslation:"He passed away last year.", breakdown:null, howItLands:{en:"Respectful and clear — the standard Vietnamese way to speak about someone dying.",vi:"Trang trọng và rõ ràng — cách nói tiêu chuẩn của tiếng Việt về việc ai đó mất."} },
@@ -2978,7 +3179,7 @@ const DEMO_SCENARIOS = [
       culturalWarnings: [{
         type:"idiom", term:"kick the bucket", where:"source",
         literalMeaning:{en:"Someone physically kicked a bucket.",vi:"Ai đó đã đá vào một cái xô."},
-        likelyMeaning:{en:"Someone died — a casual, older-generation English expression for death.",vi:"Ai đó đã mất — cách diễn đạt thông thường của thế hệ lớn tuổi trong tiếng Anh về cái chết."},
+        likelyMeaning:{en:"Someone died — a casual, traditional English expression for death.",vi:"Ai đó đã mất — cách diễn đạt thông thường của truyền thống trong tiếng Anh về cái chết."},
         whyRisky:{en:"Translated literally, a Vietnamese reader would picture someone actually kicking a bucket — completely nonsensical. The idiom has no Vietnamese equivalent and must be rewritten as 'qua đời' or 'mất'.",vi:"Dịch đen nghĩa, người đọc tiếng Việt sẽ hình dung ai đó thực sự đá vào xô — hoàn toàn vô nghĩa. Thành ngữ này không có từ tương đương trong tiếng Việt và phải được viết lại là 'qua đời' hoặc 'mất'."},
         suggestionKind:"rewrite", suggestion:"Ông ấy qua đời năm ngoái."
       }],
@@ -2993,7 +3194,7 @@ const DEMO_SCENARIOS = [
     result: (dir) => ({
       transcript: "That project bit the dust.",
       detectedEmotion: "neutral",
-      detectedTone: { en: "A casual older-generation phrase meaning something failed or ended — sometimes also used for dying.", vi: "Cụm từ thông thường của thế hệ lớn tuổi có nghĩa là điều gì đó thất bại hoặc kết thúc — đôi khi cũng dùng cho việc chết." },
+      detectedTone: { en: "A casual traditional phrase meaning something failed or ended — sometimes also used for dying.", vi: "Cụm từ thông thường của truyền thống có nghĩa là điều gì đó thất bại hoặc kết thúc — đôi khi cũng dùng cho việc chết." },
       toneSignals: { en: ["Failure or death idiom common in older English", "Slightly dramatic but matter-of-fact tone"], vi: ["Thành ngữ về thất bại hoặc cái chết phổ biến trong tiếng Anh lớn tuổi", "Giọng hơi kịch tính nhưng thực tế"] },
       category: "other",
       options: [
@@ -3020,8 +3221,8 @@ const DEMO_SCENARIOS = [
     result: (dir) => ({
       transcript: "That car cost an arm and a leg.",
       detectedEmotion: "neutral",
-      detectedTone: { en: "A common older-generation English expression meaning something was extremely expensive.", vi: "Cách diễn đạt phổ biến của thế hệ lớn tuổi tiếng Anh có nghĩa là thứ gì đó cực kỳ đắt tiền." },
-      toneSignals: { en: ["Price hyperbole using body parts", "Common among Baby Boomers and older generations"], vi: ["Cường điệu về giá cả sử dụng bộ phận cơ thể", "Phổ biến ở thế hệ Baby Boomer và lớn tuổi hơn"] },
+      detectedTone: { en: "A common traditional English expression meaning something was extremely expensive.", vi: "Cách diễn đạt phổ biến của truyền thống tiếng Anh có nghĩa là thứ gì đó cực kỳ đắt tiền." },
+      toneSignals: { en: ["Price hyperbole using body parts", "Common across all generations"], vi: ["Cường điệu về giá cả sử dụng bộ phận cơ thể", "Phổ biến qua nhiều thế hệ"] },
       category: "other",
       options: [
         { emotion:"neutral",  translation:"Chiếc xe đó đắt kinh khủng.", literalFlow:null, backTranslation:"That car was terribly expensive.", breakdown:null, howItLands:{en:"Natural and clear — conveys the shock of the price without confusing body-part imagery.",vi:"Tự nhiên và rõ ràng — truyền đạt sự sốc về giá mà không có hình ảnh bộ phận cơ thể gây nhầm lẫn."} },
@@ -3047,7 +3248,7 @@ const DEMO_SCENARIOS = [
     result: (dir) => ({
       transcript: "I've been feeling a bit under the weather.",
       detectedEmotion: "warm",
-      detectedTone: { en: "A gentle, polite older-generation way to say someone is feeling unwell without going into detail.", vi: "Cách nói nhẹ nhàng, lịch sự của thế hệ lớn tuổi để nói ai đó đang cảm thấy không khỏe mà không đi vào chi tiết." },
+      detectedTone: { en: "A gentle, polite traditional way to say someone is feeling unwell without going into detail.", vi: "Cách nói nhẹ nhàng, lịch sự của truyền thống để nói ai đó đang cảm thấy không khỏe mà không đi vào chi tiết." },
       toneSignals: { en: ["Softened illness expression — avoids being graphic", "Common among older English speakers"], vi: ["Cách diễn đạt bệnh nhẹ nhàng — tránh nói chi tiết", "Phổ biến ở người nói tiếng Anh lớn tuổi"] },
       category: "other",
       options: [
@@ -3074,7 +3275,7 @@ const DEMO_SCENARIOS = [
     result: (dir) => ({
       transcript: "It's raining cats and dogs out there!",
       detectedEmotion: "playful",
-      detectedTone: { en: "A classic older-generation English idiom for very heavy rain.", vi: "Thành ngữ tiếng Anh cổ điển của thế hệ lớn tuổi về mưa rất nặng hạt." },
+      detectedTone: { en: "A classic traditional English idiom for very heavy rain.", vi: "Thành ngữ tiếng Anh cổ điển của truyền thống về mưa rất nặng hạt." },
       toneSignals: { en: ["Weather hyperbole — common among older English speakers", "Playful exaggeration of heavy rainfall"], vi: ["Cường điệu thời tiết — phổ biến ở người nói tiếng Anh lớn tuổi", "Cường điệu vui vẻ về mưa nặng hạt"] },
       category: "other",
       options: [
@@ -3101,7 +3302,7 @@ const DEMO_SCENARIOS = [
     result: (dir) => ({
       transcript: "I think he's losing his marbles.",
       detectedEmotion: "neutral",
-      detectedTone: { en: "An older-generation expression for someone becoming forgetful, confused, or mentally declining.", vi: "Cách diễn đạt của thế hệ lớn tuổi về ai đó đang trở nên hay quên, bối rối, hoặc suy giảm tinh thần." },
+      detectedTone: { en: "An traditional expression for someone becoming forgetful, confused, or mentally declining.", vi: "Cách diễn đạt của truyền thống về ai đó đang trở nên hay quên, bối rối, hoặc suy giảm tinh thần." },
       toneSignals: { en: ["Mental decline idiom common among older English speakers", "Can mean crazy or increasingly forgetful/confused"], vi: ["Thành ngữ về suy giảm tinh thần phổ biến ở người nói tiếng Anh lớn tuổi", "Có thể có nghĩa là điên hoặc ngày càng hay quên/bối rối"] },
       category: "other",
       options: [
@@ -3128,7 +3329,7 @@ const DEMO_SCENARIOS = [
     result: (dir) => ({
       transcript: "He flew off the handle over nothing.",
       detectedEmotion: "neutral",
-      detectedTone: { en: "An older-generation expression for someone losing their temper suddenly and disproportionately.", vi: "Cách diễn đạt của thế hệ lớn tuổi về ai đó bùng nổ cơn giận đột ngột và không cân xứng." },
+      detectedTone: { en: "An traditional expression for someone losing their temper suddenly and disproportionately.", vi: "Cách diễn đạt của truyền thống về ai đó bùng nổ cơn giận đột ngột và không cân xứng." },
       toneSignals: { en: ["Sudden anger idiom common among older English speakers", "Implies the anger was disproportionate or unprovoked"], vi: ["Thành ngữ về cơn giận đột ngột phổ biến ở người nói tiếng Anh lớn tuổi", "Ám chỉ cơn giận không cân xứng hoặc không có lý do"] },
       category: "other",
       options: [
@@ -3155,7 +3356,7 @@ const DEMO_SCENARIOS = [
     result: (dir) => ({
       transcript: "I'm going to hit the sack.",
       detectedEmotion: "neutral",
-      detectedTone: { en: "A casual older-generation English phrase for going to sleep or bed.", vi: "Cụm từ thông thường của thế hệ lớn tuổi tiếng Anh để chỉ việc đi ngủ hoặc lên giường." },
+      detectedTone: { en: "A casual traditional English phrase for going to sleep or bed.", vi: "Cụm từ thông thường của truyền thống tiếng Anh để chỉ việc đi ngủ hoặc lên giường." },
       toneSignals: { en: ["Sleep idiom common among older English speakers", "Casual and relaxed tone"], vi: ["Thành ngữ về giấc ngủ phổ biến ở người nói tiếng Anh lớn tuổi", "Giọng thông thường và thoải mái"] },
       category: "other",
       options: [
