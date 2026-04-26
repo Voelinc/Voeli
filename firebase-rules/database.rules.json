@@ -24,6 +24,37 @@
           }
         }
       }
+    },
+    "dms": {
+      "$roomId": {
+        "messages": {
+          ".read":  "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
+          ".write": "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
+          "$msgId": {
+            ".validate": "newData.hasChildren(['ts'])"
+          }
+        },
+        "participants": {
+          ".read":  "auth != null && data.child(auth.uid).val() === true",
+          "$uid": {
+            ".write":    "auth != null && auth.uid === $uid",
+            ".validate": "newData.val() === true"
+          }
+        },
+        "invitedEmails": {
+          ".read": false,
+          ".write": false
+        }
+      }
+    },
+    "invites": {
+      "$email": {
+        ".read": true,
+        ".write": false,
+        "$roomId": {
+          ".validate": "newData.val() === true"
+        }
+      }
     }
   }
 }

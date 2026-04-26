@@ -2729,8 +2729,75 @@ function launchApp(){
   document.getElementById('app').style.display='flex';
   initRelGrid(); initDirPick(); renderSidebar(); updPlaceholder();
   initFriendRequests();
+  // Listen for incoming DM rooms (when another user adds your email as contact)
+  initDMRoomListener();
   // Pull new community-approved slang entries in the background
   fetchDictionaryUpdates();
+}
+
+async function initDMRoomListener(){
+  if(!currentUser) return;
+  try {
+    const db = firebase.database();
+    // First, check for rooms we're invited to and auto-join them
+    const invitesSnap = await db.ref(`invites/${currentUser.email}`).once('value');
+    if(invitesSnap.exists()){
+      const invitedRooms = invitesSnap.val() || {};
+      for(const roomId of Object.keys(invitedRooms)){
+        try {
+          // Add current user as participant to this room
+          await db.ref(`dms/${roomId}/participants/${currentUser.uid}`).set(true);
+        } catch(e){
+          if(window.Sentry) Sentry.captureException(e);
+        }
+      }
+    }
+    // Now listen for all rooms we're a participant of
+    db.ref('dms').orderByChild(`participants/${currentUser.uid}`).equalTo(true)
+      .on('child_added', async (snap)=>{
+        const roomId = snap.key;
+        const data = snap.val();
+        const participants = data.participants || {};
+        // Find the other person's email by checking invitedEmails (if available)
+        // or deduce from participants UIDs
+        let contactEmail = null;
+        if(data.invitedEmails){
+          contactEmail = Object.keys(data.invitedEmails)[0];
+        }
+        // Fallback: if no invitedEmails, try to find from /invites by matching this roomId
+        if(!contactEmail){
+          // This is a room created by someone else; we need to find their email
+          // We can look through invites to find who invited us to this room
+          const allInvites = await db.ref('invites').once('value');
+          if(allInvites.exists()){
+            for(const email in allInvites.val()){
+              if(allInvites.val()[email][roomId]){
+                contactEmail = email;
+                break;
+              }
+            }
+          }
+        }
+        if(contactEmail){
+          // Check if contact already exists (by email)
+          let c = contacts.find(x => x.email === contactEmail);
+          if(!c){
+            // Auto-create contact if they added you
+            const newId = nxtId++;
+            c = {id:newId, name:contactEmail.split('@')[0], phone:'', email:contactEmail,
+              type:'formal', direction:'en-vi', msgs:[], favourite:false,
+              emergency:false, blocked:false, dmRoomId:roomId};
+            contacts.unshift(c);
+            renderSidebar();
+          } else {
+            // Store the room ID on the contact so we can reference it later
+            c.dmRoomId = roomId;
+          }
+        }
+      });
+  } catch(e){
+    if(window.Sentry) Sentry.captureException(e);
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -4155,9 +4222,32 @@ function shareContact(){
   }
 }
 
+// ─ DM ROOM HASHING & CREATION ─
+async function hashEmailPair(email1, email2){
+  const sorted = [email1.toLowerCase(), email2.toLowerCase()].sort().join('|');
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sorted));
+  return Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2,'0')).join('');
+}
+
+async function createOrJoinDMRoom(contactEmail){
+  if(!contactEmail || !currentUser) return;
+  try {
+    const myEmail = currentUser.email;
+    const roomId = await hashEmailPair(myEmail, contactEmail);
+    const db = firebase.database();
+    const roomRef = db.ref(`dms/${roomId}`);
+    // Add current user as a participant (by UID, per Firebase rules)
+    await roomRef.child('participants').child(currentUser.uid).set(true);
+    // Write to /invites/{contactEmail}/{roomId} so they can discover this room
+    await db.ref(`invites/${contactEmail}/${roomId}`).set(true);
+  } catch(e){
+    if(window.Sentry) Sentry.captureException(e);
+  }
+}
+
 function closeModal(){ document.getElementById('modalBg').style.display='none'; }
 
-function saveContact(){
+async function saveContact(){
   if(!selRelType){ alert('Please select a relationship type.'); return; }
   const name=document.getElementById('mcName').value.trim();
   const phone=document.getElementById('mcPhone').value.trim();
@@ -4180,6 +4270,8 @@ function saveContact(){
     // / localStorage hiccup can't take the whole create flow down with it.
     if(email){
       try { sendFriendRequest(email); } catch(e){ if(window.Sentry) Sentry.captureException(e); }
+      // Create or join a DM room for two-phone messaging
+      try { await createOrJoinDMRoom(email); } catch(e){ if(window.Sentry) Sentry.captureException(e); }
       // Demo-phase notice: we don't actually verify the email is a registered Voeli
       // user yet, so just let the creator know their messages won't reach anyone
       // until that person signs up. Replace with a real lookup post-demo.
