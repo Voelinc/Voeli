@@ -1365,12 +1365,22 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
         </div>
       </div>
     </div>
-    <div id="profileContent" style="padding:24px;flex:1;">
-      <div style="background:var(--panel);border-radius:12px;padding:24px;text-align:center;">
+    <div id="profileContent" style="padding:24px;flex:1;overflow-y:auto;">
+      <div style="background:var(--panel);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px;">
         <div id="profileAvatar" style="width:80px;height:80px;border-radius:50%;background:var(--line);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:40px;"></div>
         <h3 id="profileName" style="font-size:20px;font-weight:600;margin-bottom:8px;">Your Name</h3>
         <p id="profileEmail" style="font-size:14px;color:var(--muted);margin-bottom:24px;">email@example.com</p>
       </div>
+      <!-- Dictionary Section in Profile -->
+      <div style="margin-bottom:24px;">
+        <h3 style="font-size:16px;font-weight:600;margin-bottom:12px;">📚 Learning Dashboard</h3>
+        <p id="dictStatsProfile" style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:16px;"></p>
+      </div>
+      <div style="margin-bottom:12px;">
+        <input type="text" id="dictSearchProfile" placeholder="Search phrases..." style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:13px;box-sizing:border-box;">
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;" id="dictTabsProfile"></div>
+      <div id="dictContentProfile" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:12px;"></div>
     </div>
   </div>
 
@@ -4281,6 +4291,49 @@ function switchTab(tab){
     profilePanel.style.display = 'flex';
     navProfile.style.color = 'var(--primary)';
     navProfile.style.opacity = '1';
+    renderProfileDictionary();
+  }
+}
+
+// Render dictionary in profile panel
+function renderProfileDictionary(){
+  const isVI = appDir === 'vi-en';
+  const learned = getLearnedDictionary();
+  const cards = Object.values(learned || {}).filter(p => p && p.phrase);
+
+  const stats = document.getElementById('dictStatsProfile');
+  if(stats) stats.innerHTML = `You've learned ${cards.length} phrases`;
+
+  const content = document.getElementById('dictContentProfile');
+  if(!content) return;
+
+  content.innerHTML = cards.map(p => `
+    <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:12px;">
+      <div style="font-weight:600;margin-bottom:6px;">${esc(p.phrase || '')}</div>
+      ${p.english ? `<div style="color:var(--muted);">EN: ${esc(p.english)}</div>` : ''}
+      ${p.vietnamese ? `<div style="color:var(--muted);">VI: ${esc(p.vietnamese)}</div>` : ''}
+      ${p.dateAdded ? `<div style="color:var(--muted-2);font-size:11px;margin-top:6px;">Learned: ${new Date(p.dateAdded).toLocaleDateString()}</div>` : ''}
+    </div>
+  `).join('');
+
+  const search = document.getElementById('dictSearchProfile');
+  if(search){
+    search.oninput = (e) => {
+      const q = (e.target.value || '').toLowerCase();
+      const filtered = cards.filter(p =>
+        (p.phrase || '').toLowerCase().includes(q) ||
+        (p.english || '').toLowerCase().includes(q) ||
+        (p.vietnamese || '').toLowerCase().includes(q)
+      );
+      content.innerHTML = filtered.map(p => `
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:12px;">
+          <div style="font-weight:600;margin-bottom:6px;">${esc(p.phrase || '')}</div>
+          ${p.english ? `<div style="color:var(--muted);">EN: ${esc(p.english)}</div>` : ''}
+          ${p.vietnamese ? `<div style="color:var(--muted);">VI: ${esc(p.vietnamese)}</div>` : ''}
+          ${p.dateAdded ? `<div style="color:var(--muted-2);font-size:11px;margin-top:6px;">Learned: ${new Date(p.dateAdded).toLocaleDateString()}</div>` : ''}
+        </div>
+      `).join('');
+    };
   }
 }
 
