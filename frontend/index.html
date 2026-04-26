@@ -1327,11 +1327,11 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
       <h3 id="modalTitle">New Contact</h3>
       <button class="mclose" onclick="closeModal()">✕</button>
     </div>
-    <label class="flabel">Name (optional)</label>
+    <label class="flabel">Name</label>
     <input type="text" id="mcName" class="finput" placeholder="Their name or nickname" autocomplete="off">
     <label class="flabel">Mobile number (optional)</label>
     <input type="tel" id="mcPhone" class="finput" placeholder="+1 555 000 0000" autocomplete="off">
-    <label class="flabel">Email (optional)</label>
+    <label class="flabel">Email</label>
     <input type="email" id="mcEmail" class="finput" placeholder="their@email.com" autocomplete="off">
     <label class="flabel">Relationship</label>
     <div class="relgrid" id="relGrid"></div>
@@ -4073,9 +4073,9 @@ function openModal(id){
 
   // Labels
   const [lblName,lblPhone,lblEmail,lblRel,lblActions]=document.querySelectorAll('#modalBg .flabel');
-  if(lblName)   lblName.textContent   = isVI?'Tên (tùy chọn)':'Name (optional)';
+  if(lblName)   lblName.textContent   = isVI?'Tên':'Name';
   if(lblPhone)  lblPhone.textContent  = isVI?'Số điện thoại (tùy chọn)':'Mobile number (optional)';
-  if(lblEmail)  lblEmail.textContent  = isVI?'Email (tùy chọn)':'Email (optional)';
+  if(lblEmail)  lblEmail.textContent  = isVI?'Email':'Email';
   if(lblRel)    lblRel.textContent    = isVI?'Mối quan hệ':'Relationship';
   if(lblActions)lblActions.textContent= isVI?'Hành động':'Actions';
 
