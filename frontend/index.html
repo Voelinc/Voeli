@@ -10,6 +10,9 @@
 <!-- Sentry — error tracking. Loads early so it can catch errors during init.
      DSN is public-by-design (it's an ingest endpoint, not a secret). -->
 <script src="https://browser.sentry-cdn.com/8.40.0/bundle.min.js" crossorigin="anonymous"></script>
+<!-- Cloudflare Turnstile — captcha for the Create Account form.
+     Loaded with `onload` callback so we know when to render the widget. -->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=_voeliTurnstileReady" defer></script>
 <script>
   if (window.Sentry) {
     Sentry.init({
@@ -933,6 +936,11 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
     <input type="email"    id="authEmail" class="finput" placeholder="you@example.com" autocomplete="email" spellcheck="false" style="margin-bottom:8px;">
     <input type="password" id="authPwd"   class="finput" placeholder="Password (8+ chars)" autocomplete="current-password" style="margin-bottom:6px;">
     <div id="authError" style="display:none;color:var(--red);font-size:12.5px;margin-bottom:10px;line-height:1.4;"></div>
+
+    <!-- Turnstile widget — only visible on the Create Account tab. -->
+    <div id="turnstileWrap" style="display:none;margin-bottom:10px;">
+      <div id="turnstileWidget"></div>
+    </div>
 
     <button class="btnsave" id="authPrimaryBtn" style="width:100%;margin-top:6px;">Sign in →</button>
     <button id="authResetBtn" type="button" style="width:100%;margin-top:8px;background:none;border:none;color:var(--blue);font-size:12.5px;cursor:pointer;text-align:center;padding:4px;">Forgot password?</button>
@@ -2202,6 +2210,50 @@ let currentUser = null;
 // ═══════════════════════════════════════════════════════
 let authMode = 'signIn'; // 'signIn' | 'signUp'
 
+// ── Cloudflare Turnstile state ────────────────────────────
+// Site key is public-by-design (it identifies the widget, doesn't authorise it).
+// The corresponding SECRET key lives only in our password manager / Worker.
+const TURNSTILE_SITE_KEY = '0x4AAAAAADDZBX8xk_ygiIY3';
+let _turnstileToken    = null;
+let _turnstileWidgetId = null;
+let _turnstileLoaded   = false;
+
+// Cloudflare's loader script calls this when the SDK is ready (?onload= param).
+window._voeliTurnstileReady = function(){
+  _turnstileLoaded = true;
+  // If user is already on the Create Account tab when the script finishes
+  // loading, render now — otherwise we wait until they switch to it.
+  if (authMode === 'signUp') renderTurnstileIfNeeded();
+};
+
+function renderTurnstileIfNeeded(){
+  if (_turnstileWidgetId !== null) return;          // already rendered
+  if (!_turnstileLoaded || !window.turnstile) return; // SDK not ready yet
+  _turnstileWidgetId = window.turnstile.render('#turnstileWidget', {
+    sitekey: TURNSTILE_SITE_KEY,
+    callback:           (token) => { _turnstileToken = token; updateAuthButtonState(); },
+    'error-callback':   ()      => { _turnstileToken = null;  updateAuthButtonState(); },
+    'expired-callback': ()      => { _turnstileToken = null;  updateAuthButtonState(); },
+    theme: 'light',
+    size:  'flexible', // adapts to container width — fits the 460px setup-box
+  });
+}
+
+function resetTurnstile(){
+  if (_turnstileWidgetId !== null && window.turnstile) {
+    try { window.turnstile.reset(_turnstileWidgetId); } catch(_) {}
+  }
+  _turnstileToken = null;
+}
+
+function updateAuthButtonState(){
+  const btn = document.getElementById('authPrimaryBtn');
+  if (!btn) return;
+  // On Sign In: button is always available.
+  // On Create Account: only enable once Turnstile has issued a fresh token.
+  btn.disabled = (authMode === 'signUp' && !_turnstileToken);
+}
+
 function setAuthMode(mode){
   authMode = mode;
   document.getElementById('tabSignIn').classList.toggle('active', mode==='signIn');
@@ -2212,6 +2264,18 @@ function setAuthMode(mode){
     'autocomplete', mode==='signIn' ? 'current-password' : 'new-password'
   );
   showAuthError('');
+
+  // Show Turnstile only on the Create Account tab. Reset between switches
+  // so a stale token can't hang around when the user comes back.
+  const wrap = document.getElementById('turnstileWrap');
+  if (mode === 'signUp') {
+    wrap.style.display = 'block';
+    renderTurnstileIfNeeded();
+  } else {
+    wrap.style.display = 'none';
+    resetTurnstile();
+  }
+  updateAuthButtonState();
 }
 function showAuthError(msg){
   const el = document.getElementById('authError');
@@ -2231,6 +2295,13 @@ document.getElementById('authPrimaryBtn').addEventListener('click', async ()=>{
   const pwd   = (document.getElementById('authPwd').value||'');
   if(!email || !pwd){ showAuthError('Email and password are required.'); return; }
   if(authMode==='signUp' && pwd.length < 8){ showAuthError('Password must be at least 8 characters.'); return; }
+  // Defense-in-depth: require a fresh Turnstile token for signup. The button
+  // is normally disabled until the token arrives; if someone re-enables it
+  // via dev tools we still refuse here.
+  if(authMode==='signUp' && !_turnstileToken){
+    showAuthError('Please complete the captcha to create an account.');
+    return;
+  }
   setAuthLoading(true); showAuthError('');
   try{
     if(authMode==='signIn'){
@@ -2241,8 +2312,15 @@ document.getElementById('authPrimaryBtn').addEventListener('click', async ()=>{
     // onAuthStateChanged below will take it from here
   }catch(err){
     showAuthError(friendlyAuthError(err));
+    // Turnstile tokens are single-use — reset so the user can retry with a
+    // fresh challenge. Without this, the same token would fail server-side
+    // verification on a retry once we add that.
+    if(authMode==='signUp') resetTurnstile();
   }finally{
     setAuthLoading(false);
+    // setAuthLoading flips authPrimaryBtn.disabled to false — re-apply our
+    // Turnstile gating so the button stays disabled if the token is gone.
+    updateAuthButtonState();
   }
 });
 document.getElementById('authPwd').addEventListener('keydown', e=>{
