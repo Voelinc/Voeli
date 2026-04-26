@@ -6075,7 +6075,6 @@ async function onSendText(ev){
   }
 
   // Check if message has slang whose equivalence has been dismissed + sender naturally knows it
-  const c = activeCont();
   const slangHits = detectSlang(text, direction);
   if(!forcePicker && slangHits.length > 0){
     const slangPhrase = slangHits[0].phrase || String(slangHits[0]);
