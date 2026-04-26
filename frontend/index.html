@@ -2818,6 +2818,8 @@ try {
 // firebaseDb is created lazily once we know whether the user is in a Live session
 let currentUser = null;
 let activeTab = 'all'; // Sidebar tab filter: 'all' | 'unread' | 'favorites'
+let activeDMRoomId = null; // Track currently-listened DM to avoid duplicate listeners
+let currentDMListenerRef = null; // Reference to the current active DM message listener
 
 // ═══════════════════════════════════════════════════════
 // SIGN-IN SCREEN — handlers for email/password, Google, demo
@@ -4290,6 +4292,41 @@ function deleteContact(id){
 // ═══════════════════════════════════════════════════════
 // OPEN CHAT
 // ═══════════════════════════════════════════════════════
+function setupDMListener(dmRoomId){
+  if(!firebaseDb || !currentUser || !dmRoomId) return;
+  // Skip if we're already listening to this room
+  if(activeDMRoomId === dmRoomId) return;
+
+  // Remove the previous listener if switching to a different room
+  if(currentDMListenerRef){
+    currentDMListenerRef.off('child_added');
+  }
+
+  activeDMRoomId = dmRoomId;
+  const msgRef = firebaseDb.ref(`dms/${dmRoomId}/messages`);
+  currentDMListenerRef = msgRef;
+
+  // Listen for incoming messages in this DM room
+  msgRef.on('child_added', snap=>{
+    const m = snap.val();
+    if(!m || m.senderId === currentUser.uid) return;
+    const c = activeCont();
+    if(!c || !c.dmRoomId || c.dmRoomId !== dmRoomId) return;
+
+    const d = new Date(m.ts);
+    c.msgs.push({
+      id: snap.key || ('fb' + Date.now() + Math.random().toString(36).slice(2,5)),
+      text: m.text, translated: m.text, original: m.original||m.text,
+      emotion:'', isMe:false, mode:'text', direction: m.direction||'en-vi',
+      ts: m.ts,
+      time: d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+      day: d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'})
+    });
+    if(activeId === c.id) renderMsgs();
+    renderSidebar();
+  });
+}
+
 function openChat(id){
   activeId=id;
   const c=activeCont(); if(!c) return;
@@ -4300,6 +4337,10 @@ function openChat(id){
   // Hide any previous drift banner before checking for a new one
   dismissDriftBanner();
   renderMsgs(); renderSidebar();
+  // If this is a DM contact, set up Firebase listener for messages
+  if(c.dmRoomId){
+    setupDMListener(c.dmRoomId);
+  }
   const ta=document.getElementById('txtInput');
   ta.value=''; ta.style.height='auto'; updBtns();
   // Check if relationship type may have drifted (runs after render so banner appears correctly)
