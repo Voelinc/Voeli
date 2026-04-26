@@ -4329,7 +4329,13 @@ function switchTab(tab){
       renderChatList();
     }
     if(sidebar) sidebar.style.setProperty('display', 'none', 'important');
-    if(cpanel) cpanel.style.setProperty('display', 'flex', 'important');
+    if(cpanel) {
+      cpanel.style.setProperty('display', 'flex', 'important');
+      // On mobile, ensure slide-in class is added for the transform
+      if(window.innerWidth <= 680 && !cpanel.classList.contains('slide-in')) {
+        cpanel.classList.add('slide-in');
+      }
+    }
     if(profilePanel) profilePanel.style.setProperty('display', 'none', 'important');
     navMessages.style.color = 'var(--primary)';
     navMessages.style.opacity = '1';
@@ -4877,9 +4883,15 @@ function openChat(id){
   // Check if relationship type may have drifted (runs after render so banner appears correctly)
   setTimeout(()=>checkRelDrift(activeCont()), 200);
   // Mobile: slide sidebar out, chat panel in
-  if(window.innerWidth<=680){
-    document.querySelector('.sidebar').classList.add('slide-out');
-    document.querySelector('.cpanel').classList.add('slide-in');
+  const isMobile = window.innerWidth<=680;
+  if(isMobile){
+    const sb = document.querySelector('.sidebar');
+    const cp = document.querySelector('.cpanel');
+    if(sb) sb.classList.add('slide-out');
+    if(cp) {
+      cp.classList.add('slide-in');
+      cp.style.setProperty('display', 'flex', 'important');
+    }
   }
   setTimeout(()=>{ ta.focus(); scrollBot(); },50);
 }
