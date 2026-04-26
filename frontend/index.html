@@ -2903,8 +2903,8 @@ document.getElementById('authPrimaryBtn').addEventListener('click', async ()=>{
         currentUser = cred.user;
         if(cred.user.email) sessionStorage.setItem('mta_user_email', cred.user.email.toLowerCase());
         document.getElementById('setupScreen').style.display='none';
-        document.getElementById('liveSetupScreen').style.display='flex';
-        setTimeout(renderLiveRelGrid, 50);
+        document.getElementById('liveSetupScreen').style.display='none';
+        launchApp();
       }
     }, 800);
   }catch(err){
@@ -2978,7 +2978,14 @@ document.getElementById('settSignOutBtn').addEventListener('click', async ()=>{
     return;
   }
   try { await fbAuth.signOut(); } catch(_){}
-  // onAuthStateChanged routes back to the sign-in screen.
+  // Belt-and-suspenders: same iOS-Safari flake that breaks sign-in can also
+  // delay onAuthStateChanged on sign-out, leaving the user looking at the
+  // chat screen as if nothing happened. Force the screen transition manually.
+  currentUser = null;
+  try { sessionStorage.removeItem('mta_user_email'); } catch(_){}
+  document.getElementById('app').style.display='none';
+  document.getElementById('liveSetupScreen').style.display='none';
+  document.getElementById('setupScreen').style.display='flex';
 });
 
 // Map Firebase's terse error codes into human messages.
@@ -3021,10 +3028,10 @@ fbAuth.onAuthStateChanged(async (user)=>{
   // Signed in — surface email in session storage so the existing friend-request
   // / Live-session features (which look for mta_user_email) keep working.
   if(user.email) sessionStorage.setItem('mta_user_email', user.email.toLowerCase());
-  // Hand off to the live-session picker, same flow the old "Save key" path used.
+  // Skip the mode picker — go straight into the messenger.
   document.getElementById('setupScreen').style.display='none';
-  document.getElementById('liveSetupScreen').style.display='flex';
-  setTimeout(renderLiveRelGrid, 50);
+  document.getElementById('liveSetupScreen').style.display='none';
+  launchApp();
 });
 
 function skipLiveSession(){ launchApp(); }
