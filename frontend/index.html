@@ -1156,12 +1156,6 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             <span class="badge" id="reqBadge"></span>
           </button>
-          <button class="gear-btn" onclick="openSettings()" aria-label="Settings" title="Settings">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
-          </button>
         </div>
       </div>
       <div class="sb-search">
@@ -1172,7 +1166,6 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
       <button class="sb-tab active" id="tabAll">All</button>
       <button class="sb-tab" id="tabUnread">Unread</button>
       <button class="sb-tab" id="tabFav">★</button>
-      <button class="sb-tab" id="tabDict">Dictionary</button>
       <button class="fab" onclick="openModal()" id="fabBtn" title="New contact" aria-label="New contact">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -1379,7 +1372,34 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
         <p id="dictStatsProfile" style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:16px;margin-top:0;">You've learned 0 phrases</p>
         <input type="text" id="dictSearchProfile" placeholder="Search phrases..." style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:12px;">
         <div id="dictContentProfile" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:12px;"></div>
-        <div id="emptyDictProfile" style="text-align:center;color:var(--muted);font-size:13px;padding:24px;">Send messages with slang to start learning new phrases</div>
+        <div id="emptyDictProfile" style="display:none;"></div>
+      </div>
+
+      <!-- Privacy Section -->
+      <div style="margin-top:32px;border-top:1px solid var(--line);padding-top:20px;">
+        <!-- Grammar Check Toggle -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:12px;background:var(--panel-2);border-radius:8px;">
+          <div>
+            <div style="font-size:14px;font-weight:500;">Grammar check</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px;">Suggests corrections as you type</div>
+          </div>
+          <label class="sett-toggle" style="margin:0;">
+            <input type="checkbox" id="grammarToggleProfile" onchange="onGrammarToggleChange(this.checked)">
+            <span class="sett-toggle-track"></span>
+          </label>
+        </div>
+
+        <!-- My Communication Style Toggle -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--panel-2);border-radius:8px;">
+          <div>
+            <div style="font-size:14px;font-weight:500;">My communication style</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px;">Shows a personal breakdown of how you tend to communicate</div>
+          </div>
+          <label class="sett-toggle" style="margin:0;">
+            <input type="checkbox" id="styleToggleProfile" onchange="onStyleToggleChange(this.checked)">
+            <span class="sett-toggle-track"></span>
+          </label>
+        </div>
       </div>
     </div>
   </div>
@@ -2953,6 +2973,15 @@ function launchApp(){
   initDMRoomListener();
   // Pull new community-approved slang entries in the background
   fetchDictionaryUpdates();
+  // Sync profile toggles
+  syncProfileToggles();
+}
+
+function syncProfileToggles(){
+  const grammarToggle = document.getElementById('grammarToggleProfile');
+  const styleToggle = document.getElementById('styleToggleProfile');
+  if(grammarToggle) grammarToggle.checked = isGrammarCheckOn();
+  if(styleToggle) styleToggle.checked = localStorage.getItem('style_insights_on') === 'true';
 }
 
 async function initDMRoomListener(){
@@ -4288,11 +4317,8 @@ function switchTab(tab){
     navContacts.style.color = 'var(--primary)';
     navContacts.style.opacity = '1';
   } else if(tab === 'messages'){
-    // If already in messages and clicked again, show chat list
-    if(currentMessagesView === 'chat'){
-      currentMessagesView = 'list';
-      renderChatList();
-    } else {
+    // If activeId is set, don't render chat list - let openChat handle displaying the individual chat
+    if(!activeId){
       currentMessagesView = 'list';
       renderChatList();
     }
@@ -4492,7 +4518,7 @@ function renderSidebar(list){
       ? `<span style="background:var(--blue);color:#fff;border-radius:999px;font-size:11px;font-weight:700;padding:2px 7px;min-width:20px;text-align:center;display:inline-block;">${c.unread}</span>`
       : '';
     const favStar = c.favourite ? `<span style="color:var(--gold);font-size:11px;margin-left:4px;">★</span>` : '';
-    return `<div class="crow${c.id===activeId?' active':''}" onclick="openChat(${c.id})">
+    return `<div class="crow${c.id===activeId?' active':''}" onclick="activeId=${c.id};switchTab('messages');openChat(${c.id})">
       <div class="cav" style="background:${r.bg};color:${r.fg||'#334155'};">${esc(initialsFor(c))}</div>
       <div class="cinf">
         <div class="cname" style="${c.unread>0?'font-weight:700;color:var(--ink);':''}">${esc(dispName(c))}${favStar}</div>
@@ -4752,7 +4778,11 @@ async function saveContact(){
     // Close the modal and refresh the list FIRST so the user always sees the
     // new contact land, even if openChat or sendFriendRequest throws below.
     closeModal(); renderSidebar();
-    try { openChat(newId); } catch(e){ if(window.Sentry) Sentry.captureException(e); }
+    activeId = newId; // Explicitly set activeId before switching tabs
+    try {
+      switchTab('messages');
+      openChat(newId);
+    } catch(e){ if(window.Sentry) Sentry.captureException(e); }
     // Send a friend request if they gave an email — guarded so a BroadcastChannel
     // / localStorage hiccup can't take the whole create flow down with it.
     if(email){
@@ -4824,6 +4854,7 @@ function openChat(id){
   activeId=id;
   const c=activeCont(); if(!c) return;
   c.unread=0; // clear unread when chat is opened
+  currentMessagesView = 'chat'; // ensure we're in chat view, not list view
   document.getElementById('chatEmpty').style.display='none';
   document.getElementById('chatList').style.display='none';
   document.getElementById('activeChat').style.display='flex';
@@ -8277,13 +8308,6 @@ function openSettings(){
   const styleSectionLabel = document.querySelector('#stylePanel .sett-section-label');
   if(styleSectionLabel) styleSectionLabel.textContent = isVI ? 'Phong cách của bạn' : 'Your style insights';
 
-  // Localize grammar section
-  document.getElementById('settLangLabel').textContent = isVI ? 'Ngôn ngữ' : 'Language';
-  document.getElementById('settGrammarTitle').textContent = isVI ? 'Kiểm tra ngữ pháp' : 'Grammar check';
-  document.getElementById('settGrammarSub').textContent = isVI
-    ? 'Gợi ý sửa lỗi khi bạn gõ, như tính năng tự động sửa ngữ pháp trên iMessage. Mặc định bật.'
-    : 'Suggests a correction as you type, like auto-grammar on iMessage. On by default.';
-
   // Localize and populate Privacy Policy + Terms sections
   document.getElementById('settPrivacyPolicyTitle').textContent = isVI ? 'Chính sách Bảo mật' : 'Privacy Policy';
   document.getElementById('settTermsTitle').textContent         = isVI ? 'Điều khoản Dịch vụ'  : 'Terms of Service';
@@ -8294,12 +8318,13 @@ function openSettings(){
   document.getElementById('settAccountLabel').textContent = isVI ? 'Tài khoản' : 'Account';
   document.getElementById('settSignOutBtn').textContent   = isVI ? 'Đăng xuất' : 'Sign out';
 
-  // Restore toggle state
-  document.getElementById('grammarToggle').checked = isGrammarCheckOn();
-  const on = localStorage.getItem('style_insights_on') === 'true';
-  document.getElementById('styleToggle').checked = on;
-  document.getElementById('stylePanel').style.display = on ? 'block' : 'none';
-  if(on) renderStylePanel();
+  // Restore toggle state from Profile tab
+  const grammarOn = isGrammarCheckOn();
+  if(document.getElementById('grammarToggleProfile')) document.getElementById('grammarToggleProfile').checked = grammarOn;
+  const styleOn = localStorage.getItem('style_insights_on') === 'true';
+  if(document.getElementById('styleToggleProfile')) document.getElementById('styleToggleProfile').checked = styleOn;
+  document.getElementById('stylePanel').style.display = styleOn ? 'block' : 'none';
+  if(styleOn) renderStylePanel();
 }
 function closeSettings(){
   document.getElementById('settingsOverlay').style.display = 'none';
@@ -8467,29 +8492,7 @@ setTimeout(()=>{ showOnboarding(); initSignOutBtn(); }, 300);
       <button id="settingsClose" onclick="closeSettings()">✕</button>
     </div>
     <div id="settingsBody">
-      <div class="sett-section-label" id="settLangLabel">Language</div>
-      <div class="sett-row">
-        <div class="sett-row-info">
-          <div class="sett-row-title" id="settGrammarTitle">Grammar check</div>
-          <div class="sett-row-sub" id="settGrammarSub">Suggests a correction as you type, like auto-grammar on iMessage. On by default.</div>
-        </div>
-        <label class="sett-toggle">
-          <input type="checkbox" id="grammarToggle" onchange="onGrammarToggleChange(this.checked)">
-          <span class="sett-toggle-track"></span>
-        </label>
-      </div>
-      <div class="sett-divider"></div>
       <div class="sett-section-label">Privacy</div>
-      <div class="sett-row">
-        <div class="sett-row-info">
-          <div class="sett-row-title">My communication style</div>
-          <div class="sett-row-sub">Shows a personal breakdown of how you tend to communicate. Completely optional, off by default.</div>
-        </div>
-        <label class="sett-toggle">
-          <input type="checkbox" id="styleToggle" onchange="onStyleToggleChange(this.checked)">
-          <span class="sett-toggle-track"></span>
-        </label>
-      </div>
       <details class="sett-privacy-toggle">
         <summary>
           <span class="sett-privacy-toggle-title">Data &amp; Privacy</span>
