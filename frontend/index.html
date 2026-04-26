@@ -2835,6 +2835,16 @@ let editingId = null;
 let selRelType = null;
 let nxtId = 1;
 let pending = null; // { result, original, mode }
+let currentMessagesView = 'list'; // 'list' or 'chat'
+
+// DOM element caches
+let txtInput = null;
+let micBtn = null;
+let sendBtn = null;
+let sendWrap = null;
+let micCol = null;
+let sendCol = null;
+let directBtn = null;
 
 // Recording state
 let mediaStream=null, mediaRecorder=null, audioChunks=[], isRecording=false;
@@ -6010,13 +6020,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // ═══════════════════════════════════════════════════════
 // COMPOSER
 // ═══════════════════════════════════════════════════════
-const txtInput=document.getElementById('txtInput');
-const micBtn=document.getElementById('micBtn');
-const sendBtn=document.getElementById('sendBtn');
-const sendWrap=document.getElementById('sendWrap');
-const micCol=document.getElementById('micCol');
-const sendCol=document.getElementById('sendCol');
-const directBtn=document.getElementById('directBtn');
+// Assign cached DOM elements
+if(!txtInput) txtInput=document.getElementById('txtInput');
+if(!micBtn) micBtn=document.getElementById('micBtn');
+if(!sendBtn) sendBtn=document.getElementById('sendBtn');
+if(!sendWrap) sendWrap=document.getElementById('sendWrap');
+if(!micCol) micCol=document.getElementById('micCol');
+if(!sendCol) sendCol=document.getElementById('sendCol');
+if(!directBtn) directBtn=document.getElementById('directBtn');
 
 function updBtns(){
   const isVI = appDir==='vi-en';
