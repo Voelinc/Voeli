@@ -6059,7 +6059,7 @@ function updBtns(){
   const badge=document.getElementById('langBadge');
   if(badge && !(txtInput.value||'').trim()){ badge.textContent=isVI?'VI→EN':'EN→VI'; badge.classList.remove('as-is'); }
 }
-txtInput.addEventListener('input',()=>{
+if(txtInput) txtInput.addEventListener('input',()=>{
   txtInput.style.height='auto'; txtInput.style.height=Math.min(txtInput.scrollHeight,140)+'px'; updBtns();
   // Live-update the direction badge as the user types
   const val=(txtInput.value||'').trim();
@@ -6077,7 +6077,7 @@ txtInput.addEventListener('input',()=>{
   // Grammar check — debounced, English only
   scheduleGrammarCheck(val);
 });
-txtInput.addEventListener('keydown',e=>{
+if(txtInput) txtInput.addEventListener('keydown',e=>{
   // Enter = smart send (auto-bypass picker if no emotional signal)
   // Shift+Enter inside a non-empty field = force the picker (escape hatch)
   // Shift+Enter in an empty field = newline (default)
@@ -6086,9 +6086,9 @@ txtInput.addEventListener('keydown',e=>{
     if(!e.shiftKey){ e.preventDefault(); if(!txtInput.disabled) onSendText({shiftKey:false}); }
   }
 });
-sendBtn.addEventListener('click',e=>{ if(!sendBtn.disabled) onSendText({shiftKey:!!(e&&e.shiftKey)}); });
+if(sendBtn) sendBtn.addEventListener('click',e=>{ if(!sendBtn.disabled) onSendText({shiftKey:!!(e&&e.shiftKey)}); });
 if(directBtn) directBtn.addEventListener('click',()=>{ if(!directBtn.disabled) onSendDirect(); });
-micBtn.addEventListener('click',async()=>{
+if(micBtn) micBtn.addEventListener('click',async()=>{
   if(!demoMode && !currentUser) return;
   if(!isRecording) await startRec(); else stopRec();
 });
