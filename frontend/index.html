@@ -2398,6 +2398,9 @@ function startLocalListeners(){
     const d = new Date(m.ts);
     if(activeId !== room.id) room.unread = (room.unread||0) + 1;
     room.msgs.push({
+      // See note in startFirebaseListeners — incoming messages need an id
+      // so things like cultural bridge cards can anchor on them.
+      id: 'lr' + Date.now() + Math.random().toString(36).slice(2,5),
       text: m.text, translated: m.text, original: m.original||m.text,
       emotion:'', isMe:false, mode:'text', direction: m.direction||'en-vi',
       ts: m.ts,
@@ -6140,6 +6143,10 @@ function startFirebaseListeners(){
     const d = new Date(m.ts);
     if(activeId !== room.id) room.unread = (room.unread||0) + 1;
     room.msgs.push({
+      // Use the Firebase push key as a stable id. Without an id, features
+      // that anchor on m.id (cultural bridge cards, context menu, replies)
+      // silently fail for incoming messages.
+      id: snap.key || ('fb' + Date.now() + Math.random().toString(36).slice(2,5)),
       text: m.text, translated: m.text, original: m.original||m.text,
       emotion:'', isMe:false, mode:'text', direction: m.direction||'en-vi',
       ts: m.ts,
