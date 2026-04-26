@@ -1379,7 +1379,13 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
   <div id="bottomNav" style="display:flex;background:var(--panel);height:calc(60px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);width:100%;align-items:center;justify-content:space-around;box-sizing:border-box;">
     <button id="navContacts" class="nav-btn" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:0.6;transition:all 0.2s;padding:0;" onclick="switchTab('contacts')">👥</button>
     <button id="navMessages" class="nav-btn active" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:1;transition:all 0.2s;padding:0;" onclick="switchTab('messages')">💬</button>
-    <button id="navProfile" class="nav-btn" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:0.6;transition:all 0.2s;padding:0;" onclick="switchTab('profile')">👤</button>
+    <button id="navProfile" class="nav-btn" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0.6;transition:all 0.2s;padding:0;" onclick="switchTab('profile')">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="14" cy="14" r="13"/>
+        <circle cx="14" cy="9.5" r="3.5"/>
+        <path d="M8 22c0-3.3 2.69-6 6-6s6 2.7 6 6"/>
+      </svg>
+    </button>
   </div>
 </div>
 
