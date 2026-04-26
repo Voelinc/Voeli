@@ -6045,7 +6045,12 @@ if(!sendCol) sendCol=document.getElementById('sendCol');
 if(!directBtn) directBtn=document.getElementById('directBtn');
 
 function updBtns(){
+  // Ensure DOM elements are cached before use
+  if(!txtInput) txtInput=document.getElementById('txtInput');
+  if(!sendCol) sendCol=document.getElementById('sendCol');
+  if(!micCol) micCol=document.getElementById('micCol');
   if(!txtInput || !sendCol || !micCol) return; // Elements not ready
+
   const isVI = appDir==='vi-en';
   // During recording, keep only the mic (stop) button visible to prevent
   // accidental text sends firing a second API call.
