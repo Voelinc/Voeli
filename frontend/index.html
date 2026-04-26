@@ -8521,7 +8521,9 @@ function showOnboarding(){
   renderLangPicker();
 }
 // Run after page load
-setTimeout(()=>{ showOnboarding(); initSignOutBtn(); }, 300);
+document.addEventListener('DOMContentLoaded', ()=>{
+  setTimeout(()=>{ showOnboarding(); initSignOutBtn(); }, 300);
+});
 </script>
 <!-- RELATIONSHIP EDITOR OVERLAY -->
 <div id="relEditOverlay" onclick="if(event.target===this)closeRelEditor()">
