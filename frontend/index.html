@@ -7021,8 +7021,14 @@ function startFirebaseListeners(){
   renderSidebar();
   openChat(rc.id);
 
+  // Determine if this is a DM or group chat
+  const c = activeCont();
+  const isDM = c && c.dmRoomId;
+  const msgPath = isDM ? `dms/${c.dmRoomId}/messages` : `rooms/${roomCode}/messages`;
+  const typingPath = isDM ? `dms/${c.dmRoomId}/typing` : `rooms/${roomCode}/typing`;
+
   // ── Incoming messages ──────────────────────────────
-  firebaseDb.ref(`rooms/${roomCode}/messages`).on('child_added', snap=>{
+  firebaseDb.ref(msgPath).on('child_added', snap=>{
     const m = snap.val();
     // Filter own messages by Firebase UID — security rules require the
     // typing/participants keys to match auth.uid, so messages now use
@@ -7048,7 +7054,7 @@ function startFirebaseListeners(){
   });
 
   // ── Typing indicator ───────────────────────────────
-  firebaseDb.ref(`rooms/${roomCode}/typing`).on('value', snap=>{
+  firebaseDb.ref(typingPath).on('value', snap=>{
     const data = snap.val()||{};
     const myUid = currentUser && currentUser.uid;
     const someone = Object.entries(data).some(([id,v])=> id!==myUid && v===true);
@@ -7070,14 +7076,21 @@ function syncToFirebase(msg){
     });
     return;
   }
-  if(!firebaseDb||!roomCode||!currentUser) return;
-  firebaseDb.ref(`rooms/${roomCode}/messages`).push({
+  if(!firebaseDb||!currentUser) return;
+  const msgData = {
     text:      msg.text||msg.translated||'',
     original:  msg.original||msg.text||'',
     senderId:  currentUser.uid,
     direction: msg.direction||appDir,
     ts:        msg.ts||Date.now()
-  });
+  };
+  // Check if this is a DM contact (has dmRoomId)
+  const c = activeCont();
+  if(c && c.dmRoomId){
+    firebaseDb.ref(`dms/${c.dmRoomId}/messages`).push(msgData);
+  } else if(roomCode){
+    firebaseDb.ref(`rooms/${roomCode}/messages`).push(msgData);
+  }
 }
 
 function setMyTyping(val){
@@ -7085,8 +7098,13 @@ function setMyTyping(val){
     localChannel.postMessage({ type:'typing', val });
     return;
   }
-  if(!firebaseDb||!roomCode||!currentUser) return;
-  firebaseDb.ref(`rooms/${roomCode}/typing/${currentUser.uid}`).set(val);
+  if(!firebaseDb||!currentUser) return;
+  const c = activeCont();
+  if(c && c.dmRoomId){
+    firebaseDb.ref(`dms/${c.dmRoomId}/typing/${currentUser.uid}`).set(val);
+  } else if(roomCode){
+    firebaseDb.ref(`rooms/${roomCode}/typing/${currentUser.uid}`).set(val);
+  }
 }
 
 // Typing detection on the composer textarea
