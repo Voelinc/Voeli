@@ -6144,31 +6144,31 @@ function buildAltsPanel(m){
 }
 
 // Delegation: toggle the "show original" peek + alternatives panel on a message bubble
-const msgsAreaEl = document.getElementById('msgsArea');
-if(msgsAreaEl) msgsAreaEl.addEventListener('click', function(e){
-  const togBtn = e.target.closest && e.target.closest('.btgl');
-  if(togBtn){
-    const bubble = togBtn.closest('.bubble');
-    if(!bubble) return;
-    const toggle = togBtn.dataset.toggle;
-    if(toggle === 'alts'){
-      const showing = bubble.classList.toggle('showalts');
-      togBtn.textContent = showing ? '↑' : '↕';
-    } else {
-      // default: orig peek — toggle badge label
-      const showing = bubble.classList.toggle('showorig');
-      const isVI = appDir === 'vi-en';
-      togBtn.innerHTML = showing
-        ? `${isVI ? 'Ẩn đi' : 'Hide'}`
-        : `${isVI ? 'Đã dịch' : 'Translated'}`;
+document.addEventListener('DOMContentLoaded', ()=>{
+  const msgsAreaEl = document.getElementById('msgsArea');
+  if(msgsAreaEl) msgsAreaEl.addEventListener('click', function(e){
+    const togBtn = e.target.closest && e.target.closest('.btgl');
+    if(togBtn){
+      const bubble = togBtn.closest('.bubble');
+      if(!bubble) return;
+      const toggle = togBtn.dataset.toggle;
+      if(toggle === 'alts'){
+        const showing = bubble.classList.toggle('showalts');
+        togBtn.textContent = showing ? '↑' : '↕';
+      } else {
+        const showing = bubble.classList.toggle('showorig');
+        const isVI = appDir === 'vi-en';
+        togBtn.innerHTML = showing
+          ? `${isVI ? 'Ẩn đi' : 'Hide'}`
+          : `${isVI ? 'Đã dịch' : 'Translated'}`;
+      }
+      return;
     }
-    return;
-  }
-  // "· Change" chip on auto-sent messages
-  const changeBtn = e.target.closest && e.target.closest('.auto-change-chip');
-  if(changeBtn && changeBtn.dataset.msgid){
-    changeAutoSent(changeBtn.dataset.msgid);
-  }
+    const changeBtn = e.target.closest && e.target.closest('.auto-change-chip');
+    if(changeBtn && changeBtn.dataset.msgid){
+      changeAutoSent(changeBtn.dataset.msgid);
+    }
+  });
 });
 
 // Direct button — identical path to the smart-send auto-bypass: optimistic push,
