@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Privacy Policy — Voeli</title>
+<title>Privacy Policy · Voeli</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   body{
@@ -12,7 +12,7 @@
     line-height:1.6; padding:32px 20px 80px;
   }
   .wrap{max-width:740px; margin:0 auto; background:#fff; border:1px solid #E5E7EB;
-    border-radius:16px; padding:40px 36px; box-shadow:0 4px 12px rgba(16,24,40,.07);}
+    border-radius:16px; padding:40px 36px; box-shadow:0 4px 12px rgba(16,24,40,.07); position:relative;}
   h1{font-size:28px; font-weight:700; margin-bottom:6px; letter-spacing:-.01em;}
   .meta{font-size:13px; color:#6B7280; margin-bottom:28px;}
   h2{font-size:18px; font-weight:600; margin:28px 0 10px; color:#111827;}
@@ -27,139 +27,215 @@
   .footer{margin-top:36px; padding-top:20px; border-top:1px solid #E5E7EB;
     font-size:13px; color:#6B7280;}
   .home-link{display:inline-block; margin-bottom:24px; font-size:14px; color:#0068FF;}
+  .lang-toggle{position:absolute; top:24px; right:24px; display:inline-flex;
+    background:#F3F4F6; border-radius:999px; padding:3px; font-size:13px;
+    font-weight:600; user-select:none;}
+  .lang-toggle button{appearance:none; border:0; background:transparent; padding:6px 14px;
+    border-radius:999px; cursor:pointer; color:#6B7280; font:inherit;}
+  .lang-toggle button.active{background:#fff; color:#111827; box-shadow:0 1px 3px rgba(0,0,0,.08);}
+  [data-lang]{display:none;}
+  [data-lang].active{display:block;}
+  @media (max-width:520px){
+    .wrap{padding:80px 22px 32px;}
+    .lang-toggle{top:18px; right:18px;}
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <a href="/" class="home-link">← Back to Voeli</a>
-  <h1>Privacy Policy</h1>
-  <div class="meta">Last updated: 25 April 2026</div>
-
-  <p>Voeli is a tone-aware English ↔ Vietnamese chat translator. This policy
-  describes what data we collect, why we collect it, who we share it with, and
-  what control you have over it.</p>
-
-  <p>We've tried to write this in plain language. If anything is unclear, email
-  us at <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
-
-  <div class="callout">
-    <strong>Short version:</strong> we collect your email and a per-user usage
-    counter. We do <strong>not</strong> store the messages you send or
-    translate. Messages are forwarded to OpenAI for translation only, not kept
-    on our servers afterward.
+  <div class="lang-toggle" role="tablist" aria-label="Language">
+    <button type="button" data-set-lang="en" class="active">EN</button>
+    <button type="button" data-set-lang="vi">VI</button>
   </div>
 
-  <h2>1. What we collect</h2>
-  <ul>
-    <li><strong>Your email address</strong> — only if you sign up with email/password
-      or Google. Used to identify your account and let you sign back in.</li>
-    <li><strong>An anonymous user ID</strong> — generated automatically by Firebase
-      Authentication. We use it to count how many translations you've used today
-      so we can enforce per-user daily limits.</li>
-    <li><strong>Daily usage counters</strong> — three small integers per user per day
-      (translations, voice notes, grammar checks). Reset every 24 hours. Stored
-      on Cloudflare's edge network. Not joined with any other data.</li>
-    <li><strong>Live Session messages</strong> — when you use Live Session mode to
-      chat with another signed-in person, message text passes through and is
-      briefly stored in our Firebase Realtime Database so the other person can
-      receive it. Only the two participants in a room can read these messages.
-      You can delete your account to remove your participation.</li>
-  </ul>
+  <!-- ENGLISH ───────────────────────────────────────────── -->
+  <div data-lang="en" class="active">
+    <a href="/" class="home-link">← Back to Voeli</a>
+    <h1>Privacy Policy</h1>
+    <div class="meta">Last updated: 25 April 2026</div>
 
-  <h2>2. What we do <em>not</em> collect</h2>
-  <ul>
-    <li><strong>The content of messages you translate.</strong> When you type or speak
-      a message, the text (or audio) is sent to OpenAI and the translation is
-      returned to you. We do not log or store the message content on our
-      servers.</li>
-    <li><strong>Your conversation history.</strong> Your contacts, message threads,
-      tone-style preferences, and the per-contact "communication profile" all
-      live in your browser's local storage on your device. They never leave it.
-      Clearing your browser data deletes all of this.</li>
-    <li><strong>Identifying information about the people you chat with</strong> — beyond
-      what you choose to type into the contact card (name, email, phone). We
-      don't verify or look up anything about them.</li>
-  </ul>
+    <p>Voeli is an English and Vietnamese chat translator that pays attention to tone. This policy describes what data we collect, why we collect it, who we share it with, and what control you have over it.</p>
 
-  <h2>3. How we use what we collect</h2>
-  <ul>
-    <li><strong>Email and user ID</strong> — to authenticate you when you sign in, and
-      to enforce per-user daily quotas so a small number of users can't exhaust
-      our translation budget.</li>
-    <li><strong>Live Session messages</strong> — to deliver the message to the other
-      participant. We don't read, analyze, or store them outside that delivery.</li>
-    <li><strong>Voice recordings</strong> — sent to OpenAI for transcription and
-      translation, then discarded by us. We don't keep audio files.</li>
-  </ul>
+    <p>We've tried to write this in plain language. If anything is unclear, email us at <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
 
-  <h2>4. Third parties we use</h2>
-  <p>Voeli uses the following services. Each one only sees the data it needs to
-  do its job:</p>
-  <ul>
-    <li><strong>Firebase (Google)</strong> — handles sign-in (email and Google) and
-      hosts the Live Session message database. Sees your email, user ID, and
-      Live Session messages. <a href="https://firebase.google.com/support/privacy">Firebase privacy policy</a>.</li>
-    <li><strong>Cloudflare</strong> — hosts the website and the translation backend
-      Worker. Sees the requests you make and basic network metadata
-      (IP address, user agent). <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare privacy policy</a>.</li>
-    <li><strong>OpenAI</strong> — performs the actual translation. Sees the text or
-      audio of each message you translate. By default OpenAI does not use API
-      data for model training. <a href="https://openai.com/policies/privacy-policy">OpenAI privacy policy</a>.</li>
-    <li><strong>Sentry</strong> — error tracking. If something in the app crashes, we
-      receive a report containing your user ID, browser type, and a technical
-      stack trace. We do not send your messages or translations to Sentry.
-      <a href="https://sentry.io/privacy/">Sentry privacy policy</a>.</li>
-  </ul>
+    <div class="callout">
+      <strong>Short version:</strong> we collect your email and a per-user usage counter. We do <strong>not</strong> store the messages you send or translate. Messages are forwarded to OpenAI for translation only, not kept on our servers afterward.
+    </div>
 
-  <h2>5. Cookies and local storage</h2>
-  <p>We don't use tracking or advertising cookies. Voeli relies on the browser's
-  local storage to keep you signed in (a Firebase auth token) and to remember
-  your preferences and conversation data. This is essential to the service —
-  without it, the app cannot function. There are no third-party trackers.</p>
+    <h2>1. What we collect</h2>
+    <ul>
+      <li><strong>Your email address.</strong> Only if you sign up with email and password or with Google. Used to identify your account and let you sign back in.</li>
+      <li><strong>An anonymous user ID.</strong> Generated automatically by Firebase Authentication. We use it to count how many translations you've used today so we can enforce per-user daily limits.</li>
+      <li><strong>Daily usage counters.</strong> Three small integers per user per day (translations, voice notes, grammar checks). Reset every 24 hours. Stored on Cloudflare's edge network. Not joined with any other data.</li>
+      <li><strong>Live Session messages.</strong> When you use Live Session mode to chat with another signed-in person, message text passes through and is briefly stored in our Firebase Realtime Database so the other person can receive it. Only the two participants in a room can read these messages. You can delete your account to remove your participation.</li>
+    </ul>
 
-  <h2>6. Data retention</h2>
-  <ul>
-    <li><strong>Account data (email, user ID):</strong> kept until you delete your account.</li>
-    <li><strong>Daily usage counters:</strong> automatically deleted 48 hours after creation.</li>
-    <li><strong>Live Session messages:</strong> kept until manually deleted by a participant
-      or until you delete your account.</li>
-    <li><strong>Local data on your device:</strong> kept until you clear your browser
-      storage. We have no copy.</li>
-    <li><strong>Sentry crash reports:</strong> retained per Sentry's default policy
-      (typically 90 days).</li>
-  </ul>
+    <h2>2. What we do <em>not</em> collect</h2>
+    <ul>
+      <li><strong>The content of messages you translate.</strong> When you type or speak a message, the text or audio is sent to OpenAI and the translation is returned to you. We do not log or store the message content on our servers.</li>
+      <li><strong>Your conversation history.</strong> Your contacts, message threads, tone-style preferences, and the per-contact "communication profile" all live in your browser's local storage on your device. They never leave it. Clearing your browser data deletes all of this.</li>
+      <li><strong>Identifying information about the people you chat with.</strong> Beyond what you choose to type into the contact card (name, email, phone), we don't verify or look up anything about them.</li>
+    </ul>
 
-  <h2>7. Your rights</h2>
-  <p>You can:</p>
-  <ul>
-    <li><strong>Access</strong> the data we hold about you (email and user ID — that's it).</li>
-    <li><strong>Delete</strong> your account and all server-side data tied to it. Email
-      <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a> with the subject
-      "Delete account" from the email tied to your account.</li>
-    <li><strong>Export</strong> your data — though there's very little of it. Same email.</li>
-    <li><strong>Withdraw consent</strong> at any time by deleting your account.</li>
-  </ul>
+    <h2>3. How we use what we collect</h2>
+    <ul>
+      <li><strong>Email and user ID.</strong> To authenticate you when you sign in, and to enforce per-user daily quotas so a small number of users can't exhaust our translation budget.</li>
+      <li><strong>Live Session messages.</strong> To deliver the message to the other participant. We don't read, analyze, or store them outside that delivery.</li>
+      <li><strong>Voice recordings.</strong> Sent to OpenAI for transcription and translation, then discarded by us. We don't keep audio files.</li>
+    </ul>
 
-  <p>We respond to requests within 30 days. If you're in the EU, UK, or
-  California, you have additional rights under GDPR / UK GDPR / CCPA — the
-  same email address handles all of them.</p>
+    <h2>4. Third parties we use</h2>
+    <p>Voeli uses the following services. Each one only sees the data it needs to do its job:</p>
+    <ul>
+      <li><strong>Firebase (Google).</strong> Handles sign-in (email and Google) and hosts the Live Session message database. Sees your email, user ID, and Live Session messages. <a href="https://firebase.google.com/support/privacy">Firebase privacy policy</a>.</li>
+      <li><strong>Cloudflare.</strong> Hosts the website and the translation backend Worker. Sees the requests you make and basic network metadata (IP address, user agent). <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare privacy policy</a>.</li>
+      <li><strong>OpenAI.</strong> Performs the actual translation. Sees the text or audio of each message you translate. By default OpenAI does not use API data for model training. <a href="https://openai.com/policies/privacy-policy">OpenAI privacy policy</a>.</li>
+      <li><strong>Sentry.</strong> Error tracking. If something in the app crashes, we receive a report containing your user ID, browser type, and a technical stack trace. We do not send your messages or translations to Sentry. <a href="https://sentry.io/privacy/">Sentry privacy policy</a>.</li>
+    </ul>
 
-  <h2>8. Children</h2>
-  <p>Voeli is not directed at children under 13. We do not knowingly collect
-  data from anyone under 13. If we learn that we have, we'll delete it.</p>
+    <h2>5. Cookies and local storage</h2>
+    <p>We don't use tracking or advertising cookies. Voeli relies on the browser's local storage to keep you signed in (a Firebase auth token) and to remember your preferences and conversation data. This is essential to the service. Without it, the app cannot function. There are no third-party trackers.</p>
 
-  <h2>9. Changes to this policy</h2>
-  <p>If we change this policy materially, we'll update the date at the top and,
-  if you have an account, notify you by email before the change takes effect.</p>
+    <h2>6. Data retention</h2>
+    <ul>
+      <li><strong>Account data (email, user ID).</strong> Kept until you delete your account.</li>
+      <li><strong>Daily usage counters.</strong> Automatically deleted 48 hours after creation.</li>
+      <li><strong>Live Session messages.</strong> Kept until manually deleted by a participant or until you delete your account.</li>
+      <li><strong>Local data on your device.</strong> Kept until you clear your browser storage. We have no copy.</li>
+      <li><strong>Sentry crash reports.</strong> Retained per Sentry's default policy (typically 90 days).</li>
+    </ul>
 
-  <h2>10. Contact</h2>
-  <p>Privacy questions, account deletion, anything else: <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
+    <h2>7. Your rights</h2>
+    <p>You can:</p>
+    <ul>
+      <li><strong>Access</strong> the data we hold about you (email and user ID, that's it).</li>
+      <li><strong>Delete</strong> your account and all server-side data tied to it. Email <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a> with the subject "Delete account" from the email tied to your account.</li>
+      <li><strong>Export</strong> your data, though there's very little of it. Same email.</li>
+      <li><strong>Withdraw consent</strong> at any time by deleting your account.</li>
+    </ul>
 
-  <div class="footer">
-    Voeli is currently in beta. The service, this policy, and our practices may
-    evolve as we learn more about how people use it. We'll always tell you
-    before reducing your privacy.
+    <p>We respond to requests within 30 days. If you're in the EU, UK, or California, you have additional rights under GDPR, UK GDPR, or CCPA. The same email address handles all of them.</p>
+
+    <h2>8. Children</h2>
+    <p>Voeli is not directed at children under 13. We do not knowingly collect data from anyone under 13. If we learn that we have, we'll delete it.</p>
+
+    <h2>9. Changes to this policy</h2>
+    <p>If we change this policy materially, we'll update the date at the top and, if you have an account, notify you by email before the change takes effect.</p>
+
+    <h2>10. Contact</h2>
+    <p>Privacy questions, account deletion, anything else: <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
+
+    <div class="footer">
+      Voeli is currently in beta. The service, this policy, and our practices may evolve as we learn more about how people use it. We'll always tell you before reducing your privacy.
+    </div>
+  </div>
+
+  <!-- VIETNAMESE ─────────────────────────────────────────── -->
+  <div data-lang="vi">
+    <a href="/" class="home-link">← Quay lại Voeli</a>
+    <h1>Chính sách Bảo mật</h1>
+    <div class="meta">Cập nhật lần cuối: 25 tháng 4, 2026</div>
+
+    <p>Voeli là ứng dụng dịch trò chuyện Anh và Việt có chú trọng đến giọng điệu. Chính sách này mô tả dữ liệu chúng tôi thu thập, lý do thu thập, đối tượng được chia sẻ, và quyền kiểm soát mà bạn có đối với dữ liệu đó.</p>
+
+    <p>Chúng tôi cố gắng viết bằng ngôn ngữ dễ hiểu. Nếu có điều gì chưa rõ, vui lòng liên hệ <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
+
+    <div class="callout">
+      <strong>Tóm tắt:</strong> chúng tôi thu thập email của bạn và bộ đếm sử dụng cho mỗi tài khoản. Chúng tôi <strong>không</strong> lưu trữ tin nhắn bạn gửi hoặc dịch. Tin nhắn được chuyển đến OpenAI chỉ để dịch, không được giữ lại trên máy chủ của chúng tôi sau đó.
+    </div>
+
+    <h2>1. Dữ liệu chúng tôi thu thập</h2>
+    <ul>
+      <li><strong>Địa chỉ email của bạn.</strong> Chỉ khi bạn đăng ký bằng email và mật khẩu hoặc bằng Google. Dùng để xác định tài khoản và giúp bạn đăng nhập lại.</li>
+      <li><strong>ID người dùng ẩn danh.</strong> Được tạo tự động bởi Firebase Authentication. Chúng tôi dùng nó để đếm số lượt dịch bạn đã sử dụng trong ngày để áp dụng giới hạn hàng ngày cho mỗi người dùng.</li>
+      <li><strong>Bộ đếm sử dụng hàng ngày.</strong> Ba số nguyên nhỏ cho mỗi người dùng mỗi ngày (lượt dịch, ghi âm giọng nói, kiểm tra ngữ pháp). Đặt lại sau mỗi 24 giờ. Lưu trữ trên mạng lưới biên của Cloudflare. Không kết hợp với bất kỳ dữ liệu nào khác.</li>
+      <li><strong>Tin nhắn trong Live Session.</strong> Khi bạn dùng chế độ Live Session để trò chuyện với một người khác đã đăng nhập, nội dung tin nhắn đi qua và được lưu tạm thời trong Firebase Realtime Database để người kia nhận được. Chỉ hai người trong cùng một phòng mới có thể đọc các tin nhắn này. Bạn có thể xóa tài khoản để gỡ bỏ phần tham gia của mình.</li>
+    </ul>
+
+    <h2>2. Những gì chúng tôi <em>không</em> thu thập</h2>
+    <ul>
+      <li><strong>Nội dung tin nhắn bạn dịch.</strong> Khi bạn nhập hoặc nói một tin nhắn, văn bản hoặc âm thanh được gửi đến OpenAI và bản dịch được trả về cho bạn. Chúng tôi không ghi log hoặc lưu trữ nội dung tin nhắn trên máy chủ của mình.</li>
+      <li><strong>Lịch sử trò chuyện của bạn.</strong> Danh bạ, các luồng tin nhắn, tùy chọn về giọng điệu, và "hồ sơ giao tiếp" cho từng liên hệ đều nằm trong bộ nhớ cục bộ trên thiết bị của bạn. Chúng không bao giờ rời khỏi thiết bị. Xóa dữ liệu trình duyệt sẽ xóa tất cả những thứ này.</li>
+      <li><strong>Thông tin nhận dạng về những người bạn trò chuyện cùng.</strong> Ngoài những gì bạn tự nhập vào thẻ liên hệ (tên, email, số điện thoại), chúng tôi không xác minh hay tra cứu bất kỳ thông tin gì khác về họ.</li>
+    </ul>
+
+    <h2>3. Cách chúng tôi sử dụng dữ liệu thu thập</h2>
+    <ul>
+      <li><strong>Email và ID người dùng.</strong> Để xác thực khi bạn đăng nhập, và để áp dụng hạn mức hàng ngày cho mỗi người dùng nhằm tránh việc một số ít người dùng làm cạn kiệt ngân sách dịch của chúng tôi.</li>
+      <li><strong>Tin nhắn trong Live Session.</strong> Để chuyển tin nhắn đến người kia. Chúng tôi không đọc, phân tích, hay lưu trữ chúng ngoài quá trình chuyển giao đó.</li>
+      <li><strong>Bản ghi âm giọng nói.</strong> Được gửi đến OpenAI để phiên âm và dịch, sau đó chúng tôi loại bỏ. Chúng tôi không giữ tệp âm thanh.</li>
+    </ul>
+
+    <h2>4. Các bên thứ ba chúng tôi sử dụng</h2>
+    <p>Voeli sử dụng các dịch vụ sau. Mỗi dịch vụ chỉ thấy dữ liệu cần thiết để thực hiện chức năng của mình:</p>
+    <ul>
+      <li><strong>Firebase (Google).</strong> Xử lý đăng nhập (email và Google) và lưu trữ cơ sở dữ liệu tin nhắn Live Session. Thấy email, ID người dùng, và tin nhắn Live Session của bạn. <a href="https://firebase.google.com/support/privacy">Chính sách bảo mật của Firebase</a>.</li>
+      <li><strong>Cloudflare.</strong> Lưu trữ trang web và Worker xử lý dịch ở phía sau. Thấy các yêu cầu bạn thực hiện và dữ liệu mạng cơ bản (địa chỉ IP, trình duyệt). <a href="https://www.cloudflare.com/privacypolicy/">Chính sách bảo mật của Cloudflare</a>.</li>
+      <li><strong>OpenAI.</strong> Thực hiện việc dịch thực tế. Thấy văn bản hoặc âm thanh của mỗi tin nhắn bạn dịch. Theo mặc định, OpenAI không sử dụng dữ liệu API để huấn luyện mô hình. <a href="https://openai.com/policies/privacy-policy">Chính sách bảo mật của OpenAI</a>.</li>
+      <li><strong>Sentry.</strong> Theo dõi lỗi. Nếu có sự cố trong ứng dụng, chúng tôi nhận được báo cáo gồm ID người dùng, loại trình duyệt, và stack trace kỹ thuật. Chúng tôi không gửi tin nhắn hay bản dịch của bạn đến Sentry. <a href="https://sentry.io/privacy/">Chính sách bảo mật của Sentry</a>.</li>
+    </ul>
+
+    <h2>5. Cookie và bộ nhớ cục bộ</h2>
+    <p>Chúng tôi không dùng cookie theo dõi hay quảng cáo. Voeli dựa vào bộ nhớ cục bộ của trình duyệt để giữ trạng thái đăng nhập (token xác thực Firebase) và để ghi nhớ tùy chọn cũng như dữ liệu trò chuyện của bạn. Đây là phần thiết yếu của dịch vụ. Nếu không có nó, ứng dụng sẽ không hoạt động được. Không có công cụ theo dõi của bên thứ ba.</p>
+
+    <h2>6. Thời gian lưu trữ dữ liệu</h2>
+    <ul>
+      <li><strong>Dữ liệu tài khoản (email, ID người dùng).</strong> Giữ cho đến khi bạn xóa tài khoản.</li>
+      <li><strong>Bộ đếm sử dụng hàng ngày.</strong> Tự động xóa sau 48 giờ kể từ khi tạo.</li>
+      <li><strong>Tin nhắn Live Session.</strong> Giữ cho đến khi một bên trong cuộc trò chuyện xóa thủ công hoặc cho đến khi bạn xóa tài khoản.</li>
+      <li><strong>Dữ liệu cục bộ trên thiết bị của bạn.</strong> Giữ cho đến khi bạn xóa bộ nhớ trình duyệt. Chúng tôi không có bản sao.</li>
+      <li><strong>Báo cáo sự cố Sentry.</strong> Giữ theo chính sách mặc định của Sentry (thường là 90 ngày).</li>
+    </ul>
+
+    <h2>7. Quyền của bạn</h2>
+    <p>Bạn có thể:</p>
+    <ul>
+      <li><strong>Truy cập</strong> dữ liệu chúng tôi lưu về bạn (email và ID người dùng, chỉ vậy).</li>
+      <li><strong>Xóa</strong> tài khoản và toàn bộ dữ liệu phía máy chủ liên quan. Gửi email đến <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a> với tiêu đề "Delete account" từ chính email gắn với tài khoản của bạn.</li>
+      <li><strong>Xuất</strong> dữ liệu của bạn, dù lượng dữ liệu rất nhỏ. Cùng địa chỉ email.</li>
+      <li><strong>Rút lại sự đồng ý</strong> bất cứ lúc nào bằng cách xóa tài khoản.</li>
+    </ul>
+
+    <p>Chúng tôi phản hồi yêu cầu trong vòng 30 ngày. Nếu bạn ở EU, Vương quốc Anh, hoặc California, bạn có thêm các quyền theo GDPR, UK GDPR, hoặc CCPA. Cùng địa chỉ email xử lý tất cả các trường hợp.</p>
+
+    <h2>8. Trẻ em</h2>
+    <p>Voeli không hướng đến trẻ em dưới 13 tuổi. Chúng tôi không cố ý thu thập dữ liệu từ bất kỳ ai dưới 13 tuổi. Nếu phát hiện điều đó, chúng tôi sẽ xóa dữ liệu liên quan.</p>
+
+    <h2>9. Thay đổi chính sách</h2>
+    <p>Nếu chúng tôi thay đổi chính sách này một cách đáng kể, chúng tôi sẽ cập nhật ngày ở đầu trang và, nếu bạn có tài khoản, sẽ thông báo qua email trước khi thay đổi có hiệu lực.</p>
+
+    <h2>10. Liên hệ</h2>
+    <p>Câu hỏi về quyền riêng tư, yêu cầu xóa tài khoản, hoặc bất cứ điều gì khác: <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
+
+    <div class="footer">
+      Voeli hiện đang trong giai đoạn beta. Dịch vụ, chính sách này, và các thực tiễn của chúng tôi có thể thay đổi khi chúng tôi học hỏi thêm về cách mọi người sử dụng ứng dụng. Chúng tôi sẽ luôn thông báo trước khi thu hẹp quyền riêng tư của bạn.
+    </div>
   </div>
 </div>
+
+<script>
+(function(){
+  var saved = (function(){ try { return localStorage.getItem('app_lang'); } catch(e){ return null; } })();
+  var initial = saved === 'vi' ? 'vi' : 'en';
+  setLang(initial);
+  document.querySelectorAll('[data-set-lang]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var lang = btn.getAttribute('data-set-lang');
+      setLang(lang);
+      try { localStorage.setItem('app_lang', lang); } catch(e){}
+    });
+  });
+  function setLang(lang){
+    document.querySelectorAll('[data-lang]').forEach(function(el){
+      el.classList.toggle('active', el.getAttribute('data-lang') === lang);
+    });
+    document.querySelectorAll('[data-set-lang]').forEach(function(btn){
+      btn.classList.toggle('active', btn.getAttribute('data-set-lang') === lang);
+    });
+    document.documentElement.lang = lang;
+    document.title = lang === 'vi' ? 'Chính sách Bảo mật · Voeli' : 'Privacy Policy · Voeli';
+  }
+})();
+</script>
 </body>
 </html>

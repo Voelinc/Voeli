@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Terms of Service — Voeli</title>
+<title>Terms of Service · Voeli</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   body{
@@ -12,7 +12,7 @@
     line-height:1.6; padding:32px 20px 80px;
   }
   .wrap{max-width:740px; margin:0 auto; background:#fff; border:1px solid #E5E7EB;
-    border-radius:16px; padding:40px 36px; box-shadow:0 4px 12px rgba(16,24,40,.07);}
+    border-radius:16px; padding:40px 36px; box-shadow:0 4px 12px rgba(16,24,40,.07); position:relative;}
   h1{font-size:28px; font-weight:700; margin-bottom:6px; letter-spacing:-.01em;}
   .meta{font-size:13px; color:#6B7280; margin-bottom:28px;}
   h2{font-size:18px; font-weight:600; margin:28px 0 10px; color:#111827;}
@@ -27,133 +27,213 @@
   .footer{margin-top:36px; padding-top:20px; border-top:1px solid #E5E7EB;
     font-size:13px; color:#6B7280;}
   .home-link{display:inline-block; margin-bottom:24px; font-size:14px; color:#0068FF;}
+  .lang-toggle{position:absolute; top:24px; right:24px; display:inline-flex;
+    background:#F3F4F6; border-radius:999px; padding:3px; font-size:13px;
+    font-weight:600; user-select:none;}
+  .lang-toggle button{appearance:none; border:0; background:transparent; padding:6px 14px;
+    border-radius:999px; cursor:pointer; color:#6B7280; font:inherit;}
+  .lang-toggle button.active{background:#fff; color:#111827; box-shadow:0 1px 3px rgba(0,0,0,.08);}
+  [data-lang]{display:none;}
+  [data-lang].active{display:block;}
+  @media (max-width:520px){
+    .wrap{padding:80px 22px 32px;}
+    .lang-toggle{top:18px; right:18px;}
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <a href="/" class="home-link">← Back to Voeli</a>
-  <h1>Terms of Service</h1>
-  <div class="meta">Last updated: 25 April 2026</div>
-
-  <p>These terms govern your use of Voeli ("we", "us", "our"), a tone-aware
-  English ↔ Vietnamese chat translator. By creating an account or using the
-  service, you agree to these terms. If you don't agree, please don't use
-  Voeli.</p>
-
-  <div class="callout">
-    <strong>Plain-English summary:</strong> Voeli is in beta and provided as-is.
-    Don't use it to harm anyone. Don't rely on it for medical, legal, or
-    financial decisions. We can suspend or close accounts that abuse the service.
+  <div class="lang-toggle" role="tablist" aria-label="Language">
+    <button type="button" data-set-lang="en" class="active">EN</button>
+    <button type="button" data-set-lang="vi">VI</button>
   </div>
 
-  <h2>1. Beta service</h2>
-  <p>Voeli is currently in beta. That means:</p>
-  <ul>
-    <li>Features may change, break, or disappear without notice.</li>
-    <li>The service may be unavailable, slow, or behave unexpectedly at times.</li>
-    <li>We may pause or shut down the service entirely. If we do, we'll give
-      reasonable notice and a way to export any data you'd like to keep.</li>
-    <li>Translations may be inaccurate. Voeli is meant to help you communicate
-      across a language barrier, not to replace careful judgment.</li>
-  </ul>
+  <!-- ENGLISH ───────────────────────────────────────────── -->
+  <div data-lang="en" class="active">
+    <a href="/" class="home-link">← Back to Voeli</a>
+    <h1>Terms of Service</h1>
+    <div class="meta">Last updated: 25 April 2026</div>
 
-  <h2>2. Your account</h2>
-  <p>You're responsible for:</p>
-  <ul>
-    <li>Keeping your sign-in credentials private.</li>
-    <li>What happens under your account.</li>
-    <li>Providing accurate information when you sign up (a real email you can
-      access).</li>
-  </ul>
-  <p>You must be at least 13 years old to use Voeli. If you're under 18, you
-  should review these terms with a parent or guardian.</p>
+    <p>These terms govern your use of Voeli ("we", "us", "our"), an English and Vietnamese chat translator that pays attention to tone. By creating an account or using the service, you agree to these terms. If you don't agree, please don't use Voeli.</p>
 
-  <h2>3. Acceptable use</h2>
-  <p>Don't use Voeli to:</p>
-  <ul>
-    <li>Harass, threaten, or harm anyone — including the person on the other
-      end of the conversation.</li>
-    <li>Send unlawful, fraudulent, hateful, sexually explicit material involving
-      minors, or otherwise illegal content.</li>
-    <li>Translate confidential material you don't have the right to share with
-      a third party (Voeli forwards messages to OpenAI for translation —
-      your messages briefly leave your device).</li>
-    <li>Reverse-engineer, scrape, or attempt to bypass our quotas, rate limits,
-      or security measures.</li>
-    <li>Build a competing translation service using our infrastructure.</li>
-  </ul>
+    <div class="callout">
+      <strong>Plain-English summary:</strong> Voeli is in beta and provided as is. Don't use it to harm anyone. Don't rely on it for medical, legal, or financial decisions. We can suspend or close accounts that abuse the service.
+    </div>
 
-  <h2>4. Not professional advice</h2>
-  <p>Translations from Voeli are <strong>not</strong> a substitute for professional
-  translation, legal advice, medical advice, financial advice, or any other
-  expert service. Don't make important decisions based solely on what Voeli
-  produces. Tone-aware machine translation is helpful but it makes mistakes.</p>
+    <h2>1. Beta service</h2>
+    <p>Voeli is currently in beta. That means:</p>
+    <ul>
+      <li>Features may change, break, or disappear without notice.</li>
+      <li>The service may be unavailable, slow, or behave unexpectedly at times.</li>
+      <li>We may pause or shut down the service entirely. If we do, we'll give reasonable notice and a way to export any data you'd like to keep.</li>
+      <li>Translations may be inaccurate. Voeli is meant to help you communicate across a language barrier, not to replace careful judgment.</li>
+    </ul>
 
-  <h2>5. Daily usage limits</h2>
-  <p>Each account has daily limits on how many translations, voice notes, and
-  grammar checks it can request. These limits exist to keep the service free
-  for everyone. We may adjust them up or down as needed. Hitting a limit means
-  you'll get a "daily quota reached" message — try again tomorrow.</p>
+    <h2>2. Your account</h2>
+    <p>You're responsible for:</p>
+    <ul>
+      <li>Keeping your sign-in credentials private.</li>
+      <li>What happens under your account.</li>
+      <li>Providing accurate information when you sign up (a real email you can access).</li>
+    </ul>
+    <p>You must be at least 13 years old to use Voeli. If you're under 18, you should review these terms with a parent or guardian.</p>
 
-  <h2>6. Content you send</h2>
-  <p>You retain ownership of anything you type, speak, or send through Voeli.
-  By using the service you grant us a limited license to process your messages
-  for the purpose of providing the translation — which means forwarding them
-  to our translation provider (currently OpenAI) and returning the result to
-  you. We don't claim any other rights and we don't store the content of your
-  messages on our servers (see the
-  <a href="/privacy.html">Privacy Policy</a> for details).</p>
+    <h2>3. Acceptable use</h2>
+    <p>Don't use Voeli to:</p>
+    <ul>
+      <li>Harass, threaten, or harm anyone, including the person on the other end of the conversation.</li>
+      <li>Send unlawful, fraudulent, hateful, sexually explicit material involving minors, or otherwise illegal content.</li>
+      <li>Translate confidential material you don't have the right to share with a third party. Voeli forwards messages to OpenAI for translation, so your messages briefly leave your device.</li>
+      <li>Reverse-engineer, scrape, or attempt to bypass our quotas, rate limits, or security measures.</li>
+      <li>Build a competing translation service using our infrastructure.</li>
+    </ul>
 
-  <h2>7. Suspension and termination</h2>
-  <p>We may suspend or terminate your account, with or without notice, if you:</p>
-  <ul>
-    <li>Violate these terms.</li>
-    <li>Use the service in a way that harms other users, us, or third parties.</li>
-    <li>Repeatedly abuse the system to bypass limits or security controls.</li>
-  </ul>
-  <p>You can terminate your own account at any time by emailing
-  <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
+    <h2>4. Not professional advice</h2>
+    <p>Translations from Voeli are <strong>not</strong> a substitute for professional translation, legal advice, medical advice, financial advice, or any other expert service. Don't make important decisions based solely on what Voeli produces. Tone-aware machine translation is helpful but it makes mistakes.</p>
 
-  <h2>8. Disclaimer of warranties</h2>
-  <p>Voeli is provided "as is" and "as available", without warranties of any
-  kind — express or implied. We do not warrant that the service will be
-  uninterrupted, error-free, secure, or that translations will be accurate or
-  fit for any particular purpose.</p>
+    <h2>5. Daily usage limits</h2>
+    <p>Each account has daily limits on how many translations, voice notes, and grammar checks it can request. These limits exist to keep the service free for everyone. We may adjust them up or down as needed. Hitting a limit means you'll get a "daily quota reached" message. Try again tomorrow.</p>
 
-  <h2>9. Limitation of liability</h2>
-  <p>To the maximum extent permitted by law, Voeli and its operators are not
-  liable for any indirect, incidental, special, consequential, or punitive
-  damages — including loss of data, loss of profits, miscommunication, or
-  business interruption — arising out of your use of the service. Our total
-  aggregate liability for any claim is limited to the amount you paid us in
-  the past twelve months (which, during beta, is zero).</p>
+    <h2>6. Content you send</h2>
+    <p>You retain ownership of anything you type, speak, or send through Voeli. By using the service you grant us a limited license to process your messages for the purpose of providing the translation, which means forwarding them to our translation provider (currently OpenAI) and returning the result to you. We don't claim any other rights and we don't store the content of your messages on our servers (see the <a href="/privacy.html">Privacy Policy</a> for details).</p>
 
-  <h2>10. Third-party services</h2>
-  <p>Voeli relies on third-party providers (Firebase, Cloudflare, OpenAI,
-  Sentry — see the <a href="/privacy.html">Privacy Policy</a>). When you use
-  Voeli you are also indirectly using those services and may be subject to
-  their respective terms.</p>
+    <h2>7. Suspension and termination</h2>
+    <p>We may suspend or terminate your account, with or without notice, if you:</p>
+    <ul>
+      <li>Violate these terms.</li>
+      <li>Use the service in a way that harms other users, us, or third parties.</li>
+      <li>Repeatedly abuse the system to bypass limits or security controls.</li>
+    </ul>
+    <p>You can terminate your own account at any time by emailing <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
 
-  <h2>11. Changes to these terms</h2>
-  <p>We may update these terms over time. If we make a material change, we'll
-  update the date at the top and, if you have an account, notify you by email
-  before the change takes effect. Continued use after a change means you accept
-  the updated terms.</p>
+    <h2>8. Disclaimer of warranties</h2>
+    <p>Voeli is provided "as is" and "as available", without warranties of any kind, whether express or implied. We do not warrant that the service will be uninterrupted, error-free, secure, or that translations will be accurate or fit for any particular purpose.</p>
 
-  <h2>12. Governing law</h2>
-  <p>These terms are governed by the laws of the jurisdiction in which the
-  service operator is established, without regard to conflict-of-laws rules.
-  Any disputes will be resolved in the courts of that jurisdiction.</p>
+    <h2>9. Limitation of liability</h2>
+    <p>To the maximum extent permitted by law, Voeli and its operators are not liable for any indirect, incidental, special, consequential, or punitive damages, including loss of data, loss of profits, miscommunication, or business interruption, arising out of your use of the service. Our total aggregate liability for any claim is limited to the amount you paid us in the past twelve months (which, during beta, is zero).</p>
 
-  <h2>13. Contact</h2>
-  <p>Questions, concerns, or notice of a breach of these terms:
-  <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
+    <h2>10. Third-party services</h2>
+    <p>Voeli relies on third-party providers (Firebase, Cloudflare, OpenAI, Sentry. See the <a href="/privacy.html">Privacy Policy</a>). When you use Voeli you are also indirectly using those services and may be subject to their respective terms.</p>
 
-  <div class="footer">
-    These terms are a sensible starting point for a beta service. They are
-    not a substitute for legal advice tailored to your situation. As Voeli
-    grows we may revise them or have a lawyer review them more carefully.
+    <h2>11. Changes to these terms</h2>
+    <p>We may update these terms over time. If we make a material change, we'll update the date at the top and, if you have an account, notify you by email before the change takes effect. Continued use after a change means you accept the updated terms.</p>
+
+    <h2>12. Governing law</h2>
+    <p>These terms are governed by the laws of the jurisdiction in which the service operator is established, without regard to conflict-of-laws rules. Any disputes will be resolved in the courts of that jurisdiction.</p>
+
+    <h2>13. Contact</h2>
+    <p>Questions, concerns, or notice of a breach of these terms: <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
+
+    <div class="footer">
+      These terms are a sensible starting point for a beta service. They are not a substitute for legal advice tailored to your situation. As Voeli grows we may revise them or have a lawyer review them more carefully.
+    </div>
+  </div>
+
+  <!-- VIETNAMESE ─────────────────────────────────────────── -->
+  <div data-lang="vi">
+    <a href="/" class="home-link">← Quay lại Voeli</a>
+    <h1>Điều khoản Dịch vụ</h1>
+    <div class="meta">Cập nhật lần cuối: 25 tháng 4, 2026</div>
+
+    <p>Các điều khoản này điều chỉnh việc bạn sử dụng Voeli ("chúng tôi"), một ứng dụng dịch trò chuyện Anh và Việt có chú trọng đến giọng điệu. Khi tạo tài khoản hoặc sử dụng dịch vụ, bạn đồng ý với các điều khoản này. Nếu bạn không đồng ý, vui lòng không sử dụng Voeli.</p>
+
+    <div class="callout">
+      <strong>Tóm tắt dễ hiểu:</strong> Voeli đang trong giai đoạn beta và được cung cấp nguyên trạng. Đừng dùng nó để gây hại cho bất cứ ai. Đừng dựa vào nó để đưa ra các quyết định y tế, pháp lý, hoặc tài chính. Chúng tôi có thể đình chỉ hoặc đóng tài khoản lạm dụng dịch vụ.
+    </div>
+
+    <h2>1. Dịch vụ beta</h2>
+    <p>Voeli hiện đang trong giai đoạn beta. Điều đó có nghĩa là:</p>
+    <ul>
+      <li>Tính năng có thể thay đổi, gặp lỗi, hoặc biến mất mà không báo trước.</li>
+      <li>Dịch vụ có thể không khả dụng, chậm, hoặc hoạt động bất thường tại một số thời điểm.</li>
+      <li>Chúng tôi có thể tạm dừng hoặc đóng dịch vụ hoàn toàn. Nếu vậy, chúng tôi sẽ thông báo hợp lý và cung cấp cách để bạn xuất dữ liệu mà bạn muốn giữ.</li>
+      <li>Bản dịch có thể không chính xác. Voeli được tạo ra để giúp bạn giao tiếp qua rào cản ngôn ngữ, không phải để thay thế cho sự suy xét cẩn thận.</li>
+    </ul>
+
+    <h2>2. Tài khoản của bạn</h2>
+    <p>Bạn chịu trách nhiệm về:</p>
+    <ul>
+      <li>Giữ thông tin đăng nhập riêng tư.</li>
+      <li>Mọi hoạt động xảy ra dưới tài khoản của bạn.</li>
+      <li>Cung cấp thông tin chính xác khi đăng ký (một email thật mà bạn có thể truy cập).</li>
+    </ul>
+    <p>Bạn phải từ 13 tuổi trở lên để sử dụng Voeli. Nếu bạn dưới 18 tuổi, hãy xem lại các điều khoản này cùng với cha mẹ hoặc người giám hộ.</p>
+
+    <h2>3. Sử dụng được chấp nhận</h2>
+    <p>Đừng dùng Voeli để:</p>
+    <ul>
+      <li>Quấy rối, đe dọa, hoặc gây hại cho bất cứ ai, kể cả người ở phía bên kia cuộc trò chuyện.</li>
+      <li>Gửi nội dung trái pháp luật, lừa đảo, thù ghét, nội dung tình dục liên quan đến trẻ vị thành niên, hoặc nội dung bất hợp pháp khác.</li>
+      <li>Dịch tài liệu bí mật mà bạn không có quyền chia sẻ với bên thứ ba. Voeli chuyển tin nhắn đến OpenAI để dịch, nên tin nhắn của bạn rời khỏi thiết bị trong giây lát.</li>
+      <li>Phân tích ngược, thu thập dữ liệu tự động, hoặc cố gắng vượt qua hạn mức, giới hạn tốc độ, hoặc các biện pháp bảo mật của chúng tôi.</li>
+      <li>Xây dựng một dịch vụ dịch cạnh tranh dựa trên hạ tầng của chúng tôi.</li>
+    </ul>
+
+    <h2>4. Không phải lời khuyên chuyên môn</h2>
+    <p>Bản dịch từ Voeli <strong>không</strong> thay thế cho dịch vụ dịch chuyên nghiệp, tư vấn pháp lý, tư vấn y tế, tư vấn tài chính, hoặc bất kỳ dịch vụ chuyên môn nào khác. Đừng đưa ra các quyết định quan trọng chỉ dựa vào kết quả Voeli tạo ra. Dịch máy có chú trọng giọng điệu là hữu ích, nhưng nó vẫn có thể sai.</p>
+
+    <h2>5. Hạn mức sử dụng hàng ngày</h2>
+    <p>Mỗi tài khoản có hạn mức hàng ngày về số lượt dịch, ghi âm giọng nói, và kiểm tra ngữ pháp có thể yêu cầu. Các hạn mức này tồn tại để giữ dịch vụ miễn phí cho mọi người. Chúng tôi có thể điều chỉnh tăng hoặc giảm khi cần. Đạt đến hạn mức nghĩa là bạn sẽ nhận thông báo "đã đạt hạn ngạch hàng ngày". Hãy thử lại vào ngày mai.</p>
+
+    <h2>6. Nội dung bạn gửi</h2>
+    <p>Bạn giữ quyền sở hữu đối với mọi thứ bạn nhập, nói, hoặc gửi qua Voeli. Bằng việc sử dụng dịch vụ, bạn cấp cho chúng tôi giấy phép giới hạn để xử lý tin nhắn của bạn nhằm mục đích cung cấp bản dịch, có nghĩa là chuyển chúng đến nhà cung cấp dịch dịch của chúng tôi (hiện tại là OpenAI) và trả kết quả về cho bạn. Chúng tôi không yêu cầu bất kỳ quyền nào khác và không lưu trữ nội dung tin nhắn của bạn trên máy chủ (xem <a href="/privacy.html">Chính sách Bảo mật</a> để biết chi tiết).</p>
+
+    <h2>7. Đình chỉ và chấm dứt</h2>
+    <p>Chúng tôi có thể đình chỉ hoặc chấm dứt tài khoản của bạn, có hoặc không có thông báo, nếu bạn:</p>
+    <ul>
+      <li>Vi phạm các điều khoản này.</li>
+      <li>Sử dụng dịch vụ theo cách gây hại cho người dùng khác, cho chúng tôi, hoặc bên thứ ba.</li>
+      <li>Lạm dụng hệ thống nhiều lần để vượt qua hạn mức hoặc kiểm soát bảo mật.</li>
+    </ul>
+    <p>Bạn có thể tự chấm dứt tài khoản bất cứ lúc nào bằng cách gửi email đến <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
+
+    <h2>8. Tuyên bố miễn trừ bảo đảm</h2>
+    <p>Voeli được cung cấp "nguyên trạng" và "theo tình trạng sẵn có", không có bất kỳ bảo đảm nào, dù là rõ ràng hay ngụ ý. Chúng tôi không bảo đảm rằng dịch vụ sẽ không bị gián đoạn, không có lỗi, an toàn, hoặc rằng các bản dịch sẽ chính xác hay phù hợp cho bất kỳ mục đích cụ thể nào.</p>
+
+    <h2>9. Giới hạn trách nhiệm</h2>
+    <p>Trong phạm vi tối đa được pháp luật cho phép, Voeli và những người vận hành không chịu trách nhiệm cho bất kỳ thiệt hại gián tiếp, ngẫu nhiên, đặc biệt, hệ quả, hoặc trừng phạt nào, bao gồm mất dữ liệu, mất lợi nhuận, hiểu lầm trong giao tiếp, hoặc gián đoạn kinh doanh, phát sinh từ việc bạn sử dụng dịch vụ. Tổng trách nhiệm tổng hợp của chúng tôi cho bất kỳ khiếu nại nào được giới hạn ở số tiền bạn đã trả cho chúng tôi trong mười hai tháng qua (trong giai đoạn beta là không).</p>
+
+    <h2>10. Dịch vụ bên thứ ba</h2>
+    <p>Voeli dựa vào các nhà cung cấp bên thứ ba (Firebase, Cloudflare, OpenAI, Sentry. Xem <a href="/privacy.html">Chính sách Bảo mật</a>). Khi sử dụng Voeli, bạn cũng gián tiếp sử dụng các dịch vụ đó và có thể chịu các điều khoản tương ứng của họ.</p>
+
+    <h2>11. Thay đổi điều khoản</h2>
+    <p>Chúng tôi có thể cập nhật các điều khoản này theo thời gian. Nếu có thay đổi đáng kể, chúng tôi sẽ cập nhật ngày ở đầu trang và, nếu bạn có tài khoản, sẽ thông báo qua email trước khi thay đổi có hiệu lực. Việc tiếp tục sử dụng sau khi thay đổi đồng nghĩa với việc bạn chấp nhận các điều khoản đã cập nhật.</p>
+
+    <h2>12. Luật áp dụng</h2>
+    <p>Các điều khoản này được điều chỉnh bởi luật của khu vực pháp lý nơi đơn vị vận hành dịch vụ được thành lập, không xét đến quy tắc xung đột pháp luật. Mọi tranh chấp sẽ được giải quyết tại tòa án của khu vực pháp lý đó.</p>
+
+    <h2>13. Liên hệ</h2>
+    <p>Câu hỏi, mối quan tâm, hoặc thông báo về vi phạm điều khoản: <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
+
+    <div class="footer">
+      Các điều khoản này là điểm khởi đầu hợp lý cho một dịch vụ beta. Chúng không thay thế cho tư vấn pháp lý phù hợp với hoàn cảnh của bạn. Khi Voeli phát triển, chúng tôi có thể chỉnh sửa lại hoặc nhờ luật sư xem xét kỹ hơn.
+    </div>
   </div>
 </div>
+
+<script>
+(function(){
+  var saved = (function(){ try { return localStorage.getItem('app_lang'); } catch(e){ return null; } })();
+  var initial = saved === 'vi' ? 'vi' : 'en';
+  setLang(initial);
+  document.querySelectorAll('[data-set-lang]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var lang = btn.getAttribute('data-set-lang');
+      setLang(lang);
+      try { localStorage.setItem('app_lang', lang); } catch(e){}
+    });
+  });
+  function setLang(lang){
+    document.querySelectorAll('[data-lang]').forEach(function(el){
+      el.classList.toggle('active', el.getAttribute('data-lang') === lang);
+    });
+    document.querySelectorAll('[data-set-lang]').forEach(function(btn){
+      btn.classList.toggle('active', btn.getAttribute('data-set-lang') === lang);
+    });
+    document.documentElement.lang = lang;
+    document.title = lang === 'vi' ? 'Điều khoản Dịch vụ · Voeli' : 'Terms of Service · Voeli';
+  }
+})();
+</script>
 </body>
 </html>

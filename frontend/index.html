@@ -291,11 +291,17 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
 .lc-gen.gen-uni{background:#f0fdf4;color:#166534;}
 .lc-gen-toggle{display:inline-flex;align-items:center;justify-content:center;
   width:18px;height:18px;border-radius:50%;border:1px solid var(--line);
-  background:var(--panel-2);color:var(--muted);font-size:13px;font-weight:400;
-  cursor:pointer;flex-shrink:0;padding:0;line-height:1;font-family:inherit;
-  transition:transform .2s cubic-bezier(.4,0,.2,1),background .15s ease,color .15s ease,border-color .15s ease;}
-.lc-gen-toggle:hover{background:var(--panel);color:var(--ink);}
-.lc-gen-toggle.open{background:var(--ink);color:var(--panel);border-color:var(--ink);transform:rotate(45deg);}
+  background:var(--panel-2);color:transparent;font-size:0;
+  cursor:pointer;flex-shrink:0;padding:0;line-height:1;font-family:inherit;position:relative;
+  transition:background .15s ease,border-color .15s ease;}
+.lc-gen-toggle::before{content:"";position:absolute;top:50%;left:50%;
+  width:10px;height:1.5px;background:var(--muted);border-radius:1px;
+  transform:translate(-50%,-50%) rotate(0deg);
+  transition:transform .2s cubic-bezier(.4,0,.2,1),background .15s ease;}
+.lc-gen-toggle:hover{background:var(--panel);}
+.lc-gen-toggle:hover::before{background:var(--ink);}
+.lc-gen-toggle.open{background:var(--ink);border-color:var(--ink);}
+.lc-gen-toggle.open::before{background:var(--panel);}
 .lc-gen-tags{display:none;align-items:center;gap:4px;flex-wrap:wrap;}
 .lc-gen-tags.show{display:inline-flex;animation:tagFadeIn .2s ease;}
 @keyframes tagFadeIn{from{opacity:0;transform:translateX(-4px);}to{opacity:1;transform:translateX(0);}}
@@ -775,6 +781,21 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
 .sett-privacy-toggle[open] .sett-privacy-chevron{transform:rotate(180deg);}
 .sett-privacy-body{font-size:12px;color:var(--sub);line-height:1.6;
   padding:0 14px 13px;border-top:1px solid var(--line-2);padding-top:10px;}
+.sett-policy-body{font-size:12.5px;color:var(--text);line-height:1.55;
+  padding:0 14px 14px;border-top:1px solid var(--line-2);padding-top:12px;
+  max-height:340px;overflow-y:auto;}
+.sett-policy-body p{margin:0 0 9px;}
+.sett-policy-body h4{font-size:13px;font-weight:600;color:var(--text);
+  margin:14px 0 5px;letter-spacing:-.005em;}
+.sett-policy-body h4:first-child{margin-top:2px;}
+.sett-policy-body ul{margin:4px 0 9px 18px;padding:0;}
+.sett-policy-body li{margin:0 0 4px;}
+.sett-policy-body a{color:var(--blue);text-decoration:none;}
+.sett-policy-body a:hover{text-decoration:underline;}
+.sett-policy-body strong{font-weight:600;color:var(--ink);}
+.sett-policy-body .pol-meta{font-size:11.5px;color:var(--sub);margin:0 0 10px;}
+.sett-policy-body .pol-callout{background:var(--panel-2);border:1px solid var(--line-2);
+  border-radius:8px;padding:10px 12px;margin:8px 0 12px;font-size:12px;}
 
 /* ── Onboarding ── */
 #onboardingOverlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;
@@ -1685,14 +1706,15 @@ function getPhraseGen(phrase){
 function buildLearnChip(match){
   const gens = getPhraseGen(match.phrase);
   const tagsHtml = gens.map(g => `<span class="lc-gen ${g.cls}">${g.label}</span>`).join('');
+  const meaning = match.a.replace(/\s*[—–-]\s*(.+)$/, ' ($1)');
   return `<div class="learn-chip">
     <span class="lc-icon">💬</span>
     <span class="lc-new-label">New phrase</span>
     <span class="lc-phrase">"${esc(match.phrase)}"</span>
-    <span class="lc-sep">—</span>
-    <span class="lc-meaning">${esc(match.a)}</span>
+    <span class="lc-sep">means</span>
+    <span class="lc-meaning">${esc(meaning)}</span>
     <button type="button" class="lc-gen-toggle" aria-label="Show generation"
-      onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('show');">+</button>
+      onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('show');"></button>
     <span class="lc-gen-tags">${tagsHtml}</span>
   </div>`;
 }
@@ -6716,6 +6738,241 @@ function scheduleGrammarCheck(val){
 }
 
 // ─── Settings ────────────────────────────────────────────
+const POLICY_CONTENT = {
+  privacy: {
+    en: `
+      <p class="pol-meta">Last updated: 25 April 2026</p>
+      <p>Voeli is an English and Vietnamese chat translator that pays attention to tone. This policy describes what data we collect, why we collect it, who we share it with, and what control you have over it.</p>
+      <p>We've tried to write this in plain language. If anything is unclear, email us at <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
+      <div class="pol-callout"><strong>Short version:</strong> we collect your email and a per-user usage counter. We do <strong>not</strong> store the messages you send or translate. Messages are forwarded to OpenAI for translation only, not kept on our servers afterward.</div>
+      <h4>1. What we collect</h4>
+      <ul>
+        <li><strong>Your email address.</strong> Only if you sign up with email and password or with Google. Used to identify your account and let you sign back in.</li>
+        <li><strong>An anonymous user ID.</strong> Generated automatically by Firebase Authentication. We use it to count how many translations you've used today so we can enforce per-user daily limits.</li>
+        <li><strong>Daily usage counters.</strong> Three small integers per user per day (translations, voice notes, grammar checks). Reset every 24 hours. Stored on Cloudflare's edge network. Not joined with any other data.</li>
+        <li><strong>Live Session messages.</strong> When you use Live Session mode to chat with another signed-in person, message text passes through and is briefly stored in our Firebase Realtime Database so the other person can receive it. Only the two participants in a room can read these messages. You can delete your account to remove your participation.</li>
+      </ul>
+      <h4>2. What we do <em>not</em> collect</h4>
+      <ul>
+        <li><strong>The content of messages you translate.</strong> When you type or speak a message, the text or audio is sent to OpenAI and the translation is returned to you. We do not log or store the message content on our servers.</li>
+        <li><strong>Your conversation history.</strong> Your contacts, message threads, tone-style preferences, and the per-contact "communication profile" all live in your browser's local storage on your device. They never leave it. Clearing your browser data deletes all of this.</li>
+        <li><strong>Identifying information about the people you chat with.</strong> Beyond what you choose to type into the contact card (name, email, phone), we don't verify or look up anything about them.</li>
+      </ul>
+      <h4>3. How we use what we collect</h4>
+      <ul>
+        <li><strong>Email and user ID.</strong> To authenticate you when you sign in, and to enforce per-user daily quotas so a small number of users can't exhaust our translation budget.</li>
+        <li><strong>Live Session messages.</strong> To deliver the message to the other participant. We don't read, analyze, or store them outside that delivery.</li>
+        <li><strong>Voice recordings.</strong> Sent to OpenAI for transcription and translation, then discarded by us. We don't keep audio files.</li>
+      </ul>
+      <h4>4. Third parties we use</h4>
+      <p>Voeli uses the following services. Each one only sees the data it needs to do its job:</p>
+      <ul>
+        <li><strong>Firebase (Google).</strong> Handles sign-in and hosts the Live Session message database. Sees your email, user ID, and Live Session messages.</li>
+        <li><strong>Cloudflare.</strong> Hosts the website and the translation backend Worker. Sees the requests you make and basic network metadata (IP address, user agent).</li>
+        <li><strong>OpenAI.</strong> Performs the actual translation. Sees the text or audio of each message you translate. By default OpenAI does not use API data for model training.</li>
+        <li><strong>Sentry.</strong> Error tracking. If something in the app crashes, we receive a report containing your user ID, browser type, and a technical stack trace. We do not send your messages or translations to Sentry.</li>
+      </ul>
+      <h4>5. Cookies and local storage</h4>
+      <p>We don't use tracking or advertising cookies. Voeli relies on the browser's local storage to keep you signed in and to remember your preferences and conversation data. This is essential to the service. Without it, the app cannot function. There are no third-party trackers.</p>
+      <h4>6. Data retention</h4>
+      <ul>
+        <li><strong>Account data (email, user ID).</strong> Kept until you delete your account.</li>
+        <li><strong>Daily usage counters.</strong> Automatically deleted 48 hours after creation.</li>
+        <li><strong>Live Session messages.</strong> Kept until manually deleted by a participant or until you delete your account.</li>
+        <li><strong>Local data on your device.</strong> Kept until you clear your browser storage. We have no copy.</li>
+        <li><strong>Sentry crash reports.</strong> Retained per Sentry's default policy (typically 90 days).</li>
+      </ul>
+      <h4>7. Your rights</h4>
+      <p>You can:</p>
+      <ul>
+        <li><strong>Access</strong> the data we hold about you (email and user ID, that's it).</li>
+        <li><strong>Delete</strong> your account and all server-side data tied to it. Email <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a> with the subject "Delete account" from the email tied to your account.</li>
+        <li><strong>Export</strong> your data, though there's very little of it. Same email.</li>
+        <li><strong>Withdraw consent</strong> at any time by deleting your account.</li>
+      </ul>
+      <p>We respond to requests within 30 days. If you're in the EU, UK, or California, you have additional rights under GDPR, UK GDPR, or CCPA. The same email address handles all of them.</p>
+      <h4>8. Children</h4>
+      <p>Voeli is not directed at children under 13. We do not knowingly collect data from anyone under 13. If we learn that we have, we'll delete it.</p>
+      <h4>9. Changes to this policy</h4>
+      <p>If we change this policy materially, we'll update the date at the top and, if you have an account, notify you by email before the change takes effect.</p>
+      <h4>10. Contact</h4>
+      <p>Privacy questions, account deletion, anything else: <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
+    `,
+    vi: `
+      <p class="pol-meta">Cập nhật lần cuối: 25 tháng 4, 2026</p>
+      <p>Voeli là ứng dụng dịch trò chuyện Anh và Việt có chú trọng đến giọng điệu. Chính sách này mô tả dữ liệu chúng tôi thu thập, lý do thu thập, đối tượng được chia sẻ, và quyền kiểm soát mà bạn có đối với dữ liệu đó.</p>
+      <p>Chúng tôi cố gắng viết bằng ngôn ngữ dễ hiểu. Nếu có điều gì chưa rõ, vui lòng liên hệ <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
+      <div class="pol-callout"><strong>Tóm tắt:</strong> chúng tôi thu thập email của bạn và bộ đếm sử dụng cho mỗi tài khoản. Chúng tôi <strong>không</strong> lưu trữ tin nhắn bạn gửi hoặc dịch. Tin nhắn được chuyển đến OpenAI chỉ để dịch, không được giữ lại trên máy chủ của chúng tôi sau đó.</div>
+      <h4>1. Dữ liệu chúng tôi thu thập</h4>
+      <ul>
+        <li><strong>Địa chỉ email của bạn.</strong> Chỉ khi bạn đăng ký bằng email và mật khẩu hoặc bằng Google. Dùng để xác định tài khoản và giúp bạn đăng nhập lại.</li>
+        <li><strong>ID người dùng ẩn danh.</strong> Được tạo tự động bởi Firebase Authentication. Chúng tôi dùng nó để đếm số lượt dịch bạn đã sử dụng trong ngày để áp dụng giới hạn hàng ngày cho mỗi người dùng.</li>
+        <li><strong>Bộ đếm sử dụng hàng ngày.</strong> Ba số nguyên nhỏ cho mỗi người dùng mỗi ngày (lượt dịch, ghi âm giọng nói, kiểm tra ngữ pháp). Đặt lại sau mỗi 24 giờ. Lưu trữ trên mạng lưới biên của Cloudflare. Không kết hợp với bất kỳ dữ liệu nào khác.</li>
+        <li><strong>Tin nhắn trong Live Session.</strong> Khi bạn dùng chế độ Live Session để trò chuyện với một người khác đã đăng nhập, nội dung tin nhắn đi qua và được lưu tạm thời trong Firebase Realtime Database để người kia nhận được. Chỉ hai người trong cùng một phòng mới có thể đọc các tin nhắn này. Bạn có thể xóa tài khoản để gỡ bỏ phần tham gia của mình.</li>
+      </ul>
+      <h4>2. Những gì chúng tôi <em>không</em> thu thập</h4>
+      <ul>
+        <li><strong>Nội dung tin nhắn bạn dịch.</strong> Khi bạn nhập hoặc nói một tin nhắn, văn bản hoặc âm thanh được gửi đến OpenAI và bản dịch được trả về cho bạn. Chúng tôi không ghi log hoặc lưu trữ nội dung tin nhắn trên máy chủ của mình.</li>
+        <li><strong>Lịch sử trò chuyện của bạn.</strong> Danh bạ, các luồng tin nhắn, tùy chọn về giọng điệu, và "hồ sơ giao tiếp" cho từng liên hệ đều nằm trong bộ nhớ cục bộ trên thiết bị của bạn. Chúng không bao giờ rời khỏi thiết bị. Xóa dữ liệu trình duyệt sẽ xóa tất cả những thứ này.</li>
+        <li><strong>Thông tin nhận dạng về những người bạn trò chuyện cùng.</strong> Ngoài những gì bạn tự nhập vào thẻ liên hệ (tên, email, số điện thoại), chúng tôi không xác minh hay tra cứu bất kỳ thông tin gì khác về họ.</li>
+      </ul>
+      <h4>3. Cách chúng tôi sử dụng dữ liệu thu thập</h4>
+      <ul>
+        <li><strong>Email và ID người dùng.</strong> Để xác thực khi bạn đăng nhập, và để áp dụng hạn mức hàng ngày cho mỗi người dùng nhằm tránh việc một số ít người dùng làm cạn kiệt ngân sách dịch của chúng tôi.</li>
+        <li><strong>Tin nhắn trong Live Session.</strong> Để chuyển tin nhắn đến người kia. Chúng tôi không đọc, phân tích, hay lưu trữ chúng ngoài quá trình chuyển giao đó.</li>
+        <li><strong>Bản ghi âm giọng nói.</strong> Được gửi đến OpenAI để phiên âm và dịch, sau đó chúng tôi loại bỏ. Chúng tôi không giữ tệp âm thanh.</li>
+      </ul>
+      <h4>4. Các bên thứ ba chúng tôi sử dụng</h4>
+      <p>Voeli sử dụng các dịch vụ sau. Mỗi dịch vụ chỉ thấy dữ liệu cần thiết để thực hiện chức năng của mình:</p>
+      <ul>
+        <li><strong>Firebase (Google).</strong> Xử lý đăng nhập và lưu trữ cơ sở dữ liệu tin nhắn Live Session. Thấy email, ID người dùng, và tin nhắn Live Session của bạn.</li>
+        <li><strong>Cloudflare.</strong> Lưu trữ trang web và Worker xử lý dịch ở phía sau. Thấy các yêu cầu bạn thực hiện và dữ liệu mạng cơ bản (địa chỉ IP, trình duyệt).</li>
+        <li><strong>OpenAI.</strong> Thực hiện việc dịch thực tế. Thấy văn bản hoặc âm thanh của mỗi tin nhắn bạn dịch. Theo mặc định, OpenAI không sử dụng dữ liệu API để huấn luyện mô hình.</li>
+        <li><strong>Sentry.</strong> Theo dõi lỗi. Nếu có sự cố trong ứng dụng, chúng tôi nhận được báo cáo gồm ID người dùng, loại trình duyệt, và stack trace kỹ thuật. Chúng tôi không gửi tin nhắn hay bản dịch của bạn đến Sentry.</li>
+      </ul>
+      <h4>5. Cookie và bộ nhớ cục bộ</h4>
+      <p>Chúng tôi không dùng cookie theo dõi hay quảng cáo. Voeli dựa vào bộ nhớ cục bộ của trình duyệt để giữ trạng thái đăng nhập và để ghi nhớ tùy chọn cũng như dữ liệu trò chuyện của bạn. Đây là phần thiết yếu của dịch vụ. Nếu không có nó, ứng dụng sẽ không hoạt động được. Không có công cụ theo dõi của bên thứ ba.</p>
+      <h4>6. Thời gian lưu trữ dữ liệu</h4>
+      <ul>
+        <li><strong>Dữ liệu tài khoản (email, ID người dùng).</strong> Giữ cho đến khi bạn xóa tài khoản.</li>
+        <li><strong>Bộ đếm sử dụng hàng ngày.</strong> Tự động xóa sau 48 giờ kể từ khi tạo.</li>
+        <li><strong>Tin nhắn Live Session.</strong> Giữ cho đến khi một bên trong cuộc trò chuyện xóa thủ công hoặc cho đến khi bạn xóa tài khoản.</li>
+        <li><strong>Dữ liệu cục bộ trên thiết bị của bạn.</strong> Giữ cho đến khi bạn xóa bộ nhớ trình duyệt. Chúng tôi không có bản sao.</li>
+        <li><strong>Báo cáo sự cố Sentry.</strong> Giữ theo chính sách mặc định của Sentry (thường là 90 ngày).</li>
+      </ul>
+      <h4>7. Quyền của bạn</h4>
+      <p>Bạn có thể:</p>
+      <ul>
+        <li><strong>Truy cập</strong> dữ liệu chúng tôi lưu về bạn (email và ID người dùng, chỉ vậy).</li>
+        <li><strong>Xóa</strong> tài khoản và toàn bộ dữ liệu phía máy chủ liên quan. Gửi email đến <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a> với tiêu đề "Delete account" từ chính email gắn với tài khoản của bạn.</li>
+        <li><strong>Xuất</strong> dữ liệu của bạn, dù lượng dữ liệu rất nhỏ. Cùng địa chỉ email.</li>
+        <li><strong>Rút lại sự đồng ý</strong> bất cứ lúc nào bằng cách xóa tài khoản.</li>
+      </ul>
+      <p>Chúng tôi phản hồi yêu cầu trong vòng 30 ngày. Nếu bạn ở EU, Vương quốc Anh, hoặc California, bạn có thêm các quyền theo GDPR, UK GDPR, hoặc CCPA. Cùng địa chỉ email xử lý tất cả các trường hợp.</p>
+      <h4>8. Trẻ em</h4>
+      <p>Voeli không hướng đến trẻ em dưới 13 tuổi. Chúng tôi không cố ý thu thập dữ liệu từ bất kỳ ai dưới 13 tuổi. Nếu phát hiện điều đó, chúng tôi sẽ xóa dữ liệu liên quan.</p>
+      <h4>9. Thay đổi chính sách</h4>
+      <p>Nếu chúng tôi thay đổi chính sách này một cách đáng kể, chúng tôi sẽ cập nhật ngày ở đầu trang và, nếu bạn có tài khoản, sẽ thông báo qua email trước khi thay đổi có hiệu lực.</p>
+      <h4>10. Liên hệ</h4>
+      <p>Câu hỏi về quyền riêng tư, yêu cầu xóa tài khoản, hoặc bất cứ điều gì khác: <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
+    `,
+  },
+  terms: {
+    en: `
+      <p class="pol-meta">Last updated: 25 April 2026</p>
+      <p>These terms govern your use of Voeli ("we", "us", "our"), an English and Vietnamese chat translator that pays attention to tone. By creating an account or using the service, you agree to these terms. If you don't agree, please don't use Voeli.</p>
+      <div class="pol-callout"><strong>Plain-English summary:</strong> Voeli is in beta and provided as is. Don't use it to harm anyone. Don't rely on it for medical, legal, or financial decisions. We can suspend or close accounts that abuse the service.</div>
+      <h4>1. Beta service</h4>
+      <p>Voeli is currently in beta. That means:</p>
+      <ul>
+        <li>Features may change, break, or disappear without notice.</li>
+        <li>The service may be unavailable, slow, or behave unexpectedly at times.</li>
+        <li>We may pause or shut down the service entirely. If we do, we'll give reasonable notice and a way to export any data you'd like to keep.</li>
+        <li>Translations may be inaccurate. Voeli is meant to help you communicate across a language barrier, not to replace careful judgment.</li>
+      </ul>
+      <h4>2. Your account</h4>
+      <p>You're responsible for:</p>
+      <ul>
+        <li>Keeping your sign-in credentials private.</li>
+        <li>What happens under your account.</li>
+        <li>Providing accurate information when you sign up (a real email you can access).</li>
+      </ul>
+      <p>You must be at least 13 years old to use Voeli. If you're under 18, you should review these terms with a parent or guardian.</p>
+      <h4>3. Acceptable use</h4>
+      <p>Don't use Voeli to:</p>
+      <ul>
+        <li>Harass, threaten, or harm anyone, including the person on the other end of the conversation.</li>
+        <li>Send unlawful, fraudulent, hateful, sexually explicit material involving minors, or otherwise illegal content.</li>
+        <li>Translate confidential material you don't have the right to share with a third party. Voeli forwards messages to OpenAI for translation, so your messages briefly leave your device.</li>
+        <li>Reverse-engineer, scrape, or attempt to bypass our quotas, rate limits, or security measures.</li>
+        <li>Build a competing translation service using our infrastructure.</li>
+      </ul>
+      <h4>4. Not professional advice</h4>
+      <p>Translations from Voeli are <strong>not</strong> a substitute for professional translation, legal advice, medical advice, financial advice, or any other expert service. Don't make important decisions based solely on what Voeli produces. Tone-aware machine translation is helpful but it makes mistakes.</p>
+      <h4>5. Daily usage limits</h4>
+      <p>Each account has daily limits on how many translations, voice notes, and grammar checks it can request. These limits exist to keep the service free for everyone. We may adjust them up or down as needed. Hitting a limit means you'll get a "daily quota reached" message. Try again tomorrow.</p>
+      <h4>6. Content you send</h4>
+      <p>You retain ownership of anything you type, speak, or send through Voeli. By using the service you grant us a limited license to process your messages for the purpose of providing the translation, which means forwarding them to our translation provider (currently OpenAI) and returning the result to you. We don't claim any other rights and we don't store the content of your messages on our servers.</p>
+      <h4>7. Suspension and termination</h4>
+      <p>We may suspend or terminate your account, with or without notice, if you:</p>
+      <ul>
+        <li>Violate these terms.</li>
+        <li>Use the service in a way that harms other users, us, or third parties.</li>
+        <li>Repeatedly abuse the system to bypass limits or security controls.</li>
+      </ul>
+      <p>You can terminate your own account at any time by emailing <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
+      <h4>8. Disclaimer of warranties</h4>
+      <p>Voeli is provided "as is" and "as available", without warranties of any kind, whether express or implied. We do not warrant that the service will be uninterrupted, error-free, secure, or that translations will be accurate or fit for any particular purpose.</p>
+      <h4>9. Limitation of liability</h4>
+      <p>To the maximum extent permitted by law, Voeli and its operators are not liable for any indirect, incidental, special, consequential, or punitive damages, including loss of data, loss of profits, miscommunication, or business interruption, arising out of your use of the service. Our total aggregate liability for any claim is limited to the amount you paid us in the past twelve months (which, during beta, is zero).</p>
+      <h4>10. Third-party services</h4>
+      <p>Voeli relies on third-party providers (Firebase, Cloudflare, OpenAI, Sentry). When you use Voeli you are also indirectly using those services and may be subject to their respective terms.</p>
+      <h4>11. Changes to these terms</h4>
+      <p>We may update these terms over time. If we make a material change, we'll update the date at the top and, if you have an account, notify you by email before the change takes effect. Continued use after a change means you accept the updated terms.</p>
+      <h4>12. Governing law</h4>
+      <p>These terms are governed by the laws of the jurisdiction in which the service operator is established, without regard to conflict-of-laws rules. Any disputes will be resolved in the courts of that jurisdiction.</p>
+      <h4>13. Contact</h4>
+      <p>Questions, concerns, or notice of a breach of these terms: <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
+    `,
+    vi: `
+      <p class="pol-meta">Cập nhật lần cuối: 25 tháng 4, 2026</p>
+      <p>Các điều khoản này điều chỉnh việc bạn sử dụng Voeli ("chúng tôi"), một ứng dụng dịch trò chuyện Anh và Việt có chú trọng đến giọng điệu. Khi tạo tài khoản hoặc sử dụng dịch vụ, bạn đồng ý với các điều khoản này. Nếu bạn không đồng ý, vui lòng không sử dụng Voeli.</p>
+      <div class="pol-callout"><strong>Tóm tắt dễ hiểu:</strong> Voeli đang trong giai đoạn beta và được cung cấp nguyên trạng. Đừng dùng nó để gây hại cho bất cứ ai. Đừng dựa vào nó để đưa ra các quyết định y tế, pháp lý, hoặc tài chính. Chúng tôi có thể đình chỉ hoặc đóng tài khoản lạm dụng dịch vụ.</div>
+      <h4>1. Dịch vụ beta</h4>
+      <p>Voeli hiện đang trong giai đoạn beta. Điều đó có nghĩa là:</p>
+      <ul>
+        <li>Tính năng có thể thay đổi, gặp lỗi, hoặc biến mất mà không báo trước.</li>
+        <li>Dịch vụ có thể không khả dụng, chậm, hoặc hoạt động bất thường tại một số thời điểm.</li>
+        <li>Chúng tôi có thể tạm dừng hoặc đóng dịch vụ hoàn toàn. Nếu vậy, chúng tôi sẽ thông báo hợp lý và cung cấp cách để bạn xuất dữ liệu mà bạn muốn giữ.</li>
+        <li>Bản dịch có thể không chính xác. Voeli được tạo ra để giúp bạn giao tiếp qua rào cản ngôn ngữ, không phải để thay thế cho sự suy xét cẩn thận.</li>
+      </ul>
+      <h4>2. Tài khoản của bạn</h4>
+      <p>Bạn chịu trách nhiệm về:</p>
+      <ul>
+        <li>Giữ thông tin đăng nhập riêng tư.</li>
+        <li>Mọi hoạt động xảy ra dưới tài khoản của bạn.</li>
+        <li>Cung cấp thông tin chính xác khi đăng ký (một email thật mà bạn có thể truy cập).</li>
+      </ul>
+      <p>Bạn phải từ 13 tuổi trở lên để sử dụng Voeli. Nếu bạn dưới 18 tuổi, hãy xem lại các điều khoản này cùng với cha mẹ hoặc người giám hộ.</p>
+      <h4>3. Sử dụng được chấp nhận</h4>
+      <p>Đừng dùng Voeli để:</p>
+      <ul>
+        <li>Quấy rối, đe dọa, hoặc gây hại cho bất cứ ai, kể cả người ở phía bên kia cuộc trò chuyện.</li>
+        <li>Gửi nội dung trái pháp luật, lừa đảo, thù ghét, nội dung tình dục liên quan đến trẻ vị thành niên, hoặc nội dung bất hợp pháp khác.</li>
+        <li>Dịch tài liệu bí mật mà bạn không có quyền chia sẻ với bên thứ ba. Voeli chuyển tin nhắn đến OpenAI để dịch, nên tin nhắn của bạn rời khỏi thiết bị trong giây lát.</li>
+        <li>Phân tích ngược, thu thập dữ liệu tự động, hoặc cố gắng vượt qua hạn mức, giới hạn tốc độ, hoặc các biện pháp bảo mật của chúng tôi.</li>
+        <li>Xây dựng một dịch vụ dịch cạnh tranh dựa trên hạ tầng của chúng tôi.</li>
+      </ul>
+      <h4>4. Không phải lời khuyên chuyên môn</h4>
+      <p>Bản dịch từ Voeli <strong>không</strong> thay thế cho dịch vụ dịch chuyên nghiệp, tư vấn pháp lý, tư vấn y tế, tư vấn tài chính, hoặc bất kỳ dịch vụ chuyên môn nào khác. Đừng đưa ra các quyết định quan trọng chỉ dựa vào kết quả Voeli tạo ra. Dịch máy có chú trọng giọng điệu là hữu ích, nhưng nó vẫn có thể sai.</p>
+      <h4>5. Hạn mức sử dụng hàng ngày</h4>
+      <p>Mỗi tài khoản có hạn mức hàng ngày về số lượt dịch, ghi âm giọng nói, và kiểm tra ngữ pháp có thể yêu cầu. Các hạn mức này tồn tại để giữ dịch vụ miễn phí cho mọi người. Chúng tôi có thể điều chỉnh tăng hoặc giảm khi cần. Đạt đến hạn mức nghĩa là bạn sẽ nhận thông báo "đã đạt hạn ngạch hàng ngày". Hãy thử lại vào ngày mai.</p>
+      <h4>6. Nội dung bạn gửi</h4>
+      <p>Bạn giữ quyền sở hữu đối với mọi thứ bạn nhập, nói, hoặc gửi qua Voeli. Bằng việc sử dụng dịch vụ, bạn cấp cho chúng tôi giấy phép giới hạn để xử lý tin nhắn của bạn nhằm mục đích cung cấp bản dịch, có nghĩa là chuyển chúng đến nhà cung cấp dịch dịch của chúng tôi (hiện tại là OpenAI) và trả kết quả về cho bạn. Chúng tôi không yêu cầu bất kỳ quyền nào khác và không lưu trữ nội dung tin nhắn của bạn trên máy chủ.</p>
+      <h4>7. Đình chỉ và chấm dứt</h4>
+      <p>Chúng tôi có thể đình chỉ hoặc chấm dứt tài khoản của bạn, có hoặc không có thông báo, nếu bạn:</p>
+      <ul>
+        <li>Vi phạm các điều khoản này.</li>
+        <li>Sử dụng dịch vụ theo cách gây hại cho người dùng khác, cho chúng tôi, hoặc bên thứ ba.</li>
+        <li>Lạm dụng hệ thống nhiều lần để vượt qua hạn mức hoặc kiểm soát bảo mật.</li>
+      </ul>
+      <p>Bạn có thể tự chấm dứt tài khoản bất cứ lúc nào bằng cách gửi email đến <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
+      <h4>8. Tuyên bố miễn trừ bảo đảm</h4>
+      <p>Voeli được cung cấp "nguyên trạng" và "theo tình trạng sẵn có", không có bất kỳ bảo đảm nào, dù là rõ ràng hay ngụ ý. Chúng tôi không bảo đảm rằng dịch vụ sẽ không bị gián đoạn, không có lỗi, an toàn, hoặc rằng các bản dịch sẽ chính xác hay phù hợp cho bất kỳ mục đích cụ thể nào.</p>
+      <h4>9. Giới hạn trách nhiệm</h4>
+      <p>Trong phạm vi tối đa được pháp luật cho phép, Voeli và những người vận hành không chịu trách nhiệm cho bất kỳ thiệt hại gián tiếp, ngẫu nhiên, đặc biệt, hệ quả, hoặc trừng phạt nào, bao gồm mất dữ liệu, mất lợi nhuận, hiểu lầm trong giao tiếp, hoặc gián đoạn kinh doanh, phát sinh từ việc bạn sử dụng dịch vụ. Tổng trách nhiệm tổng hợp của chúng tôi cho bất kỳ khiếu nại nào được giới hạn ở số tiền bạn đã trả cho chúng tôi trong mười hai tháng qua (trong giai đoạn beta là không).</p>
+      <h4>10. Dịch vụ bên thứ ba</h4>
+      <p>Voeli dựa vào các nhà cung cấp bên thứ ba (Firebase, Cloudflare, OpenAI, Sentry). Khi sử dụng Voeli, bạn cũng gián tiếp sử dụng các dịch vụ đó và có thể chịu các điều khoản tương ứng của họ.</p>
+      <h4>11. Thay đổi điều khoản</h4>
+      <p>Chúng tôi có thể cập nhật các điều khoản này theo thời gian. Nếu có thay đổi đáng kể, chúng tôi sẽ cập nhật ngày ở đầu trang và, nếu bạn có tài khoản, sẽ thông báo qua email trước khi thay đổi có hiệu lực. Việc tiếp tục sử dụng sau khi thay đổi đồng nghĩa với việc bạn chấp nhận các điều khoản đã cập nhật.</p>
+      <h4>12. Luật áp dụng</h4>
+      <p>Các điều khoản này được điều chỉnh bởi luật của khu vực pháp lý nơi đơn vị vận hành dịch vụ được thành lập, không xét đến quy tắc xung đột pháp luật. Mọi tranh chấp sẽ được giải quyết tại tòa án của khu vực pháp lý đó.</p>
+      <h4>13. Liên hệ</h4>
+      <p>Câu hỏi, mối quan tâm, hoặc thông báo về vi phạm điều khoản: <a href="mailto:voeliinc@gmail.com">voeliinc@gmail.com</a>.</p>
+    `,
+  },
+};
+
 function openSettings(){
   const ov = document.getElementById('settingsOverlay');
   ov.style.display = 'flex';
@@ -6726,12 +6983,12 @@ function openSettings(){
   document.querySelector('#settingsBody .sett-section-label').textContent = isVI ? 'Quyền riêng tư' : 'Privacy';
   document.querySelector('.sett-row-title').textContent = isVI ? 'Phong cách giao tiếp của tôi' : 'My communication style';
   document.querySelector('.sett-row-sub').textContent = isVI
-    ? 'Hiển thị phân tích cá nhân về cách bạn thường giao tiếp. Hoàn toàn tùy chọn — mặc định tắt.'
-    : 'Shows a personal breakdown of how you tend to communicate. Completely optional — off by default.';
+    ? 'Hiển thị phân tích cá nhân về cách bạn thường giao tiếp. Hoàn toàn tùy chọn, mặc định tắt.'
+    : 'Shows a personal breakdown of how you tend to communicate. Completely optional, off by default.';
   document.querySelector('.sett-privacy-toggle-title').textContent = isVI ? 'Dữ liệu & Quyền riêng tư' : 'Data & Privacy';
   document.querySelector('.sett-privacy-body').textContent = isVI
-    ? 'Ứng dụng này không thu thập, lưu trữ hoặc truyền tải nội dung tin nhắn của bạn. Dữ liệu phong cách giao tiếp — chỉ bao gồm các chỉ số giọng điệu cảm xúc tổng hợp — được lưu trữ cục bộ trên thiết bị của bạn và không được chia sẻ với bên thứ ba. Mỗi tin nhắn bạn gửi được xử lý bởi công cụ dịch thuật bên thứ ba chỉ cho mục đích dịch thuật. Không có dữ liệu tin nhắn lịch sử nào được truyền đi. Tất cả dữ liệu tùy chọn được lưu trữ cục bộ vẫn nằm trên thiết bị của bạn và có thể xóa bất kỳ lúc nào bằng cách xóa bộ nhớ trình duyệt hoặc ứng dụng.'
-    : 'This application does not collect, store, or transmit your message content. Communication style data — consisting solely of aggregated emotional tone indicators — is stored locally on your device and is not shared with any third party. Each message you send is processed by a third-party translation engine solely for the purpose of translation. No historical message data is transmitted at any time. All locally stored preference data remains on your device and can be cleared at any time by clearing your browser or app storage.';
+    ? 'Ứng dụng này không thu thập, lưu trữ hoặc truyền tải nội dung tin nhắn của bạn. Dữ liệu phong cách giao tiếp, chỉ bao gồm các chỉ số giọng điệu cảm xúc tổng hợp, được lưu trữ cục bộ trên thiết bị của bạn và không được chia sẻ với bên thứ ba. Mỗi tin nhắn bạn gửi được xử lý bởi công cụ dịch thuật bên thứ ba chỉ cho mục đích dịch thuật. Không có dữ liệu tin nhắn lịch sử nào được truyền đi. Tất cả dữ liệu tùy chọn được lưu trữ cục bộ vẫn nằm trên thiết bị của bạn và có thể xóa bất kỳ lúc nào bằng cách xóa bộ nhớ trình duyệt hoặc ứng dụng.'
+    : 'This application does not collect, store, or transmit your message content. Communication style data, consisting solely of aggregated emotional tone indicators, is stored locally on your device and is not shared with any third party. Each message you send is processed by a third-party translation engine solely for the purpose of translation. No historical message data is transmitted at any time. All locally stored preference data remains on your device and can be cleared at any time by clearing your browser or app storage.';
   const styleSectionLabel = document.querySelector('#stylePanel .sett-section-label');
   if(styleSectionLabel) styleSectionLabel.textContent = isVI ? 'Phong cách của bạn' : 'Your style insights';
 
@@ -6739,8 +6996,14 @@ function openSettings(){
   document.getElementById('settLangLabel').textContent = isVI ? 'Ngôn ngữ' : 'Language';
   document.getElementById('settGrammarTitle').textContent = isVI ? 'Kiểm tra ngữ pháp' : 'Grammar check';
   document.getElementById('settGrammarSub').textContent = isVI
-    ? 'Gợi ý sửa lỗi khi bạn gõ — như tính năng tự động sửa ngữ pháp trên iMessage. Mặc định bật.'
-    : 'Suggests a correction as you type — like auto-grammar on iMessage. On by default.';
+    ? 'Gợi ý sửa lỗi khi bạn gõ, như tính năng tự động sửa ngữ pháp trên iMessage. Mặc định bật.'
+    : 'Suggests a correction as you type, like auto-grammar on iMessage. On by default.';
+
+  // Localize and populate Privacy Policy + Terms sections
+  document.getElementById('settPrivacyPolicyTitle').textContent = isVI ? 'Chính sách Bảo mật' : 'Privacy Policy';
+  document.getElementById('settTermsTitle').textContent         = isVI ? 'Điều khoản Dịch vụ'  : 'Terms of Service';
+  document.getElementById('settPrivacyPolicyBody').innerHTML    = POLICY_CONTENT.privacy[isVI ? 'vi' : 'en'];
+  document.getElementById('settTermsBody').innerHTML            = POLICY_CONTENT.terms[isVI ? 'vi' : 'en'];
 
   // Restore toggle state
   document.getElementById('grammarToggle').checked = isGrammarCheckOn();
@@ -6820,14 +7083,14 @@ function renderStylePanel(){
 // ─── Onboarding ──────────────────────────────────────────
 const ONBOARDING_SLIDES = [
   {
-    icon: '🌐',
-    en: { title: 'Talk across languages',    body: 'Type in English, they read in Vietnamese — and vice versa. Real conversation, no copy-paste.' },
-    vi: { title: 'Nói chuyện qua ngôn ngữ',  body: 'Bạn nhắn bằng tiếng Việt, họ đọc bằng tiếng Anh — và ngược lại. Trò chuyện thật sự, không cần sao chép.' }
+    icon: '🎭',
+    en: { title: 'Same words, different feelings', body: '"I\'m fine." "Sure." "Whatever." You already know these can mean ten different things depending on who\'s saying them and how. Voeli reads the feeling behind your words, not just the dictionary version of them.' },
+    vi: { title: 'Cùng một câu, khác cảm xúc',     body: '"Không sao." "Ừ." "Sao cũng được." Bạn biết mà, mấy câu này có thể mang nhiều ý khác nhau tùy người nói và cách nói. Voeli đọc cảm xúc đằng sau câu chữ, không chỉ nghĩa từ điển.' }
   },
   {
-    icon: '🎭',
-    en: { title: 'Words carry tone',          body: 'The same sentence can sound warm, playful, or cold. The app shows you how your message will land before it sends.' },
-    vi: { title: 'Câu chữ mang cảm xúc',      body: 'Cùng một câu có thể nghe ấm áp, vui vẻ hoặc lạnh lùng. Ứng dụng cho bạn thấy tin nhắn sẽ được hiểu như thế nào trước khi gửi.' }
+    icon: '🌐',
+    en: { title: 'Say it the way you feel it',     body: 'Type in English and they read it in Vietnamese. Type in Vietnamese and they read it in English. Voeli carries over the warmth, the worry, the joke, and the edge, so the other person hears what you actually meant instead of a cold version of it.' },
+    vi: { title: 'Nói đúng cách bạn cảm nhận',     body: 'Bạn nhắn bằng tiếng Anh, họ đọc bằng tiếng Việt. Bạn nhắn bằng tiếng Việt, họ đọc bằng tiếng Anh. Voeli mang theo cả sự ấm áp, lo lắng, câu đùa và sự sắc lạnh, để người kia cảm nhận đúng điều bạn muốn nói thay vì một bản dịch khô cứng.' }
   },
 ];
 
@@ -6919,7 +7182,7 @@ setTimeout(showOnboarding, 300);
       <div class="sett-row">
         <div class="sett-row-info">
           <div class="sett-row-title" id="settGrammarTitle">Grammar check</div>
-          <div class="sett-row-sub" id="settGrammarSub">Suggests a correction as you type — like auto-grammar on iMessage. On by default.</div>
+          <div class="sett-row-sub" id="settGrammarSub">Suggests a correction as you type, like auto-grammar on iMessage. On by default.</div>
         </div>
         <label class="sett-toggle">
           <input type="checkbox" id="grammarToggle" onchange="onGrammarToggleChange(this.checked)">
@@ -6931,7 +7194,7 @@ setTimeout(showOnboarding, 300);
       <div class="sett-row">
         <div class="sett-row-info">
           <div class="sett-row-title">My communication style</div>
-          <div class="sett-row-sub">Shows a personal breakdown of how you tend to communicate. Completely optional — off by default.</div>
+          <div class="sett-row-sub">Shows a personal breakdown of how you tend to communicate. Completely optional, off by default.</div>
         </div>
         <label class="sett-toggle">
           <input type="checkbox" id="styleToggle" onchange="onStyleToggleChange(this.checked)">
@@ -6944,8 +7207,22 @@ setTimeout(showOnboarding, 300);
           <span class="sett-privacy-chevron">▾</span>
         </summary>
         <div class="sett-privacy-body">
-          This application does not collect, store, or transmit your message content. Communication style data — consisting solely of aggregated emotional tone indicators — is stored locally on your device and is not shared with any third party. Each message you send is processed by a third-party translation engine solely for the purpose of translation. No historical message data is transmitted at any time. All locally stored preference data remains on your device and can be cleared at any time by clearing your browser or app storage.
+          This application does not collect, store, or transmit your message content. Communication style data, consisting solely of aggregated emotional tone indicators, is stored locally on your device and is not shared with any third party. Each message you send is processed by a third-party translation engine solely for the purpose of translation. No historical message data is transmitted at any time. All locally stored preference data remains on your device and can be cleared at any time by clearing your browser or app storage.
         </div>
+      </details>
+      <details class="sett-privacy-toggle" id="settPrivacyPolicy">
+        <summary>
+          <span class="sett-privacy-toggle-title" id="settPrivacyPolicyTitle">Privacy Policy</span>
+          <span class="sett-privacy-chevron">▾</span>
+        </summary>
+        <div class="sett-policy-body" id="settPrivacyPolicyBody"></div>
+      </details>
+      <details class="sett-privacy-toggle" id="settTerms">
+        <summary>
+          <span class="sett-privacy-toggle-title" id="settTermsTitle">Terms of Service</span>
+          <span class="sett-privacy-chevron">▾</span>
+        </summary>
+        <div class="sett-policy-body" id="settTermsBody"></div>
       </details>
       <div id="stylePanel" style="display:none">
         <div class="sett-divider"></div>
