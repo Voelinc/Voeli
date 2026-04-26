@@ -15,6 +15,8 @@
 name = "voeli-translate-worker"
 main = "src/index.ts"
 compatibility_date = "2024-09-01"
+# Required by @sentry/cloudflare (uses some node-shimmed primitives).
+compatibility_flags = ["nodejs_compat"]
 
 # Bind KV namespace for per-user daily quota counters and JWKS cache.
 # Replace the IDs below after running the kv:namespace create commands above.
@@ -33,3 +35,5 @@ ALLOWED_ORIGINS = "http://localhost:8787,http://127.0.0.1:5500,http://localhost:
 DAILY_TRANSLATE_QUOTA = "100"
 DAILY_VOICE_QUOTA = "30"
 DAILY_GRAMMAR_QUOTA = "300"
+# Sentry DSN for the Worker — public ingest endpoint, NOT a secret.
+SENTRY_DSN = "https://d8e4fec90119dae1b7db1180356d4fec@o4511283666026496.ingest.us.sentry.io/4511283820101632"

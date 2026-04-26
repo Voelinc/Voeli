@@ -11,6 +11,7 @@
 // Every /api/* route requires a valid Firebase ID token in the Authorization
 // header and consumes one unit from the user's daily quota bucket.
 
+import * as Sentry from '@sentry/cloudflare';
 import {
   AuthError,
   extractBearer,
@@ -28,9 +29,16 @@ import {
   handleVoice,
   handleGrammar,
 } from './openai';
-import type { Env, AuthedUser } from './types';
+import type {
+  Env,
+  AuthedUser,
+  TranslatePayload,
+  QuickTranslatePayload,
+  VoiceTranslatePayload,
+  GrammarPayload,
+} from './types';
 
-export default {
+const handler = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
@@ -79,7 +87,7 @@ export default {
       if (route === '/api/translate') {
         return withCors(
           await runWithQuota(user, env, 'translate', async () => {
-            const body = await readJson(request);
+            const body = await readJson<TranslatePayload>(request);
             return handleTranslate(body, env);
           }),
           request,
@@ -89,7 +97,7 @@ export default {
       if (route === '/api/translate-quick') {
         return withCors(
           await runWithQuota(user, env, 'translate', async () => {
-            const body = await readJson(request);
+            const body = await readJson<QuickTranslatePayload>(request);
             return handleQuick(body, env);
           }),
           request,
@@ -99,7 +107,7 @@ export default {
       if (route === '/api/translate-voice') {
         return withCors(
           await runWithQuota(user, env, 'voice', async () => {
-            const body = await readJson(request);
+            const body = await readJson<VoiceTranslatePayload>(request);
             return handleVoice(body, env);
           }),
           request,
@@ -109,7 +117,7 @@ export default {
       if (route === '/api/grammar') {
         return withCors(
           await runWithQuota(user, env, 'grammar', async () => {
-            const body = await readJson(request);
+            const body = await readJson<GrammarPayload>(request);
             return handleGrammar(body, env);
           }),
           request,
@@ -150,7 +158,29 @@ export default {
       );
     }
   },
-};
+} satisfies ExportedHandler<Env>;
+
+// Wrap the handler with Sentry so any thrown error inside fetch() is captured
+// and shipped to the worker DSN. AuthError and QuotaError are user-facing
+// states — we filter those out in beforeSend so they don't pollute the dashboard.
+export default Sentry.withSentry(
+  (env: Env) => ({
+    dsn: env.SENTRY_DSN,
+    environment: 'production',
+    release: 'voeli-worker@phase5',
+    tracesSampleRate: 0,
+    sampleRate: 1.0,
+    beforeSend(event, hint) {
+      const err = hint && (hint.originalException as Error | undefined);
+      const msg = (err && err.message) || event.message || '';
+      if (/Missing Authorization|Invalid token|Daily quota|Token has no subject/i.test(msg)) {
+        return null;
+      }
+      return event;
+    },
+  }),
+  handler
+);
 
 // --- helpers ---------------------------------------------------------------
 

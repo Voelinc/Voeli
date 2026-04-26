@@ -7,6 +7,34 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<!-- Sentry — error tracking. Loads early so it can catch errors during init.
+     DSN is public-by-design (it's an ingest endpoint, not a secret). -->
+<script src="https://browser.sentry-cdn.com/8.40.0/bundle.min.js" crossorigin="anonymous"></script>
+<script>
+  if (window.Sentry) {
+    Sentry.init({
+      dsn: 'https://f75b06ae8425663a170644ede13fc73f@o4511283666026496.ingest.us.sentry.io/4511283781632000',
+      // Only run Sentry in production — skip when developing locally.
+      // 'voeli.app' covers prod; everything else (localhost, 127.0.0.1, pages.dev) is dev/preview.
+      enabled: location.hostname === 'voeli.app' || location.hostname === 'www.voeli.app',
+      environment: location.hostname.endsWith('voeli.app') ? 'production' : 'preview',
+      release: 'voeli@phase5',
+      // 100% of errors, 0% of performance traces — keep volume + cost predictable for beta.
+      sampleRate: 1.0,
+      tracesSampleRate: 0,
+      // Filter out noise we know about and don't want to be paged for.
+      beforeSend(event, hint) {
+        const err = hint && hint.originalException;
+        const msg = (err && err.message) || event.message || '';
+        // Quota exceeded / auth required are expected user-facing states, not bugs.
+        if (/Daily limit|Sign in required|Missing Authorization/i.test(msg)) return null;
+        // Network errors usually = user offline / VPN dropped — not actionable.
+        if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) return null;
+        return event;
+      },
+    });
+  }
+</script>
 <style>
 /* === WhatsApp × Zalo hybrid styles (applied from interface-mockup.html) === */
 :root{
@@ -2282,6 +2310,11 @@ function friendlyAuthError(err){
 // ═══════════════════════════════════════════════════════
 fbAuth.onAuthStateChanged(async (user)=>{
   currentUser = user || null;
+  // Tag Sentry with the current user so any future error includes who hit it.
+  if(window.Sentry){
+    if(user) Sentry.setUser({ id: user.uid, email: user.email || undefined });
+    else     Sentry.setUser(null);
+  }
   if(!user){
     // Signed out — show sign-in screen, hide everything else.
     if(!demoMode){

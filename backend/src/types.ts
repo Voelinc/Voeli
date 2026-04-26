@@ -8,6 +8,7 @@ export interface Env {
   DAILY_TRANSLATE_QUOTA: string;
   DAILY_VOICE_QUOTA: string;
   DAILY_GRAMMAR_QUOTA: string;
+  SENTRY_DSN: string;
 }
 
 // What a verified Firebase user looks like once auth.ts has done its job.
