@@ -7000,7 +7000,7 @@ function buildReceiverNote(phraseEntry, contactName){
     `<span class="rn-icon">👁</span>`
     + `<span class="rn-body"><strong>${esc(contactName)}</strong> hasn't seen this phrase before — they'll get a one-time explanation on their end when they read it.</span>`
     + `<button class="rn-close" title="Dismiss">✕</button>`;
-  el.querySelector('.rn-close').addEventListener('click', () => el.remove());
+  el.querySelector('.rn-close')?.addEventListener('click', () => el.remove());
   setTimeout(() => { if(el.parentElement) el.remove(); }, 7000);
   return el;
 }
@@ -7103,7 +7103,7 @@ function buildEquivBanner(phraseEntry, phraseKey, scopeKey){
     + `<div class="eeb-reason">${esc(phraseEntry.reason)}</div>`
     + `<button class="eeb-dismiss-btn">Stop showing this explanation</button>`;
 
-  banner.querySelector('.eeb-dismiss-btn').addEventListener('click', () => {
+  banner.querySelector('.eeb-dismiss-btn')?.addEventListener('click', () => {
     setEquivDismissed(phraseKey, scopeKey);
     banner.remove();
     pendingEquivPhrase = null;
