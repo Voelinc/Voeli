@@ -1162,6 +1162,7 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
       <button class="sb-tab active" id="tabAll">All</button>
       <button class="sb-tab" id="tabUnread">Unread</button>
       <button class="sb-tab" id="tabFav">★</button>
+      <button class="sb-tab" id="tabDict">📚 Dictionary</button>
       <button class="fab" onclick="openModal()" id="fabBtn" title="New contact" aria-label="New contact">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -1169,6 +1170,18 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
       </button>
     </div>
     <div class="sb-list" id="cList"></div>
+    <!-- Fix 3: Dictionary panel -->
+    <div id="dictionaryPanel" style="display:none;overflow-y:auto;padding:16px;flex:1;">
+      <div style="margin-bottom:16px;">
+        <h2 style="font-size:18px;margin-bottom:8px;" id="dictTitle">📚 Dictionary</h2>
+        <p id="dictStats" style="font-size:13px;color:var(--muted);line-height:1.5;"></p>
+      </div>
+      <div style="margin-bottom:12px;">
+        <input type="text" id="dictSearch" placeholder="Search phrases..." style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:13px;">
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;" id="dictTabs"></div>
+      <div id="dictContent"></div>
+    </div>
   </aside>
 
   <!-- CHAT PANEL -->
@@ -2210,10 +2223,22 @@ function checkCommunityDictionary(text, direction) {
 // Records when the user picks a different emotion than the AI recommended.
 // Stored in localStorage so it persists and shapes future suggestions.
 function recordPickPreference(recommended, picked, rel, dir){
-  if(!recommended || !picked || recommended === picked) return;
+  if(!recommended || !picked) return;
   try{
     const prefs = JSON.parse(localStorage.getItem('pick_prefs')||'[]');
-    prefs.push({ rel, dir, rec: recommended, picked, ts: Date.now() });
+    // Track this pick
+    const pick = { rel, dir, rec: recommended, picked, ts: Date.now(), count: 1 };
+
+    // If user consistently picks the same tone, mark it as learned
+    const existing = prefs.find(p => p.rel === rel && p.dir === dir && p.picked === picked);
+    if(existing){
+      existing.count = (existing.count || 1) + 1;
+      existing.ts = Date.now();
+      if(existing.count >= 5) existing.learned = true;
+    } else {
+      prefs.push(pick);
+    }
+
     if(prefs.length > 100) prefs.splice(0, prefs.length - 100);
     localStorage.setItem('pick_prefs', JSON.stringify(prefs));
   }catch(_){}
@@ -4016,12 +4041,24 @@ function setTab(tab){
   document.getElementById('tabAll').classList.toggle('active', tab==='all');
   document.getElementById('tabUnread').classList.toggle('active', tab==='unread');
   document.getElementById('tabFav').classList.toggle('active', tab==='favorites');
-  renderSidebar();
+  document.getElementById('tabDict').classList.toggle('active', tab==='dictionary');
+  const clist = document.getElementById('cList');
+  const dict = document.getElementById('dictionaryPanel');
+  if(tab === 'dictionary'){
+    clist.style.display = 'none';
+    dict.style.display = 'block';
+    renderDictionary();
+  } else {
+    clist.style.display = 'block';
+    dict.style.display = 'none';
+    renderSidebar();
+  }
 }
 
 document.getElementById('tabAll').addEventListener('click', ()=>setTab('all'));
 document.getElementById('tabUnread').addEventListener('click', ()=>setTab('unread'));
 document.getElementById('tabFav').addEventListener('click', ()=>setTab('favorites'));
+document.getElementById('tabDict').addEventListener('click', ()=>setTab('dictionary'));
 
 function renderSidebar(list){
   const isVI=appDir==='vi-en';
@@ -4102,6 +4139,98 @@ function filterContacts(q){
       || (r.label||'').toLowerCase().includes(ql)
       || (r.labelVI||'').toLowerCase().includes(ql);
   }));
+}
+
+// Fix 3: Dictionary/Learning Dashboard
+function renderDictionary(){
+  const isVI = appDir === 'vi-en';
+  const learned = JSON.parse(localStorage.getItem('learned_dictionary')||'{}');
+  const contactLearned = JSON.parse(localStorage.getItem('contact_learned')||'{}');
+
+  // Flatten all learned phrases
+  const allPhrases = [];
+  Object.entries(learned).forEach(([key, data]) => {
+    if(data && typeof data === 'object'){
+      allPhrases.push({ key, ...data, source: 'global', ts: data.ts || 0 });
+    }
+  });
+
+  // Stats
+  const totalCount = allPhrases.length;
+  const topContact = contacts.reduce((best, c) => {
+    const count = Object.values(contactLearned).filter(v => Array.isArray(v) ? v.includes(c.id) : false).length;
+    return count > best.count ? { ...c, count } : best;
+  }, { count: 0 });
+
+  const topLabel = topContact.count > 0 ? dispName(topContact) : 'None';
+  const statsText = isVI
+    ? `Bạn đã học ${totalCount} cụm từ • Học nhiều nhất từ: ${topLabel}`
+    : `You've learned ${totalCount} phrases • Most learned from: ${topLabel}`;
+
+  document.getElementById('dictStats').textContent = statsText;
+
+  // Contact tabs
+  const tabsHTML = [
+    `<button class="sb-tab active" onclick="filterDictionaryBy('all')" style="cursor:pointer;border:none;background:var(--chip);padding:6px 12px;border-radius:6px;font-size:13px;">${isVI?'Tất cả':'All'}</button>`,
+    ...contacts.map(c =>
+      `<button class="sb-tab" onclick="filterDictionaryBy('${c.id}')" style="cursor:pointer;border:none;background:var(--chip);padding:6px 12px;border-radius:6px;font-size:13px;">${esc(dispName(c))}</button>`
+    )
+  ].join('');
+  document.getElementById('dictTabs').innerHTML = tabsHTML;
+
+  // Content grid
+  const contentHTML = allPhrases
+    .sort((a, b) => (b.ts||0) - (a.ts||0))
+    .map(p => {
+      const en = p.english || p.en || '';
+      const vi = p.vietnamese || p.vi || '';
+      const dateStr = p.ts ? new Date(p.ts).toLocaleDateString(isVI ? 'vi-VN' : 'en-US') : '';
+      const learnedLbl = isVI ? 'Học lúc:' : 'Learned:';
+      return `
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px;">
+          <div style="font-weight:600;font-size:14px;margin-bottom:4px;">"${esc(p.phrase||p.key)}"</div>
+          ${en ? `<div style="font-size:13px;color:var(--ink);">EN: ${esc(en)}</div>` : ''}
+          ${vi ? `<div style="font-size:13px;color:var(--ink);">VN: ${esc(vi)}</div>` : ''}
+          ${dateStr ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">${learnedLbl} ${esc(dateStr)}</div>` : ''}
+        </div>
+      `;
+    }).join('') || `<p style="color:var(--muted);font-size:13px;">${isVI?'Chưa học cụm từ nào':'No phrases learned yet'}</p>`;
+
+  document.getElementById('dictContent').innerHTML = contentHTML;
+
+  // Search handler
+  const searchInput = document.getElementById('dictSearch');
+  if(searchInput){
+    searchInput.oninput = (e) => {
+      const q = (e.target.value||'').toLowerCase();
+      const filtered = allPhrases.filter(p =>
+        (p.phrase||'').toLowerCase().includes(q) ||
+        (p.english||'').toLowerCase().includes(q) ||
+        (p.vietnamese||'').toLowerCase().includes(q)
+      );
+      const html = filtered
+        .sort((a, b) => (b.ts||0) - (a.ts||0))
+        .map(p => {
+          const en = p.english || p.en || '';
+          const vi = p.vietnamese || p.vi || '';
+          const dateStr = p.ts ? new Date(p.ts).toLocaleDateString(isVI ? 'vi-VN' : 'en-US') : '';
+          return `
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px;">
+              <div style="font-weight:600;font-size:14px;margin-bottom:4px;">"${esc(p.phrase||p.key)}"</div>
+              ${en ? `<div style="font-size:13px;color:var(--ink);">EN: ${esc(en)}</div>` : ''}
+              ${vi ? `<div style="font-size:13px;color:var(--ink);">VN: ${esc(vi)}</div>` : ''}
+              ${dateStr ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">${isVI?'Học lúc:':'Learned:'} ${esc(dateStr)}</div>` : ''}
+            </div>
+          `;
+        }).join('') || `<p style="color:var(--muted);font-size:13px;">${isVI?'Không tìm thấy':'No results'}</p>`;
+      document.getElementById('dictContent').innerHTML = html;
+    };
+  }
+}
+
+function filterDictionaryBy(contactId){
+  // TODO: Filter dictionary by contact — for now, show all
+  renderDictionary();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -5723,6 +5852,91 @@ async function sendOptimistic(text, direction){
   }
 }
 
+// Send with a pre-learned tone preference (no picker, no AI call needed)
+async function sendWithLearnedTone(text, direction, learnedTone){
+  const c = activeCont();
+  if(!c) return;
+  const now = new Date();
+  const isMe = direction==='en-vi' ? (appDir==='en-vi') : (appDir==='vi-en');
+  const reply = _replyState ? { id: _replyState.id, text: _replyState.text } : null;
+  cancelReply();
+  const msg = {
+    id: 'l'+now.getTime()+Math.random().toString(36).slice(2,6),
+    text, translated: text, original: text,
+    emotion: learnedTone, isMe, mode: 'text', direction,
+    ts: now.getTime(),
+    translating: true,
+    replyTo: reply
+  };
+  c.msgs.push(msg);
+  updateContactProfile(c.id, c.msgs);
+  const ta = document.getElementById('txtInput');
+  ta.value = ''; ta.style.height = 'auto'; updBtns();
+  renderMsgs(); renderSidebar(); ta.focus();
+  try{
+    const translation = await callOpenAIQuick({text, direction});
+    if(translation && translation.trim()){
+      msg.translated = translation;
+      msg.text = translation;
+    }
+  }catch(err){
+    c.msgs.splice(c.msgs.indexOf(msg), 1);
+    ta.value = text; ta.style.height = 'auto'; updBtns();
+    showRetryToast(text, direction, 'learned', err);
+  }finally{
+    msg.translating = false;
+    renderMsgs(); renderSidebar();
+    if(c.msgs.includes(msg) && msg.isMe) syncToFirebase(msg);
+    clearTimeout(typingTimer); setMyTyping(false);
+  }
+}
+
+// Check if this contact has enough messages to lock in a learned tone preference
+function shouldAutoSendWithLearnedTone(contactId){
+  if(!contactId) return false;
+  const profile = loadContactProfile(contactId);
+  if(!profile || profile.totalMessages < 5) return false;
+  // Contact has 5+ messages — check if we have a learned tone preference
+  const prefs = JSON.parse(localStorage.getItem('pick_prefs')||'[]');
+  const c = activeCont();
+  if(!c) return false;
+  const rel = c.type || 'friend';
+  const dir = appDir;
+  const pref = prefs.find(p => p.rel === rel && p.dir === dir && p.learned);
+  return !!pref;
+}
+
+// Get the learned tone preference for this contact/relationship/direction
+function getLearnedTonePreference(contactId){
+  const prefs = JSON.parse(localStorage.getItem('pick_prefs')||'[]');
+  const c = activeCont();
+  if(!c) return null;
+  const rel = c.type || 'friend';
+  const dir = appDir;
+  const pref = prefs.find(p => p.rel === rel && p.dir === dir && p.learned);
+  return pref ? pref.picked : null;
+}
+
+// Mark a tone preference as "learned" (stable) after user consistently picks it
+function markToneAsLearned(contactId, tone){
+  const prefs = JSON.parse(localStorage.getItem('pick_prefs')||'[]');
+  const c = activeCont();
+  if(!c) return;
+  const rel = c.type || 'friend';
+  const dir = appDir;
+  let found = prefs.find(p => p.rel === rel && p.dir === dir);
+  if(!found){
+    found = { rel, dir, picked: tone, ts: Date.now(), learned: false, count: 1 };
+    prefs.push(found);
+  } else {
+    found.picked = tone;
+    found.ts = Date.now();
+    found.count = (found.count || 1) + 1;
+    if(found.count >= 5) found.learned = true;
+  }
+  localStorage.setItem('pick_prefs', JSON.stringify(prefs));
+}
+
 async function onSendText(ev){
   const text=(txtInput.value||'').trim();
   if(!text||!activeCont()) return;
@@ -5737,6 +5951,17 @@ async function onSendText(ev){
   // Person typed in the other person's language — respect it, send as-is
   // e.g. English speaker writing in Vietnamese, Vietnamese speaker writing in English
   if(!forcePicker && direction !== appDir){ sendAsIs(text); return; }
+
+  // Fix 1: After 5 messages, auto-send with learned tone (skip picker)
+  const c = activeCont();
+  if(!forcePicker && looksEmotional(text) && shouldAutoSendWithLearnedTone(c ? c.id : null)){
+    const learnedTone = getLearnedTonePreference(c ? c.id : null);
+    if(learnedTone){
+      // Auto-send with learned tone, no picker
+      await sendWithLearnedTone(text, direction, learnedTone);
+      return;
+    }
+  }
 
   const showPicker = forcePicker || looksEmotional(text);
 
@@ -5990,6 +6215,11 @@ function buildOptionCard(opt, index, isBest, original){
   const recBadge = isBest ? `<span class="oc-recbadge">★ ${esc(bestLbl)}</span>` : '';
   const isVI = appDir === 'vi-en';
   const back = opt.backTranslation ? `<div class="oc-back">"${esc(opt.backTranslation)}"</div>` : '';
+
+  // Fix 2: Show what receiver will see (back-translation preview)
+  const previewLbl = isVI ? "Họ sẽ thấy:" : "They'll see:";
+  const preview = opt.backTranslation ? `<div style="margin-top:8px;padding:8px;background:var(--chip);border-radius:6px;font-size:12px;color:var(--muted);"><strong>${previewLbl}</strong> "${esc(opt.backTranslation)}"</div>` : '';
+
   const landsText = pickUi(opt.howItLands);
   const lands = landsText ? `<div class="oc-lands">${esc(landsText)}</div>` : '';
   let chips = '';
@@ -6011,7 +6241,7 @@ function buildOptionCard(opt, index, isBest, original){
     ? `<button class="oc-details-toggle" type="button">${detailsLbl} <span class="dtchev">▾</span></button>
        <div class="oc-details">${lands}${chips}</div>`
     : '';
-  card.innerHTML = `${recBadge}<div class="oc-emo">${esc(el)}</div><div class="oc-trans">${esc(opt.translation||'')}</div>${back}${detailsBlock}`;
+  card.innerHTML = `${recBadge}<div class="oc-emo">${esc(el)}</div><div class="oc-trans">${esc(opt.translation||'')}</div>${back}${preview}${detailsBlock}`;
   card.addEventListener('click', () => pickOpt(opt, ek, original));
   // Details toggle — expand/collapse without triggering pickOpt
   const toggle = card.querySelector('.oc-details-toggle');
