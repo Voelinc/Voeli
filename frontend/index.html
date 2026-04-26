@@ -2751,17 +2751,12 @@ async function initDMRoomListener(){
           db.ref(`dms/${roomId}`).once('value', (snap)=>{
             if(snap.exists()){
               const data = snap.val();
-              // Find the other person's email from invites
+              // Find the other person's email from room data
               let contactEmail = null;
-              for(const email in (invitedRooms || {})){
-                if(invitedRooms[email] && invitedRooms[email] === true){
-                  contactEmail = email;
-                  break;
-                }
-              }
-              // If still no email, try to find it from the room data
-              if(!contactEmail && data.invitedEmails){
-                contactEmail = Object.keys(data.invitedEmails)[0];
+              if(data.emails){
+                const emailList = Object.keys(data.emails);
+                // Get the email that's not the current user
+                contactEmail = emailList.find(e => e !== currentUser.email);
               }
               if(contactEmail){
                 // Check if contact already exists (by email)
@@ -4230,6 +4225,9 @@ async function createOrJoinDMRoom(contactEmail){
     const roomRef = db.ref(`dms/${roomId}`);
     // Add current user as a participant (by UID, per Firebase rules)
     await roomRef.child('participants').child(currentUser.uid).set(true);
+    // Store both emails as metadata so either person can identify the other
+    await roomRef.child('emails').child(myEmail).set(true);
+    await roomRef.child('emails').child(contactEmail).set(true);
     // Write to /invites/{contactEmail}/{roomId} so they can discover this room
     await db.ref(`invites/${contactEmail}/${roomId}`).set(true);
     return roomId;
