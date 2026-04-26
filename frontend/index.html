@@ -3036,24 +3036,25 @@ document.getElementById('signOutBtn').addEventListener('click', async ()=>{
 });
 
 // Sign-out from inside the Settings sheet. Works for both real auth and demo mode.
-document.getElementById('settSignOutBtn').addEventListener('click', async ()=>{
-  closeSettings();
-  if(demoMode){
-    // Demo mode never authed with Firebase — reload to get back to the sign-in screen cleanly.
-    demoMode = false;
-    window.location.reload();
-    return;
+function initSignOutBtn(){
+  const btn = document.getElementById('settSignOutBtn');
+  if(btn){
+    btn.addEventListener('click', async ()=>{
+      closeSettings();
+      if(demoMode){
+        demoMode = false;
+        window.location.reload();
+        return;
+      }
+      try { await fbAuth.signOut(); } catch(_){}
+      currentUser = null;
+      try { sessionStorage.removeItem('mta_user_email'); } catch(_){}
+      document.getElementById('app').style.display='none';
+      document.getElementById('liveSetupScreen').style.display='none';
+      document.getElementById('setupScreen').style.display='flex';
+    });
   }
-  try { await fbAuth.signOut(); } catch(_){}
-  // Belt-and-suspenders: same iOS-Safari flake that breaks sign-in can also
-  // delay onAuthStateChanged on sign-out, leaving the user looking at the
-  // chat screen as if nothing happened. Force the screen transition manually.
-  currentUser = null;
-  try { sessionStorage.removeItem('mta_user_email'); } catch(_){}
-  document.getElementById('app').style.display='none';
-  document.getElementById('liveSetupScreen').style.display='none';
-  document.getElementById('setupScreen').style.display='flex';
-});
+}
 
 // Map Firebase's terse error codes into human messages.
 function friendlyAuthError(err){
@@ -7710,7 +7711,7 @@ function showOnboarding(){
   renderLangPicker();
 }
 // Run after page load
-setTimeout(showOnboarding, 300);
+setTimeout(()=>{ showOnboarding(); initSignOutBtn(); }, 300);
 </script>
 <!-- RELATIONSHIP EDITOR OVERLAY -->
 <div id="relEditOverlay" onclick="if(event.target===this)closeRelEditor()">
