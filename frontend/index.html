@@ -2831,6 +2831,7 @@ try {
 } catch(_) {}
 // firebaseDb is created lazily once we know whether the user is in a Live session
 let currentUser = null;
+let activeTab = 'all'; // Sidebar tab filter: 'all' | 'unread' | 'favorites'
 
 // ═══════════════════════════════════════════════════════
 // SIGN-IN SCREEN — handlers for email/password, Google, demo
@@ -4021,7 +4022,6 @@ function loadDemoContacts(){
 // ═══════════════════════════════════════════════════════
 // SIDEBAR
 // ═══════════════════════════════════════════════════════
-let activeTab = 'all';
 
 function setTab(tab){
   activeTab = tab;
