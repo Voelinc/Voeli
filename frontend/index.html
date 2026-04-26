@@ -1376,19 +1376,10 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
   </div>
 
   <!-- BOTTOM NAVIGATION -->
-  <div id="bottomNav" style="display:flex;border-top:1px solid var(--line);background:var(--panel);height:65px;width:100%;align-items:center;justify-content:space-around;padding:0 12px;gap:8px;box-sizing:border-box;">
-    <button id="navContacts" class="nav-btn" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--muted);padding:8px;border-radius:10px;font-family:inherit;transition:all 0.2s;" onclick="switchTab('contacts')">
-      <span style="font-size:28px;">👥</span>
-      <span style="font-size:12px;font-weight:500;color:var(--text);">Contacts</span>
-    </button>
-    <button id="navMessages" class="nav-btn active" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--primary);padding:8px;border-radius:10px;font-family:inherit;transition:all 0.2s;" onclick="switchTab('messages')">
-      <span style="font-size:28px;">💬</span>
-      <span style="font-size:12px;font-weight:500;color:var(--primary);">Messages</span>
-    </button>
-    <button id="navProfile" class="nav-btn" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--muted);padding:8px;border-radius:10px;font-family:inherit;transition:all 0.2s;" onclick="switchTab('profile')">
-      <span style="font-size:28px;">👤</span>
-      <span style="font-size:12px;font-weight:500;color:var(--text);">Profile</span>
-    </button>
+  <div id="bottomNav" style="display:flex;background:var(--panel);height:60px;width:100%;align-items:center;justify-content:space-around;box-sizing:border-box;">
+    <button id="navContacts" class="nav-btn" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:0.6;transition:all 0.2s;padding:0;" onclick="switchTab('contacts')">👥</button>
+    <button id="navMessages" class="nav-btn active" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:1;transition:all 0.2s;padding:0;" onclick="switchTab('messages')">💬</button>
+    <button id="navProfile" class="nav-btn" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:0.6;transition:all 0.2s;padding:0;" onclick="switchTab('profile')">👤</button>
   </div>
 </div>
 
