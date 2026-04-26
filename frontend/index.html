@@ -2753,6 +2753,15 @@ if(!firebase.apps.length){
   firebase.initializeApp(FIREBASE_CONFIG);
 }
 const fbAuth = firebase.auth();
+// Force LOCAL persistence so a closed-tab return still keeps the session,
+// and so iOS Safari doesn't fall through to in-memory (which makes the
+// sign-in promise resolve without ever surfacing the user). If LOCAL fails
+// (Private Browsing, IndexedDB blocked), fall back to SESSION rather than
+// NONE so at least the current page-load behaves correctly.
+try {
+  fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+    .catch(()=> fbAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{}));
+} catch(_) {}
 // firebaseDb is created lazily once we know whether the user is in a Live session
 let currentUser = null;
 
@@ -2874,16 +2883,30 @@ document.getElementById('authPrimaryBtn').addEventListener('click', async ()=>{
   }
   setAuthLoading(true); showAuthError('');
   try{
+    let cred;
     if(authMode==='signIn'){
-      await fbAuth.signInWithEmailAndPassword(email, pwd);
+      cred = await fbAuth.signInWithEmailAndPassword(email, pwd);
     } else {
-      const cred = await fbAuth.createUserWithEmailAndPassword(email, pwd);
+      cred = await fbAuth.createUserWithEmailAndPassword(email, pwd);
       // Persist birthday locally keyed by uid so generation can be recomputed each session
       if(cred && cred.user && cred.user.uid && signupBirthday){
         try{ localStorage.setItem('user_birthday_'+cred.user.uid, signupBirthday); }catch(_){}
       }
     }
-    // onAuthStateChanged below will take it from here
+    // onAuthStateChanged usually takes it from here. On iOS Safari the listener
+    // can be slow or skip the first event after a tab-relaunch, leaving the
+    // user on the sign-in screen even though the credential is valid. If the
+    // setup screen is still visible 800ms after a successful credential, do
+    // the transition ourselves so the user is never stuck staring at a form.
+    setTimeout(()=>{
+      if(cred && cred.user && document.getElementById('setupScreen').style.display !== 'none'){
+        currentUser = cred.user;
+        if(cred.user.email) sessionStorage.setItem('mta_user_email', cred.user.email.toLowerCase());
+        document.getElementById('setupScreen').style.display='none';
+        document.getElementById('liveSetupScreen').style.display='flex';
+        setTimeout(renderLiveRelGrid, 50);
+      }
+    }, 800);
   }catch(err){
     showAuthError(friendlyAuthError(err));
     // Turnstile tokens are single-use — reset so the user can retry with a
