@@ -4382,7 +4382,7 @@ function renderChatList(){
     <div style="padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer;display:flex;align-items:center;gap:12px;transition:background 0.2s;"
          onmouseover="this.style.background='var(--panel)'"
          onmouseout="this.style.background='transparent'"
-         onclick="openChatFromList('${conv.id}')">
+         onclick="openChatFromList(${conv.id})">
       <div style="font-size:32px;flex-shrink:0;">${conv.avatar}</div>
       <div style="flex:1;min-width:0;">
         <div style="font-weight:600;margin-bottom:4px;">${esc(conv.name)}</div>
