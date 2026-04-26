@@ -5737,8 +5737,8 @@ function startInlineEdit(msgId){
     renderMsgs(); renderSidebar();
   }
 
-  bubble.querySelector('.bubble-edit-cancel').addEventListener('click', cancelEdit);
-  bubble.querySelector('.bubble-edit-save').addEventListener('click', saveEdit);
+  bubble.querySelector('.bubble-edit-cancel')?.addEventListener('click', cancelEdit);
+  bubble.querySelector('.bubble-edit-save')?.addEventListener('click', saveEdit);
   // Ctrl/Cmd+Enter saves, Escape cancels
   ta.addEventListener('keydown', e=>{
     if((e.ctrlKey||e.metaKey) && e.key==='Enter'){ e.preventDefault(); saveEdit(); }
@@ -6848,7 +6848,7 @@ function finalizeStreamedSheet(result, original){
             list.insertBefore(banner, list.firstChild);
 
             // Wire dismiss button
-            banner.querySelector('.equiv-dismiss').addEventListener('click', () => {
+            banner.querySelector('.equiv-dismiss')?.addEventListener('click', () => {
               setEquivDismissed(phraseKey, scopeKey);
               banner.remove();
             });
@@ -6957,8 +6957,8 @@ function showNoEquivWarning(match, isVI){
       overlay.remove();
       resolve(sendAnyway);
     };
-    overlay.querySelector('#neqSend').addEventListener('click',   () => cleanup(true));
-    overlay.querySelector('#neqCancel').addEventListener('click', () => cleanup(false));
+    overlay.querySelector('#neqSend')?.addEventListener('click',   () => cleanup(true));
+    overlay.querySelector('#neqCancel')?.addEventListener('click', () => cleanup(false));
     overlay.addEventListener('click', e => { if(e.target === overlay) cleanup(false); });
   });
 }
