@@ -3172,6 +3172,8 @@ function setAuthLoading(on){
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
+  showOnboarding();
+  initSignOutBtn();
   const tabSignIn = document.getElementById('tabSignIn');
   const tabSignUp = document.getElementById('tabSignUp');
   const authPrimaryBtn = document.getElementById('authPrimaryBtn');
@@ -8520,10 +8522,6 @@ function showOnboarding(){
 
   renderLangPicker();
 }
-// Run after page load
-document.addEventListener('DOMContentLoaded', ()=>{
-  setTimeout(()=>{ showOnboarding(); initSignOutBtn(); }, 300);
-});
 </script>
 <!-- RELATIONSHIP EDITOR OVERLAY -->
 <div id="relEditOverlay" onclick="if(event.target===this)closeRelEditor()">
