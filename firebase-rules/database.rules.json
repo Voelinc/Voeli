@@ -1,0 +1,29 @@
+{
+  "rules": {
+    "rooms": {
+      "$roomCode": {
+        "messages": {
+          ".read":  "auth != null && root.child('rooms').child($roomCode).child('participants').child(auth.uid).val() === true",
+          ".write": "auth != null && root.child('rooms').child($roomCode).child('participants').child(auth.uid).val() === true",
+          "$msgId": {
+            ".validate": "newData.hasChildren(['ts'])"
+          }
+        },
+        "typing": {
+          ".read":  "auth != null && root.child('rooms').child($roomCode).child('participants').child(auth.uid).val() === true",
+          "$uid": {
+            ".write":    "auth != null && auth.uid === $uid",
+            ".validate": "newData.isBoolean()"
+          }
+        },
+        "participants": {
+          ".read":  "auth != null && data.child(auth.uid).val() === true",
+          "$uid": {
+            ".write":    "auth != null && auth.uid === $uid",
+            ".validate": "newData.val() === true"
+          }
+        }
+      }
+    }
+  }
+}

@@ -2384,7 +2384,7 @@ function startLocalListeners(){
   };
 }
 
-function connectFirebase(){
+async function connectFirebase(){
   const code=(document.getElementById('fbRoomCode').value||'').trim().toUpperCase();
   if(!code||code.length<4){ alert('Enter a room code (4–8 characters).'); return; }
   if(!currentUser){ alert('You need to be signed in to start a Live Session.'); return; }
@@ -2393,6 +2393,11 @@ function connectFirebase(){
     // production config — we just grab the database handle and start listening.
     firebaseDb = firebase.database();
     roomCode = code;
+    // Join the room — this writes the user's UID into the participants list,
+    // which the security rules then check for every read/write. Without this
+    // step the listeners below would get permission_denied. Anyone signed in
+    // who knows the code can join (matches the room-code mental model).
+    await firebaseDb.ref(`rooms/${code}/participants/${currentUser.uid}`).set(true);
     startFirebaseListeners();
     launchApp();
   }catch(e){
@@ -6087,7 +6092,11 @@ function startFirebaseListeners(){
   // ── Incoming messages ──────────────────────────────
   firebaseDb.ref(`rooms/${roomCode}/messages`).on('child_added', snap=>{
     const m = snap.val();
-    if(!m || m.senderId===deviceId || m.ts < joinedAt) return;
+    // Filter own messages by Firebase UID — security rules require the
+    // typing/participants keys to match auth.uid, so messages now use
+    // it too for consistency. Older messages with the random deviceId
+    // as senderId are ignored either way.
+    if(!m || m.senderId===(currentUser && currentUser.uid) || m.ts < joinedAt) return;
     const room = ensureRoomContact();
     const d = new Date(m.ts);
     if(activeId !== room.id) room.unread = (room.unread||0) + 1;
@@ -6105,7 +6114,8 @@ function startFirebaseListeners(){
   // ── Typing indicator ───────────────────────────────
   firebaseDb.ref(`rooms/${roomCode}/typing`).on('value', snap=>{
     const data = snap.val()||{};
-    const someone = Object.entries(data).some(([id,v])=> id!==deviceId && v===true);
+    const myUid = currentUser && currentUser.uid;
+    const someone = Object.entries(data).some(([id,v])=> id!==myUid && v===true);
     if(someone !== otherTyping){
       otherTyping = someone;
       refreshTypingRow();
@@ -6124,11 +6134,11 @@ function syncToFirebase(msg){
     });
     return;
   }
-  if(!firebaseDb||!roomCode) return;
+  if(!firebaseDb||!roomCode||!currentUser) return;
   firebaseDb.ref(`rooms/${roomCode}/messages`).push({
     text:      msg.text||msg.translated||'',
     original:  msg.original||msg.text||'',
-    senderId:  deviceId,
+    senderId:  currentUser.uid,
     direction: msg.direction||appDir,
     ts:        msg.ts||Date.now()
   });
@@ -6139,8 +6149,8 @@ function setMyTyping(val){
     localChannel.postMessage({ type:'typing', val });
     return;
   }
-  if(!firebaseDb||!roomCode) return;
-  firebaseDb.ref(`rooms/${roomCode}/typing/${deviceId}`).set(val);
+  if(!firebaseDb||!roomCode||!currentUser) return;
+  firebaseDb.ref(`rooms/${roomCode}/typing/${currentUser.uid}`).set(val);
 }
 
 // Typing detection on the composer textarea
