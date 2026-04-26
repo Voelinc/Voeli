@@ -6044,8 +6044,43 @@ function setupComposerListeners(){
   if(!sendCol) sendCol=document.getElementById('sendCol');
   if(!directBtn) directBtn=document.getElementById('directBtn');
 
-  // Only attach listeners if elements exist
-  if(!txtInput || !micBtn || !sendBtn) return;
+  // Attach listeners to whatever elements we found
+  if(txtInput) {
+    txtInput.addEventListener('input',()=>{
+      txtInput.style.height='auto'; txtInput.style.height=Math.min(txtInput.scrollHeight,140)+'px'; updBtns();
+      // Live-update the direction badge as the user types
+      const val=(txtInput.value||'').trim();
+      const badge=document.getElementById('langBadge');
+      if(!badge) return;
+      if(!val){ badge.textContent=appDir==='en-vi'?'EN→VI':'VI→EN'; badge.classList.remove('as-is');
+        hideGrammarChip(); clearTimeout(_grammarTimer); return; }
+      if(isMixedLanguage(val)){
+        badge.textContent='as-is'; badge.classList.add('as-is');
+      } else {
+        const detDir=detectLang(val)==='vi'?'vi-en':'en-vi';
+        if(detDir!==appDir){ badge.textContent='as-is'; badge.classList.add('as-is'); }
+        else { badge.textContent=appDir==='en-vi'?'EN→VI':'VI→EN'; badge.classList.remove('as-is'); }
+      }
+      // Grammar check — debounced, English only
+      scheduleGrammarCheck(val);
+    });
+    txtInput.addEventListener('keydown',e=>{
+      // Enter = smart send (auto-bypass picker if no emotional signal)
+      // Shift+Enter inside a non-empty field = force the picker (escape hatch)
+      // Shift+Enter in an empty field = newline (default)
+      if(e.key==='Enter'){
+        if(e.shiftKey && (txtInput.value||'').trim()){ e.preventDefault(); if(!txtInput.disabled) onSendText({shiftKey:true}); return; }
+        if(!e.shiftKey){ e.preventDefault(); if(!txtInput.disabled) onSendText({shiftKey:false}); }
+      }
+    });
+  }
+  if(sendBtn) sendBtn.addEventListener('click',e=>{ if(!sendBtn.disabled) onSendText({shiftKey:!!(e&&e.shiftKey)}); });
+  if(directBtn) directBtn.addEventListener('click',()=>{ if(!directBtn.disabled) onSendDirect(); });
+  if(micBtn) micBtn.addEventListener('click',async()=>{
+    if(!demoMode && !currentUser) return;
+    if(!isRecording) await startRec(); else stopRec();
+  });
+}
 
 function updBtns(){
   // Ensure DOM elements are cached before use
@@ -6074,40 +6109,6 @@ function updBtns(){
   if(lbl) lbl.textContent = isVI ? 'Gửi thẳng' : 'Direct';
   const badge=document.getElementById('langBadge');
   if(badge && !(txtInput.value||'').trim()){ badge.textContent=isVI?'VI→EN':'EN→VI'; badge.classList.remove('as-is'); }
-}
-if(txtInput) txtInput.addEventListener('input',()=>{
-  txtInput.style.height='auto'; txtInput.style.height=Math.min(txtInput.scrollHeight,140)+'px'; updBtns();
-  // Live-update the direction badge as the user types
-  const val=(txtInput.value||'').trim();
-  const badge=document.getElementById('langBadge');
-  if(!badge) return;
-  if(!val){ badge.textContent=appDir==='en-vi'?'EN→VI':'VI→EN'; badge.classList.remove('as-is');
-    hideGrammarChip(); clearTimeout(_grammarTimer); return; }
-  if(isMixedLanguage(val)){
-    badge.textContent='as-is'; badge.classList.add('as-is');
-  } else {
-    const detDir=detectLang(val)==='vi'?'vi-en':'en-vi';
-    if(detDir!==appDir){ badge.textContent='as-is'; badge.classList.add('as-is'); }
-    else { badge.textContent=appDir==='en-vi'?'EN→VI':'VI→EN'; badge.classList.remove('as-is'); }
-  }
-  // Grammar check — debounced, English only
-  scheduleGrammarCheck(val);
-});
-if(txtInput) txtInput.addEventListener('keydown',e=>{
-  // Enter = smart send (auto-bypass picker if no emotional signal)
-  // Shift+Enter inside a non-empty field = force the picker (escape hatch)
-  // Shift+Enter in an empty field = newline (default)
-  if(e.key==='Enter'){
-    if(e.shiftKey && (txtInput.value||'').trim()){ e.preventDefault(); if(!txtInput.disabled) onSendText({shiftKey:true}); return; }
-    if(!e.shiftKey){ e.preventDefault(); if(!txtInput.disabled) onSendText({shiftKey:false}); }
-  }
-});
-if(sendBtn) sendBtn.addEventListener('click',e=>{ if(!sendBtn.disabled) onSendText({shiftKey:!!(e&&e.shiftKey)}); });
-if(directBtn) directBtn.addEventListener('click',()=>{ if(!directBtn.disabled) onSendDirect(); });
-if(micBtn) micBtn.addEventListener('click',async()=>{
-  if(!demoMode && !currentUser) return;
-  if(!isRecording) await startRec(); else stopRec();
-});
 }
 
 // Try to set up listeners immediately and again on DOMContentLoaded
