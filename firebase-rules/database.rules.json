@@ -27,8 +27,6 @@
     },
     "dms": {
       "$roomId": {
-        ".read": "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
-        ".write": "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
         "messages": {
           ".read":  "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
           ".write": "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
