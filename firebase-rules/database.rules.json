@@ -50,7 +50,7 @@
     "invites": {
       "$email": {
         ".read": true,
-        ".write": false,
+        ".write": "auth != null",
         "$roomId": {
           ".validate": "newData.val() === true"
         }
