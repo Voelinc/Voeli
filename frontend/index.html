@@ -2832,6 +2832,7 @@ function applyAuthLang(){
 let contacts = [];
 let activeId = null;
 let editingId = null;
+let currentMessagesView = 'list'; // 'list' or 'chat'
 let selRelType = null;
 let nxtId = 1;
 let pending = null; // { result, original, mode }
@@ -4283,9 +4284,6 @@ document.getElementById('tabAll').addEventListener('click', ()=>setTab('all'));
 document.getElementById('tabUnread').addEventListener('click', ()=>setTab('unread'));
 document.getElementById('tabFav').addEventListener('click', ()=>setTab('favorites'));
 document.getElementById('tabDict').addEventListener('click', ()=>setTab('dictionary'));
-
-// State for chat list vs individual chat view
-let currentMessagesView = 'list'; // 'list' or 'chat'
 
 // Bottom navigation tab switching
 function switchTab(tab){
