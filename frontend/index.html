@@ -72,7 +72,8 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
 #setupScreen{position:fixed;inset:0;background:var(--bg);z-index:999;
   display:flex;align-items:center;justify-content:center;padding:20px;}
 .setup-box{background:var(--panel);border:1px solid var(--line);border-radius:16px;
-  padding:32px 28px;max-width:460px;width:100%;box-shadow:var(--shadow-md);}
+  padding:32px 28px;max-width:460px;width:100%;box-shadow:var(--shadow-md);position:relative;}
+.setup-box .lang-tog{position:absolute;top:18px;right:18px;}
 .setup-box h1{font-size:22px;margin-bottom:6px;}
 .setup-box p{color:var(--muted);font-size:14px;line-height:1.55;margin-bottom:16px;}
 .setup-box details{background:var(--chip);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px;}
@@ -954,6 +955,10 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
 <!-- SETUP — sign in (or demo mode) -->
 <div id="setupScreen">
   <div class="setup-box">
+    <div class="lang-tog" id="langTogAuth">
+      <button data-dir="en-vi" onclick="setAppDir('en-vi')" class="active">EN</button>
+      <button data-dir="vi-en" onclick="setAppDir('vi-en')">VI</button>
+    </div>
     <h1 id="setupTitle">Voeli</h1>
     <p id="setupTagline">Tone-aware English ↔ Vietnamese chat. Sign in to start translating.</p>
 
@@ -968,7 +973,7 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
     <input type="password" id="authPwd"   class="finput" placeholder="Password (8+ chars)" autocomplete="current-password" style="margin-bottom:6px;">
     <!-- Birthday — only visible on Create Account tab; tunes which slang shows the picker -->
     <div id="authBirthdayWrap" style="display:none;margin-bottom:8px;">
-      <label for="authBirthday" style="display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px;">Birthday <span style="color:var(--muted-2);font-weight:normal;">(used to tune slang suggestions to your generation — never shared)</span></label>
+      <label for="authBirthday" style="display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px;">Birthday</label>
       <input type="date" id="authBirthday" class="finput" max="" style="font-family:inherit;">
     </div>
     <div id="authError" style="display:none;color:var(--red);font-size:12.5px;margin-bottom:10px;line-height:1.4;"></div>
@@ -2504,7 +2509,7 @@ function getDirection(){ return appDir; }
 function getRelationship(){ return activeCont()?activeCont().type:'formal'; }
 function setAppDir(dir){
   appDir=dir;
-  document.querySelectorAll('#langTog button').forEach(b=>b.classList.toggle('active', b.dataset.dir===dir));
+  document.querySelectorAll('#langTog button, #langTogAuth button').forEach(b=>b.classList.toggle('active', b.dataset.dir===dir));
   updPlaceholder();
   if(activeId) refreshHeader();
 }
