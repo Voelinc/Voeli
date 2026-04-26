@@ -6034,15 +6034,18 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // ═══════════════════════════════════════════════════════
 // COMPOSER
 // ═══════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', ()=>{
-// Assign cached DOM elements
-if(!txtInput) txtInput=document.getElementById('txtInput');
-if(!micBtn) micBtn=document.getElementById('micBtn');
-if(!sendBtn) sendBtn=document.getElementById('sendBtn');
-if(!sendWrap) sendWrap=document.getElementById('sendWrap');
-if(!micCol) micCol=document.getElementById('micCol');
-if(!sendCol) sendCol=document.getElementById('sendCol');
-if(!directBtn) directBtn=document.getElementById('directBtn');
+function setupComposerListeners(){
+  // Assign cached DOM elements
+  if(!txtInput) txtInput=document.getElementById('txtInput');
+  if(!micBtn) micBtn=document.getElementById('micBtn');
+  if(!sendBtn) sendBtn=document.getElementById('sendBtn');
+  if(!sendWrap) sendWrap=document.getElementById('sendWrap');
+  if(!micCol) micCol=document.getElementById('micCol');
+  if(!sendCol) sendCol=document.getElementById('sendCol');
+  if(!directBtn) directBtn=document.getElementById('directBtn');
+
+  // Only attach listeners if elements exist
+  if(!txtInput || !micBtn || !sendBtn) return;
 
 function updBtns(){
   // Ensure DOM elements are cached before use
@@ -6105,7 +6108,11 @@ if(micBtn) micBtn.addEventListener('click',async()=>{
   if(!demoMode && !currentUser) return;
   if(!isRecording) await startRec(); else stopRec();
 });
-}); // End DOMContentLoaded
+}
+
+// Try to set up listeners immediately and again on DOMContentLoaded
+setupComposerListeners();
+document.addEventListener('DOMContentLoaded', setupComposerListeners);
 
 // ═══════════════════════════════════════════════════════
 // INSERT EMOJI (shared helper)
