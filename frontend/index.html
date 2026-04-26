@@ -6142,7 +6142,8 @@ function buildAltsPanel(m){
 }
 
 // Delegation: toggle the "show original" peek + alternatives panel on a message bubble
-document.getElementById('msgsArea').addEventListener('click', function(e){
+const msgsAreaEl = document.getElementById('msgsArea');
+if(msgsAreaEl) msgsAreaEl.addEventListener('click', function(e){
   const togBtn = e.target.closest && e.target.closest('.btgl');
   if(togBtn){
     const bubble = togBtn.closest('.bubble');
@@ -6167,6 +6168,7 @@ document.getElementById('msgsArea').addEventListener('click', function(e){
     changeAutoSent(changeBtn.dataset.msgid);
   }
 });
+}
 
 // Direct button — identical path to the smart-send auto-bypass: optimistic push,
 // translation patched in asynchronously. The "Direct" framing is purely UI; it
