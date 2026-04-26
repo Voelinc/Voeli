@@ -4231,7 +4231,7 @@ async function hashEmailPair(email1, email2){
 }
 
 async function createOrJoinDMRoom(contactEmail){
-  if(!contactEmail || !currentUser) return;
+  if(!contactEmail || !currentUser) return null;
   try {
     const myEmail = currentUser.email;
     const roomId = await hashEmailPair(myEmail, contactEmail);
@@ -4241,8 +4241,10 @@ async function createOrJoinDMRoom(contactEmail){
     await roomRef.child('participants').child(currentUser.uid).set(true);
     // Write to /invites/{contactEmail}/{roomId} so they can discover this room
     await db.ref(`invites/${contactEmail}/${roomId}`).set(true);
+    return roomId;
   } catch(e){
     if(window.Sentry) Sentry.captureException(e);
+    return null;
   }
 }
 
@@ -4272,7 +4274,13 @@ async function saveContact(){
     if(email){
       try { sendFriendRequest(email); } catch(e){ if(window.Sentry) Sentry.captureException(e); }
       // Create or join a DM room for two-phone messaging
-      try { await createOrJoinDMRoom(email); } catch(e){ if(window.Sentry) Sentry.captureException(e); }
+      try {
+        const dmRoomId = await createOrJoinDMRoom(email);
+        if(dmRoomId) {
+          const newContact = contacts.find(c => c.id === newId);
+          if(newContact) newContact.dmRoomId = dmRoomId;
+        }
+      } catch(e){ if(window.Sentry) Sentry.captureException(e); }
       // Demo-phase notice: we don't actually verify the email is a registered Voeli
       // user yet, so just let the creator know their messages won't reach anyone
       // until that person signs up. Replace with a real lookup post-demo.
