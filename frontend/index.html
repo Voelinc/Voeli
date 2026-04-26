@@ -85,9 +85,9 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
 .setup-box .lang-tog{position:absolute;top:18px;right:18px;}
 /* Mobile: full-bleed auth, no nested-card look, respect notch/dynamic island */
 @media (max-width: 540px){
-  #setupScreen{padding:0;background:var(--panel);align-items:center;justify-content:center;}
+  #setupScreen{padding:0;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;}
   .setup-box{max-width:none;border:none;border-radius:0;box-shadow:none;
-    padding:calc(env(safe-area-inset-top, 0px) + 24px) 22px calc(env(safe-area-inset-bottom, 0px) + 24px);}
+    padding:calc(env(safe-area-inset-top, 0px) + 24px) 22px calc(env(safe-area-inset-bottom, 0px) + 24px);width:100%;}
   .setup-box .lang-tog{top:calc(env(safe-area-inset-top, 0px) + 14px);right:18px;}
 }
 .setup-box h1{font-size:22px;margin-bottom:6px;}
