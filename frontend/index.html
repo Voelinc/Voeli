@@ -6028,6 +6028,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // ═══════════════════════════════════════════════════════
 // COMPOSER
 // ═══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', ()=>{
 // Assign cached DOM elements
 if(!txtInput) txtInput=document.getElementById('txtInput');
 if(!micBtn) micBtn=document.getElementById('micBtn');
@@ -6093,6 +6094,7 @@ if(micBtn) micBtn.addEventListener('click',async()=>{
   if(!demoMode && !currentUser) return;
   if(!isRecording) await startRec(); else stopRec();
 });
+}); // End DOMContentLoaded
 
 // ═══════════════════════════════════════════════════════
 // INSERT EMOJI (shared helper)
