@@ -4094,7 +4094,10 @@ function openModal(id){
   document.getElementById('mcName').value=c?c.name:'';
   document.getElementById('mcPhone').value=c?c.phone||'':'';
   document.getElementById('mcEmail').value=c?c.email||'':'';
-  selRelType=c?c.type:null;
+  // Default new contacts to "formal" so creation never silently fails when
+  // the user skips tapping a relationship pill. They can always change it
+  // later from the contact edit screen.
+  selRelType=c?c.type:'formal';
   initRelGrid();
 
   // Action grid — only for existing contacts
@@ -7688,7 +7691,9 @@ setTimeout(showOnboarding, 300);
       </div>
       <div class="sett-divider"></div>
       <div class="sett-section-label" id="settAccountLabel">Account</div>
-      <button id="settSignOutBtn" type="button" style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--red,#d93025);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px;">Sign out</button>
+      <button id="settSignOutBtn" type="button" style="width:100%;padding:14px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--red,#d93025);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px;-webkit-appearance:none;touch-action:manipulation;position:relative;z-index:1;">Sign out</button>
+      <!-- Spacer so the button never sits inside iOS Safari's bottom gesture zone -->
+      <div style="height:calc(env(safe-area-inset-bottom, 0px) + 32px);"></div>
     </div>
   </div>
 </div>
