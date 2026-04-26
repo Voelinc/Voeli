@@ -1718,6 +1718,12 @@ const _GEN_MAP = {
   "that's sick":"gen-mill","I'm so over it":"gen-mill","noted":"gen-mill",
   "must be nice":"gen-mill","I could scream":"gen-mill",
   "I can't even":"gen-mill","adulting":"gen-mill","adulting is hard":"gen-mill","FOMO":"gen-mill","YOLO":"gen-mill",
+  // ── Missing tags (Phase 1 audit fix) ──
+  "after everything i've":"gen-mill","ghosted":"gen-mill","i can't do this anymore":"gen-mill",
+  "i don't want to lose you":"gen-mill","i feel like you never":"gen-mill","i feel like you don't":"gen-mill",
+  "i miss you so much it hurts":"gen-mill","i'm so done":"gen-mill","why do you always":"gen-mill",
+  "you always do this":"gen-mill","you never listen":"gen-mill","you promised":"gen-mill",
+  "you're the worst":"gen-mill","sick":"gen-mill","wicked":"gen-mill",
   "on fleek":"gen-mill","blessed":"gen-mill","squad":"gen-mill","squad goals":"gen-mill","goals":"gen-mill",
   "basic":"gen-mill","throwing shade":"gen-mill","shade":"gen-mill","tea":"gen-mill","extra":"gen-mill",
   "ghost":"gen-mill","salty":"gen-mill","woke":"gen-mill","canceled":"gen-mill","hangry":"gen-mill",
@@ -1782,6 +1788,10 @@ const _GEN_MAP = {
   "Hiểu rồi thôi":"gen-mill","Sướng thật nhỉ":"gen-mill",
   "Ổn áp":"gen-mill","Thoải mái":"gen-mill","Nhàn":"gen-mill","Mặc kệ":"gen-mill","Tùy":"gen-mill",
   "Ừ thôi":"gen-mill","Không sao":"gen-mill","Được rồi":"gen-mill","Xong rồi":"gen-mill",
+  // ── Missing tags (Phase 1 audit fix) ──
+  "Buồn lắm":"gen-mill","Chán lắm rồi":"gen-mill","Cứ làm theo ý anh đi":"gen-mill",
+  "Không cần nữa":"gen-mill","Mình cần nói chuyện":"gen-mill","Nhớ không chịu được":"gen-mill",
+  "Sao lúc nào cũng vậy":"gen-mill","Tức lắm":"gen-mill",
   "Tám":"gen-mill","Buôn chuyện":"gen-mill","Chém":"gen-mill","Bắt sóng":"gen-mill","Hợp gu":"gen-mill",
   "Chạy theo":"gen-mill","Theo đuổi":"gen-mill","Tán tỉnh":"gen-mill","Bơ":"gen-mill",
   "Chảnh":"gen-mill","Chảnh chọe":"gen-mill","Điệu":"gen-mill","Sến":"gen-mill","Quê":"gen-mill",
@@ -2368,6 +2378,105 @@ function getToneConflictNote(contactId, recentMsgs){
   return '\n\nTONE CONFLICT DETECTED: The recent conversation mood diverges significantly from this contact\'s established baseline pattern. '
     + 'Do NOT rely on the learned preference for this message — the context has shifted. '
     + 'Lower your contextConfidence score accordingly (aim below 70) and present multiple options so the user can choose.';
+}
+
+// Phase 3: Receiver-aware Learn Chip logic
+// Infer sender's (user's) generation from their birthday if available
+function inferSenderGeneration(){
+  try{
+    const uid = currentUser ? currentUser.uid : null;
+    if(!uid) return 'gen-mill'; // default
+    const birthdayStr = localStorage.getItem('user_birthday_'+uid);
+    if(!birthdayStr) return 'gen-mill'; // default
+    const birthDate = new Date(birthdayStr);
+    const age = new Date().getFullYear() - birthDate.getFullYear();
+    if(age <= 29) return 'gen-z';
+    if(age <= 45) return 'gen-mill';
+    return 'gen-x';
+  }catch(_){
+    return 'gen-mill'; // safe default
+  }
+}
+
+// Infer receiver's (contact's) generation from their message patterns
+function inferReceiverGeneration(contactId){
+  if(!contactId) return 'gen-mill'; // default if unknown
+
+  try{
+    const profile = loadContactProfile(contactId) || {};
+    if(profile.inferredGeneration) return profile.inferredGeneration;
+
+    // Not enough data to infer
+    const c = contacts.find(x => x.id === contactId);
+    if(!c || c.msgs.length < 3) return 'gen-mill'; // default for early messages
+
+    // Scan last 10 messages for generation-tagged slang
+    const recentMsgs = c.msgs.slice(-10);
+    const direction = appDir === 'en-vi' ? 'vi-en' : 'en-vi';
+    const genCounts = { 'gen-z': 0, 'gen-mill': 0, 'gen-x': 0 };
+
+    recentMsgs.forEach(m => {
+      const slangHits = detectSlang(m.original || m.text || '', direction);
+      slangHits.forEach(hit => {
+        const phraseKey = (hit.phrase||'').toLowerCase();
+        const genMap = _GEN_MAP[phraseKey];
+        if(genMap){
+          const gens = Array.isArray(genMap) ? genMap : [genMap];
+          gens.forEach(g => {
+            if(genCounts[g] !== undefined) genCounts[g]++;
+          });
+        }
+      });
+    });
+
+    // Heuristic: >=30% Gen Z → Gen Z, >=20% Millennial → Millennial, else default
+    const total = genCounts['gen-z'] + genCounts['gen-mill'] + genCounts['gen-x'];
+    if(total < 2) return 'gen-mill'; // not enough slang to infer
+
+    const genZPct = genCounts['gen-z'] / total;
+    const millPct = genCounts['gen-mill'] / total;
+
+    let inferred = 'gen-mill'; // default
+    if(genZPct >= 0.3) inferred = 'gen-z';
+    else if(millPct >= 0.2) inferred = 'gen-mill';
+
+    // Cache for future lookups
+    if(c){
+      const cp = loadContactProfile(contactId) || {};
+      cp.inferredGeneration = inferred;
+      cp.lastInferred = Date.now();
+      saveContactProfile(contactId, cp);
+    }
+
+    return inferred;
+  }catch(_){
+    return 'gen-mill'; // safe default on error
+  }
+}
+
+// Determine if Learn Chip should be shown (generation/language mismatch check)
+function shouldShowLearnChip(slangMatch, receiverGen, senderGen, senderLang, receiverLang){
+  if(!slangMatch) return false;
+
+  // Get slang's generation from _GEN_MAP
+  const phraseKey = (slangMatch.phrase||'').toLowerCase();
+  const genMap = _GEN_MAP[phraseKey];
+  if(!genMap) return true; // no generation data, show chip (safe)
+
+  const slangGens = Array.isArray(genMap) ? genMap : [genMap];
+
+  // Show chip if:
+  // 1. Slang generation != receiver's generation, OR
+  // 2. Slang language != receiver's language
+  const isGenerationMismatch = !slangGens.includes(receiverGen);
+  const isLanguageMismatch = senderLang !== receiverLang;
+
+  // If <3 messages, be conservative and show chip (avoid false negatives)
+  const c = activeCont();
+  if(c && c.msgs.length < 3) return true;
+
+  // Show chip if generation OR language mismatch
+  return isGenerationMismatch || isLanguageMismatch;
 }
 
 function getContactProfileNote(contactId){
@@ -5067,12 +5176,20 @@ function renderMsgs(){
     }
     h+=`<div class="mrow ${side}">${reactHtml}<div class="bubble ${side}${tailCls}${translatingCls}"${editAttr}>${replyRefHtml}${esc(m.translated||m.text)}${origRow}${altsPanel}${metaRow}</div>${changeChip}</div>`;
     // Learn chip — receiver only, fires when the other person's original text contains slang
+    // Phase 3 fix: only show if there's a generation/language mismatch (avoid condescending chips)
     if(!m.isMe && !m.deleted && !m.translating){
       const srcText = m.original || m.text || '';
       const srcDir  = m.direction || (appDir === 'en-vi' ? 'vi-en' : 'en-vi');
       const slangHits = detectSlang(srcText, srcDir);
       if(slangHits.length){
-        h += buildLearnChip(slangHits[0]);
+        const slang = slangHits[0];
+        const senderGen = inferSenderGeneration(); // user's generation
+        const receiverGen = inferReceiverGeneration(activeCont() ? activeCont().id : null); // other person's generation
+        const senderLang = appDir === 'en-vi' ? 'en' : 'vi';
+        const receiverLang = appDir === 'en-vi' ? 'vi' : 'en';
+        if(shouldShowLearnChip(slang, receiverGen, senderGen, senderLang, receiverLang)){
+          h += buildLearnChip(slang);
+        }
       }
     }
     // Bridge card — inject immediately after the trigger message
