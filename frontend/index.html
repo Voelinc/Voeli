@@ -7037,7 +7037,10 @@ function startFirebaseListeners(){
     // typing/participants keys to match auth.uid, so messages now use
     // it too for consistency. Older messages with the random deviceId
     // as senderId are ignored either way.
-    if(!m || m.senderId===(currentUser && currentUser.uid) || m.ts < joinedAt) return;
+    // For DMs, show all messages including old ones (both people need to see the full history).
+    // For group chats, only show messages from after you joined.
+    if(!m || m.senderId===(currentUser && currentUser.uid)) return;
+    if(!isDM && m.ts < joinedAt) return;
     const room = ensureRoomContact();
     const d = new Date(m.ts);
     if(activeId !== room.id) room.unread = (room.unread||0) + 1;
