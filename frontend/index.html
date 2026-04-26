@@ -3171,7 +3171,7 @@ function setAuthLoading(on){
     .forEach(id => { const b = document.getElementById(id); if(b) b.disabled = on; });
 }
 
-document.addEventListener('DOMContentLoaded', ()=>{
+function initApp(){
   showOnboarding();
   initSignOutBtn();
   const tabSignIn = document.getElementById('tabSignIn');
@@ -3278,7 +3278,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(signOutBtn) signOutBtn.addEventListener('click', async ()=>{
     try { await fbAuth.signOut(); } catch(_){}
   });
-});
+}
+
+// Execute init immediately if DOM is ready, or wait for DOMContentLoaded
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 
 // Sign-out from inside the Settings sheet. Works for both real auth and demo mode.
 function initSignOutBtn(){
