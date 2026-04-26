@@ -3171,115 +3171,111 @@ function setAuthLoading(on){
     .forEach(id => { const b = document.getElementById(id); if(b) b.disabled = on; });
 }
 
-document.getElementById('tabSignIn').addEventListener('click', ()=>setAuthMode('signIn'));
-document.getElementById('tabSignUp').addEventListener('click', ()=>setAuthMode('signUp'));
+document.addEventListener('DOMContentLoaded', ()=>{
+  const tabSignIn = document.getElementById('tabSignIn');
+  const tabSignUp = document.getElementById('tabSignUp');
+  const authPrimaryBtn = document.getElementById('authPrimaryBtn');
+  const authPwd = document.getElementById('authPwd');
+  const authEmail = document.getElementById('authEmail');
+  const googleBtn = document.getElementById('googleBtn');
+  const authResetBtn = document.getElementById('authResetBtn');
+  const demoBtn = document.getElementById('demoBtn');
+  const signOutBtn = document.getElementById('signOutBtn');
 
-document.getElementById('authPrimaryBtn').addEventListener('click', async ()=>{
-  const email = (document.getElementById('authEmail').value||'').trim();
-  const pwd   = (document.getElementById('authPwd').value||'');
-  if(!email || !pwd){ showAuthError('Email and password are required.'); return; }
-  if(authMode==='signUp' && pwd.length < 8){ showAuthError('Password must be at least 8 characters.'); return; }
-  // Birthday required on signup so we can derive generation for slang tuning
-  let signupBirthday = '';
-  if(authMode==='signUp'){
-    signupBirthday = (document.getElementById('authBirthday').value||'').trim();
-    if(!signupBirthday){ showAuthError('Please enter your birthday.'); return; }
-    const ageNow = computeAgeFromBirthday(signupBirthday);
-    if(ageNow == null || ageNow < 13){ showAuthError('You must be at least 13 to create an account.'); return; }
-    if(ageNow > 120){ showAuthError('That birthday doesn\'t look right.'); return; }
-  }
-  // Defense-in-depth: require a fresh Turnstile token for signup. The button
-  // is normally disabled until the token arrives; if someone re-enables it
-  // via dev tools we still refuse here.
-  if(authMode==='signUp' && !_turnstileToken){
-    showAuthError('Please complete the captcha to create an account.');
-    return;
-  }
-  setAuthLoading(true); showAuthError('');
-  try{
-    let cred;
-    if(authMode==='signIn'){
-      cred = await fbAuth.signInWithEmailAndPassword(email, pwd);
-    } else {
-      cred = await fbAuth.createUserWithEmailAndPassword(email, pwd);
-      // Persist birthday locally keyed by uid so generation can be recomputed each session
-      if(cred && cred.user && cred.user.uid && signupBirthday){
-        try{ localStorage.setItem('user_birthday_'+cred.user.uid, signupBirthday); }catch(_){}
-      }
+  if(tabSignIn) tabSignIn.addEventListener('click', ()=>setAuthMode('signIn'));
+  if(tabSignUp) tabSignUp.addEventListener('click', ()=>setAuthMode('signUp'));
+
+  if(authPrimaryBtn) authPrimaryBtn.addEventListener('click', async ()=>{
+    const email = (document.getElementById('authEmail').value||'').trim();
+    const pwd   = (document.getElementById('authPwd').value||'');
+    if(!email || !pwd){ showAuthError('Email and password are required.'); return; }
+    if(authMode==='signUp' && pwd.length < 8){ showAuthError('Password must be at least 8 characters.'); return; }
+    let signupBirthday = '';
+    if(authMode==='signUp'){
+      signupBirthday = (document.getElementById('authBirthday').value||'').trim();
+      if(!signupBirthday){ showAuthError('Please enter your birthday.'); return; }
+      const ageNow = computeAgeFromBirthday(signupBirthday);
+      if(ageNow == null || ageNow < 13){ showAuthError('You must be at least 13 to create an account.'); return; }
+      if(ageNow > 120){ showAuthError('That birthday doesn\'t look right.'); return; }
     }
-    // onAuthStateChanged usually takes it from here. On iOS Safari the listener
-    // can be slow or skip the first event after a tab-relaunch, leaving the
-    // user on the sign-in screen even though the credential is valid. If the
-    // setup screen is still visible 800ms after a successful credential, do
-    // the transition ourselves so the user is never stuck staring at a form.
-    setTimeout(()=>{
-      if(cred && cred.user && document.getElementById('setupScreen').style.display !== 'none'){
-        currentUser = cred.user;
-        if(cred.user.email) sessionStorage.setItem('mta_user_email', cred.user.email.toLowerCase());
-        document.getElementById('setupScreen').style.display='none';
-        document.getElementById('liveSetupScreen').style.display='none';
-        launchApp();
+    if(authMode==='signUp' && !_turnstileToken){
+      showAuthError('Please complete the captcha to create an account.');
+      return;
+    }
+    setAuthLoading(true); showAuthError('');
+    try{
+      let cred;
+      if(authMode==='signIn'){
+        cred = await fbAuth.signInWithEmailAndPassword(email, pwd);
+      } else {
+        cred = await fbAuth.createUserWithEmailAndPassword(email, pwd);
+        if(cred && cred.user && cred.user.uid && signupBirthday){
+          try{ localStorage.setItem('user_birthday_'+cred.user.uid, signupBirthday); }catch(_){}
+        }
       }
-    }, 800);
-  }catch(err){
-    showAuthError(friendlyAuthError(err));
-    // Turnstile tokens are single-use — reset so the user can retry with a
-    // fresh challenge. Without this, the same token would fail server-side
-    // verification on a retry once we add that.
-    if(authMode==='signUp') resetTurnstile();
-  }finally{
-    setAuthLoading(false);
-    // setAuthLoading flips authPrimaryBtn.disabled to false — re-apply our
-    // Turnstile gating so the button stays disabled if the token is gone.
-    updateAuthButtonState();
-  }
-});
-document.getElementById('authPwd').addEventListener('keydown', e=>{
-  if(e.key==='Enter') document.getElementById('authPrimaryBtn').click();
-});
-document.getElementById('authEmail').addEventListener('keydown', e=>{
-  if(e.key==='Enter') document.getElementById('authPwd').focus();
-});
+      setTimeout(()=>{
+        if(cred && cred.user && document.getElementById('setupScreen').style.display !== 'none'){
+          currentUser = cred.user;
+          if(cred.user.email) sessionStorage.setItem('mta_user_email', cred.user.email.toLowerCase());
+          document.getElementById('setupScreen').style.display='none';
+          document.getElementById('liveSetupScreen').style.display='none';
+          launchApp();
+        }
+      }, 800);
+    }catch(err){
+      showAuthError(friendlyAuthError(err));
+      if(authMode==='signUp') resetTurnstile();
+    }finally{
+      setAuthLoading(false);
+      updateAuthButtonState();
+    }
+  });
 
-document.getElementById('googleBtn').addEventListener('click', async ()=>{
-  setAuthLoading(true); showAuthError('');
-  try{
-    const provider = new firebase.auth.GoogleAuthProvider();
-    await fbAuth.signInWithPopup(provider);
-  }catch(err){
-    if(err.code !== 'auth/popup-closed-by-user') showAuthError(friendlyAuthError(err));
-  }finally{
-    setAuthLoading(false);
-  }
-});
+  if(authPwd) authPwd.addEventListener('keydown', e=>{
+    if(e.key==='Enter') document.getElementById('authPrimaryBtn').click();
+  });
 
-document.getElementById('authResetBtn').addEventListener('click', async ()=>{
-  const email = (document.getElementById('authEmail').value||'').trim();
-  if(!email){ showAuthError('Type your email first, then tap Forgot password.'); return; }
-  setAuthLoading(true); showAuthError('');
-  try{
-    await fbAuth.sendPasswordResetEmail(email);
-    showAuthError(''); alert('Reset link sent to ' + email + '. Check your inbox.');
-  }catch(err){
-    showAuthError(friendlyAuthError(err));
-  }finally{
-    setAuthLoading(false);
-  }
-});
+  if(authEmail) authEmail.addEventListener('keydown', e=>{
+    if(e.key==='Enter') document.getElementById('authPwd').focus();
+  });
 
-document.getElementById('demoBtn').addEventListener('click',()=>{
-  demoMode=true; apiKey='demo';
-  document.getElementById('setupScreen').style.display='none';
-  loadDemoContacts();
-  launchApp();
-  // Auto-open Mai so the user lands in a live conversation immediately
-  setTimeout(()=>openChat('demo_linh'), 50);
-});
+  if(googleBtn) googleBtn.addEventListener('click', async ()=>{
+    setAuthLoading(true); showAuthError('');
+    try{
+      const provider = new firebase.auth.GoogleAuthProvider();
+      await fbAuth.signInWithPopup(provider);
+    }catch(err){
+      if(err.code !== 'auth/popup-closed-by-user') showAuthError(friendlyAuthError(err));
+    }finally{
+      setAuthLoading(false);
+    }
+  });
 
-// Sign-out button on the live-setup screen — flips back to sign-in.
-document.getElementById('signOutBtn').addEventListener('click', async ()=>{
-  try { await fbAuth.signOut(); } catch(_){}
-  // onAuthStateChanged routes back to the sign-in screen automatically.
+  if(authResetBtn) authResetBtn.addEventListener('click', async ()=>{
+    const email = (document.getElementById('authEmail').value||'').trim();
+    if(!email){ showAuthError('Type your email first, then tap Forgot password.'); return; }
+    setAuthLoading(true); showAuthError('');
+    try{
+      await fbAuth.sendPasswordResetEmail(email);
+      showAuthError(''); alert('Reset link sent to ' + email + '. Check your inbox.');
+    }catch(err){
+      showAuthError(friendlyAuthError(err));
+    }finally{
+      setAuthLoading(false);
+    }
+  });
+
+  if(demoBtn) demoBtn.addEventListener('click',()=>{
+    demoMode=true; apiKey='demo';
+    document.getElementById('setupScreen').style.display='none';
+    loadDemoContacts();
+    launchApp();
+    setTimeout(()=>openChat('demo_linh'), 50);
+  });
+
+  if(signOutBtn) signOutBtn.addEventListener('click', async ()=>{
+    try { await fbAuth.signOut(); } catch(_){}
+  });
 });
 
 // Sign-out from inside the Settings sheet. Works for both real auth and demo mode.
@@ -4288,10 +4284,16 @@ function setTab(tab){
   }
 }
 
-document.getElementById('tabAll').addEventListener('click', ()=>setTab('all'));
-document.getElementById('tabUnread').addEventListener('click', ()=>setTab('unread'));
-document.getElementById('tabFav').addEventListener('click', ()=>setTab('favorites'));
-document.getElementById('tabDict').addEventListener('click', ()=>setTab('dictionary'));
+document.addEventListener('DOMContentLoaded', ()=>{
+  const tabAll = document.getElementById('tabAll');
+  const tabUnread = document.getElementById('tabUnread');
+  const tabFav = document.getElementById('tabFav');
+  const tabDict = document.getElementById('tabDict');
+  if(tabAll) tabAll.addEventListener('click', ()=>setTab('all'));
+  if(tabUnread) tabUnread.addEventListener('click', ()=>setTab('unread'));
+  if(tabFav) tabFav.addEventListener('click', ()=>setTab('favorites'));
+  if(tabDict) tabDict.addEventListener('click', ()=>setTab('dictionary'));
+});
 
 // Bottom navigation tab switching
 function switchTab(tab){
@@ -6035,6 +6037,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // COMPOSER
 // ═══════════════════════════════════════════════════════
 function setupComposerListeners(){
+  console.log('setupComposerListeners called');
   // Assign cached DOM elements
   if(!txtInput) txtInput=document.getElementById('txtInput');
   if(!micBtn) micBtn=document.getElementById('micBtn');
@@ -6043,6 +6046,7 @@ function setupComposerListeners(){
   if(!micCol) micCol=document.getElementById('micCol');
   if(!sendCol) sendCol=document.getElementById('sendCol');
   if(!directBtn) directBtn=document.getElementById('directBtn');
+  console.log('Elements found:', {txtInput: !!txtInput, micBtn: !!micBtn, sendBtn: !!sendBtn, sendCol: !!sendCol, micCol: !!micCol, directBtn: !!directBtn});
 
   // Attach listeners to whatever elements we found
   if(txtInput) {
@@ -6074,12 +6078,11 @@ function setupComposerListeners(){
       }
     });
   }
-  if(sendBtn) sendBtn.addEventListener('click',e=>{ if(!sendBtn.disabled) onSendText({shiftKey:!!(e&&e.shiftKey)}); });
-  if(directBtn) directBtn.addEventListener('click',()=>{ if(!directBtn.disabled) onSendDirect(); });
-  if(micBtn) micBtn.addEventListener('click',async()=>{
-    if(!demoMode && !currentUser) return;
-    if(!isRecording) await startRec(); else stopRec();
-  });
+  if(sendBtn) { sendBtn.addEventListener('click',e=>{ if(!sendBtn.disabled) onSendText({shiftKey:!!(e&&e.shiftKey)}); }); console.log('sendBtn listener attached'); }
+  else console.log('sendBtn NOT found, listener NOT attached');
+  if(directBtn) { directBtn.addEventListener('click',()=>{ if(!directBtn.disabled) onSendDirect(); }); console.log('directBtn listener attached'); }
+  if(micBtn) { micBtn.addEventListener('click',async()=>{ if(!demoMode && !currentUser) return; if(!isRecording) await startRec(); else stopRec(); }); console.log('micBtn listener attached'); }
+  else console.log('micBtn NOT found, listener NOT attached');
 }
 
 function updBtns(){
@@ -6087,7 +6090,7 @@ function updBtns(){
   if(!txtInput) txtInput=document.getElementById('txtInput');
   if(!sendCol) sendCol=document.getElementById('sendCol');
   if(!micCol) micCol=document.getElementById('micCol');
-  if(!txtInput || !sendCol || !micCol) return; // Elements not ready
+  if(!txtInput || !sendCol || !micCol) { console.log('updBtns: missing elements', {txtInput: !!txtInput, sendCol: !!sendCol, micCol: !!micCol}); return; }
 
   const isVI = appDir==='vi-en';
   // During recording, keep only the mic (stop) button visible to prevent
@@ -6111,8 +6114,7 @@ function updBtns(){
   if(badge && !(txtInput.value||'').trim()){ badge.textContent=isVI?'VI→EN':'EN→VI'; badge.classList.remove('as-is'); }
 }
 
-// Try to set up listeners immediately and again on DOMContentLoaded
-setupComposerListeners();
+// Set up listeners only after DOM is ready
 document.addEventListener('DOMContentLoaded', setupComposerListeners);
 
 // ═══════════════════════════════════════════════════════
