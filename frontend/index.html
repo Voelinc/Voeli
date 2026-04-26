@@ -6105,7 +6105,6 @@ async function onSendText(ev){
   // Context-bypass path: if the current session has enough message history,
   // run the full AI analysis silently and only show the picker if the AI
   // isn't confident. The bubble appears instantly either way.
-  const c = activeCont();
   const sessionLen = getSessionLength(c ? c.msgs : []);
   const slangHit = detectSlang(text, direction).length > 0;
 
