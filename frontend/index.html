@@ -70,10 +70,19 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
 
 /* SETUP */
 #setupScreen{position:fixed;inset:0;background:var(--bg);z-index:999;
-  display:flex;align-items:center;justify-content:center;padding:20px;}
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  overflow-y:auto;}
 .setup-box{background:var(--panel);border:1px solid var(--line);border-radius:16px;
   padding:32px 28px;max-width:460px;width:100%;box-shadow:var(--shadow-md);position:relative;}
 .setup-box .lang-tog{position:absolute;top:18px;right:18px;}
+/* Mobile: full-bleed auth, no nested-card look, respect notch/dynamic island */
+@media (max-width: 540px){
+  #setupScreen{padding:0;background:var(--panel);align-items:stretch;}
+  .setup-box{max-width:none;border:none;border-radius:0;box-shadow:none;
+    padding:calc(env(safe-area-inset-top, 0px) + 24px) 22px calc(env(safe-area-inset-bottom, 0px) + 24px);
+    min-height:100%;}
+  .setup-box .lang-tog{top:calc(env(safe-area-inset-top, 0px) + 14px);right:18px;}
+}
 .setup-box h1{font-size:22px;margin-bottom:6px;}
 .setup-box p{color:var(--muted);font-size:14px;line-height:1.55;margin-bottom:16px;}
 .setup-box details{background:var(--chip);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px;}
@@ -7451,7 +7460,7 @@ function renderStylePanel(){
 const ONBOARDING_SLIDES = [
   {
     icon: '🎭',
-    en: { title: 'Same words, different feelings', body: '"I\'m fine." "Sure." "Whatever." You already know these can mean ten different things depending on who\'s saying them and how. Voeli reads the feeling behind your words, not just the dictionary version of them.' },
+    en: { title: 'Same words, different meanings', body: '"I\'m fine." "Sure." "Whatever." You already know these can mean ten different things depending on who\'s saying them and how. Voeli reads the meaning behind your words, not just the dictionary version of them.' },
     vi: { title: 'Cùng một câu, khác cảm xúc',     body: '"Không sao." "Ừ." "Sao cũng được." Bạn biết mà, mấy câu này có thể mang nhiều ý khác nhau tùy người nói và cách nói. Voeli đọc cảm xúc đằng sau câu chữ, không chỉ nghĩa từ điển.' }
   },
   {
