@@ -1041,9 +1041,9 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
   /* Bottom nav layout */
   #app { display: flex !important; flex-direction: column !important; }
   #appContent { position: relative !important; flex: 1 !important; min-height: 0 !important; overflow: hidden !important; }
-  .sidebar { position: absolute !important; inset: 0 !important; width: 100% !important; min-width: 100% !important; display: flex !important; flex-direction: column !important; }
-  .cpanel { position: absolute !important; inset: 0 !important; width: 100% !important; display: flex !important; flex-direction: column !important; }
-  #profilePanel { position: absolute !important; inset: 0 !important; width: 100% !important; display: flex !important; flex-direction: column !important; }
+  .sidebar { position: absolute !important; inset: 0 !important; width: 100% !important; min-width: 100% !important; flex-direction: column !important; }
+  .cpanel { position: absolute !important; inset: 0 !important; width: 100% !important; flex-direction: column !important; }
+  #profilePanel { position: absolute !important; inset: 0 !important; width: 100% !important; flex-direction: column !important; }
   #bottomNav { flex-shrink: 0 !important; height: 60px !important; border-top: 1px solid var(--line) !important; background: var(--panel) !important; display: flex !important; }
 
   /* Auth tab pills */
@@ -1195,9 +1195,18 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
   </aside>
 
   <!-- CHAT PANEL -->
-  <main class="cpanel">
+  <main class="cpanel" style="display:none;">
     <div class="chat-empty" id="chatEmpty" style="display:flex;">
       <p id="emptyMsg" style="color:var(--muted);font-size:15px;">Select or create a contact to start</p>
+    </div>
+
+    <!-- Chat List View (WhatsApp-style) -->
+    <div id="chatList" style="display:none;flex-direction:column;height:100%;overflow-y:auto;">
+      <div style="padding:16px;border-bottom:1px solid var(--line);">
+        <h2 style="font-size:18px;font-weight:600;margin-bottom:12px;">Messages</h2>
+        <input type="text" id="chatListSearch" placeholder="Search conversations…" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:12px;">
+      </div>
+      <div id="chatListItems" style="flex:1;overflow-y:auto;"></div>
     </div>
 
     <div id="activeChat" style="display:none;flex-direction:column;height:100%;">
@@ -1340,22 +1349,13 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
       </div>
     </div>
   </main>
-  </div> <!-- Close appContent -->
 
   <!-- PROFILE PANEL -->
-  <div id="profilePanel" style="display:none;flex-direction:column;width:100%;overflow-y:auto;">
-    <div class="sb-top" style="border-bottom:1px solid var(--line);">
-      <div class="sb-top-row">
-        <h2 id="profileTitle">Profile</h2>
+  <div id="profilePanel" style="display:none;flex-direction:column;width:100%;overflow-y:auto;background:var(--bg);">
+    <div style="background:var(--panel);border-bottom:1px solid var(--line);padding:16px;position:sticky;top:0;z-index:10;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <h2 style="font-size:20px;font-weight:600;margin:0;">About You</h2>
         <div style="display:flex;align-items:center;gap:8px;">
-          <div class="lang-tog" id="langTogProfile">
-            <button data-dir="en-vi" onclick="setAppDir('en-vi')" class="active">EN</button>
-            <button data-dir="vi-en" onclick="setAppDir('vi-en')">VI</button>
-          </div>
-          <button class="req-bell" id="reqBellBtnProfile" onclick="showPendingRequests()" aria-label="Notifications" title="Notifications">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            <span class="badge" id="reqBadgeProfile"></span>
-          </button>
           <button class="gear-btn" onclick="openSettings()" aria-label="Settings" title="Settings">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3"/>
@@ -1366,23 +1366,25 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
       </div>
     </div>
     <div id="profileContent" style="padding:24px;flex:1;overflow-y:auto;">
-      <div style="background:var(--panel);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px;">
-        <div id="profileAvatar" style="width:80px;height:80px;border-radius:50%;background:var(--line);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:40px;"></div>
-        <h3 id="profileName" style="font-size:20px;font-weight:600;margin-bottom:8px;">Your Name</h3>
-        <p id="profileEmail" style="font-size:14px;color:var(--muted);margin-bottom:24px;">email@example.com</p>
+      <!-- User Profile Card -->
+      <div style="background:var(--panel);border-radius:16px;padding:20px;text-align:center;margin-bottom:32px;border:1px solid var(--line);">
+        <div id="profileAvatar" style="width:80px;height:80px;border-radius:50%;background:var(--blue);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:40px;color:white;font-weight:600;"></div>
+        <h3 id="profileName" style="font-size:22px;font-weight:600;margin-bottom:6px;margin-top:0;">Your Name</h3>
+        <p id="profileEmail" style="font-size:14px;color:var(--muted);margin:0;">email@example.com</p>
       </div>
-      <!-- Dictionary Section in Profile -->
-      <div style="margin-bottom:24px;">
-        <h3 style="font-size:16px;font-weight:600;margin-bottom:12px;">📚 Learning Dashboard</h3>
-        <p id="dictStatsProfile" style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:16px;"></p>
+
+      <!-- Learning Dashboard Section -->
+      <div style="margin-bottom:28px;">
+        <h3 style="font-size:16px;font-weight:600;margin-bottom:12px;margin-top:0;">📚 Learning Dashboard</h3>
+        <p id="dictStatsProfile" style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:16px;margin-top:0;">You've learned 0 phrases</p>
+        <input type="text" id="dictSearchProfile" placeholder="Search phrases..." style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:12px;">
+        <div id="dictContentProfile" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:12px;"></div>
+        <div id="emptyDictProfile" style="text-align:center;color:var(--muted);font-size:13px;padding:24px;">Send messages with slang to start learning new phrases</div>
       </div>
-      <div style="margin-bottom:12px;">
-        <input type="text" id="dictSearchProfile" placeholder="Search phrases..." style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:13px;box-sizing:border-box;">
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;" id="dictTabsProfile"></div>
-      <div id="dictContentProfile" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:12px;"></div>
     </div>
   </div>
+
+  </div> <!-- Close appContent -->
 
   <!-- BOTTOM NAVIGATION -->
   <div id="bottomNav" style="display:flex;background:var(--panel);height:calc(60px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);width:100%;align-items:center;justify-content:space-around;box-sizing:border-box;">
@@ -2943,7 +2945,9 @@ let demoMode = false;
 function launchApp(){
   document.getElementById('liveSetupScreen').style.display='none';
   document.getElementById('app').style.display='flex';
-  initRelGrid(); initDirPick(); renderSidebar(); updPlaceholder();
+  initRelGrid(); initDirPick(); updPlaceholder();
+  renderSidebar(); // Pre-populate sidebar for when Contacts tab is clicked
+  switchTab('messages'); // Show Messages tab with chat list by default
   initFriendRequests();
   // Listen for incoming DM rooms (when another user adds your email as contact)
   initDMRoomListener();
@@ -4251,12 +4255,17 @@ document.getElementById('tabUnread').addEventListener('click', ()=>setTab('unrea
 document.getElementById('tabFav').addEventListener('click', ()=>setTab('favorites'));
 document.getElementById('tabDict').addEventListener('click', ()=>setTab('dictionary'));
 
+// State for chat list vs individual chat view
+let currentMessagesView = 'list'; // 'list' or 'chat'
+
 // Bottom navigation tab switching
 function switchTab(tab){
-  const appContent = document.getElementById('appContent');
-  const sidebar = appContent.querySelector('.sidebar');
-  const cpanel = appContent.querySelector('.cpanel');
-  const profilePanel = appContent.querySelector('#profilePanel');
+  console.log('switchTab called with:', tab);
+  // Find elements by class instead of querySelector - more reliable
+  const sidebar = document.querySelector('aside.sidebar');
+  const cpanel = document.querySelector('main.cpanel');
+  const profilePanel = document.getElementById('profilePanel');
+  console.log('Elements found - sidebar:', !!sidebar, 'cpanel:', !!cpanel, 'profilePanel:', !!profilePanel); // profilePanel is OUTSIDE appContent
   const sbTitle = document.getElementById('sbTitle');
   const navContacts = document.getElementById('navContacts');
   const navMessages = document.getElementById('navMessages');
@@ -4272,32 +4281,117 @@ function switchTab(tab){
 
   if(tab === 'contacts'){
     sbTitle.textContent = 'Contacts';
-    sidebar.style.display = 'flex';
-    cpanel.style.display = 'none';
-    profilePanel.style.display = 'none';
+    if(sidebar) sidebar.style.setProperty('display', 'flex', 'important');
+    if(cpanel) cpanel.style.setProperty('display', 'none', 'important');
+    if(profilePanel) profilePanel.style.setProperty('display', 'none', 'important');
+    renderSidebar(); // Render contacts list
     navContacts.style.color = 'var(--primary)';
     navContacts.style.opacity = '1';
   } else if(tab === 'messages'){
-    sbTitle.textContent = appDir === 'vi-en' ? 'Tin nhắn' : 'Messages';
-    sidebar.style.display = 'none';
-    cpanel.style.display = 'flex';
-    profilePanel.style.display = 'none';
+    // If already in messages and clicked again, show chat list
+    if(currentMessagesView === 'chat'){
+      currentMessagesView = 'list';
+      renderChatList();
+    } else {
+      currentMessagesView = 'list';
+      renderChatList();
+    }
+    if(sidebar) sidebar.style.setProperty('display', 'none', 'important');
+    if(cpanel) cpanel.style.setProperty('display', 'flex', 'important');
+    if(profilePanel) profilePanel.style.setProperty('display', 'none', 'important');
     navMessages.style.color = 'var(--primary)';
     navMessages.style.opacity = '1';
   } else if(tab === 'profile'){
     sbTitle.textContent = 'Profile';
-    sidebar.style.display = 'none';
-    cpanel.style.display = 'none';
-    profilePanel.style.display = 'flex';
+    if(sidebar) sidebar.style.setProperty('display', 'none', 'important');
+    if(cpanel) cpanel.style.setProperty('display', 'none', 'important');
+    if(profilePanel) profilePanel.style.setProperty('display', 'flex', 'important');
     navProfile.style.color = 'var(--primary)';
     navProfile.style.opacity = '1';
     renderProfileDictionary();
   }
 }
 
+// Render chat list (WhatsApp-style)
+function renderChatList(){
+  const chatList = document.getElementById('chatList');
+  const chatEmpty = document.getElementById('chatEmpty');
+  const activeChat = document.getElementById('activeChat');
+  const chatListItems = document.getElementById('chatListItems');
+
+  // Hide individual chat view
+  activeChat.style.display = 'none';
+  chatEmpty.style.display = 'none';
+  chatList.style.display = 'flex';
+
+  if(!contacts || contacts.length === 0){
+    chatListItems.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);">No conversations yet</div>';
+    return;
+  }
+
+  // Build list of conversations sorted by most recent message
+  const conversations = contacts.map(c => {
+    const lastMsg = c.msgs && c.msgs.length > 0 ? c.msgs[c.msgs.length - 1] : null;
+    const r = getRel(c.type) || {};
+    return {
+      id: c.id,
+      name: dispName(c) || 'Unknown',
+      avatar: r.icon || '👤',
+      lastMessage: lastMsg ? (lastMsg.translated || lastMsg.text || '(no messages)') : '(no messages)',
+      timestamp: lastMsg ? fmtTime(lastMsg.ts) : '',
+      unread: c.unread || 0
+    };
+  });
+
+  // Sort by most recent first
+  conversations.sort((a, b) => {
+    const aContact = contacts.find(c => c.id === a.id);
+    const bContact = contacts.find(c => c.id === b.id);
+    const aTs = aContact && aContact.msgs && aContact.msgs.length > 0 ? aContact.msgs[aContact.msgs.length - 1].ts : 0;
+    const bTs = bContact && bContact.msgs && bContact.msgs.length > 0 ? bContact.msgs[bContact.msgs.length - 1].ts : 0;
+    return bTs - aTs;
+  });
+
+  chatListItems.innerHTML = conversations.map(conv => `
+    <div style="padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer;display:flex;align-items:center;gap:12px;transition:background 0.2s;"
+         onmouseover="this.style.background='var(--panel)'"
+         onmouseout="this.style.background='transparent'"
+         onclick="openChatFromList('${conv.id}')">
+      <div style="font-size:32px;flex-shrink:0;">${conv.avatar}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;margin-bottom:4px;">${esc(conv.name)}</div>
+        <div style="font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(conv.lastMessage.substring(0, 50))}</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);flex-shrink:0;">${conv.timestamp}</div>
+    </div>
+  `).join('');
+}
+
+// Open a chat from the chat list
+function openChatFromList(contactId){
+  currentMessagesView = 'chat';
+  openChat(contactId);
+}
+
 // Render dictionary in profile panel
 function renderProfileDictionary(){
   const isVI = appDir === 'vi-en';
+
+  // Populate user profile info
+  const profileAvatar = document.getElementById('profileAvatar');
+  const profileName = document.getElementById('profileName');
+  const profileEmail = document.getElementById('profileEmail');
+
+  if(currentUser){
+    const email = currentUser.email || sessionStorage.getItem('mta_user_email') || 'user@example.com';
+    const displayName = currentUser.displayName || email.split('@')[0] || 'User';
+    const avatar = displayName.charAt(0).toUpperCase();
+
+    if(profileAvatar) profileAvatar.textContent = avatar;
+    if(profileName) profileName.textContent = displayName;
+    if(profileEmail) profileEmail.textContent = email;
+  }
+
   const learned = getLearnedDictionary();
   const cards = Object.values(learned || {}).filter(p => p && p.phrase);
 
@@ -4361,7 +4455,6 @@ function renderSidebar(list){
     } else {
       el.innerHTML=isVI
         ?`<div class="sb-empty">
-            <div style="font-size:36px;margin-bottom:12px;opacity:.25;">💬</div>
             <div style="font-weight:600;color:var(--ink);margin-bottom:6px;">Chưa có liên hệ</div>
             <div style="margin-bottom:16px;">Thêm người đầu tiên để bắt đầu nhắn tin.</div>
             <button class="sb-empty-btn" onclick="openModal()">
@@ -4370,7 +4463,6 @@ function renderSidebar(list){
             </button>
           </div>`
         :`<div class="sb-empty">
-            <div style="font-size:36px;margin-bottom:12px;opacity:.25;">💬</div>
             <div style="font-weight:600;color:var(--ink);margin-bottom:6px;">No contacts yet</div>
             <div style="margin-bottom:16px;">Add your first contact to start translating.</div>
             <button class="sb-empty-btn" onclick="openModal()">
@@ -4384,7 +4476,13 @@ function renderSidebar(list){
 
   const noMsgs=isVI?'Chưa có tin nhắn':'No messages yet';
   const youLbl=isVI?'Bạn:':'You:';
-  el.innerHTML=source.map(c=>{
+  // Sort contacts alphabetically by name
+  const sorted = source.slice().sort((a, b) => {
+    const nameA = dispName(a).toLowerCase();
+    const nameB = dispName(b).toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
+  el.innerHTML=sorted.map(c=>{
     const r=getRel(c.type);
     const last=c.msgs.length?c.msgs[c.msgs.length-1]:null;
     const prevText = last ? (last.translated||last.text||'') : noMsgs;
@@ -4727,6 +4825,7 @@ function openChat(id){
   const c=activeCont(); if(!c) return;
   c.unread=0; // clear unread when chat is opened
   document.getElementById('chatEmpty').style.display='none';
+  document.getElementById('chatList').style.display='none';
   document.getElementById('activeChat').style.display='flex';
   refreshHeader(); closeSheet(); hideSt();
   // Hide any previous drift banner before checking for a new one
@@ -4748,6 +4847,12 @@ function openChat(id){
   setTimeout(()=>{ ta.focus(); scrollBot(); },50);
 }
 function mobileBack(){
+  // If in messages tab showing individual chat, return to chat list
+  if(currentMessagesView === 'chat'){
+    currentMessagesView = 'list';
+    renderChatList();
+    return;
+  }
   const sb = document.querySelector('.sidebar');
   const cp = document.querySelector('.cpanel');
   sb.classList.remove('slide-out');
