@@ -2974,7 +2974,7 @@ let demoMode = false;
 function launchApp(){
   document.getElementById('liveSetupScreen').style.display='none';
   document.getElementById('app').style.display='flex';
-  initRelGrid(); initDirPick(); updPlaceholder(); initComposer();
+  initRelGrid(); initDirPick(); updPlaceholder();
   renderSidebar(); // Pre-populate sidebar for when Contacts tab is clicked
   switchTab('messages'); // Show Messages tab with chat list by default
   initFriendRequests();
@@ -6028,40 +6028,38 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // ═══════════════════════════════════════════════════════
 // COMPOSER
 // ═══════════════════════════════════════════════════════
-function initComposer(){
-  // Assign cached DOM elements
-  if(!txtInput) txtInput=document.getElementById('txtInput');
-  if(!micBtn) micBtn=document.getElementById('micBtn');
-  if(!sendBtn) sendBtn=document.getElementById('sendBtn');
-  if(!sendWrap) sendWrap=document.getElementById('sendWrap');
-  if(!micCol) micCol=document.getElementById('micCol');
-  if(!sendCol) sendCol=document.getElementById('sendCol');
-  if(!directBtn) directBtn=document.getElementById('directBtn');
+// Assign cached DOM elements
+if(!txtInput) txtInput=document.getElementById('txtInput');
+if(!micBtn) micBtn=document.getElementById('micBtn');
+if(!sendBtn) sendBtn=document.getElementById('sendBtn');
+if(!sendWrap) sendWrap=document.getElementById('sendWrap');
+if(!micCol) micCol=document.getElementById('micCol');
+if(!sendCol) sendCol=document.getElementById('sendCol');
+if(!directBtn) directBtn=document.getElementById('directBtn');
 
-  if(!txtInput || !sendCol || !micCol) return; // Elements not ready yet
-
-  function updBtns(){
-    const isVI = appDir==='vi-en';
-    if(isRecording){
-      if(micCol) micCol.style.display='flex';
-      if(sendCol) sendCol.style.display='none';
-      return;
-    }
-    const has=(txtInput.value||'').trim().length>0;
-    if(micCol) micCol.style.display=has?'none':'flex';
-    if(sendCol) sendCol.style.display=has?'flex':'none';
-    const micSub = document.getElementById('micSub');
-    if(micSub) micSub.textContent = isVI ? 'Nhấn để ghi âm' : 'Tap for voice';
-    const sendSub = document.getElementById('sendSub');
-    if(sendSub) sendSub.textContent = isVI ? 'Enter để gửi' : 'Enter to send';
-    const lbl=document.getElementById('directLbl');
-    if(lbl) lbl.textContent = isVI ? 'Gửi thẳng' : 'Direct';
-    const badge=document.getElementById('langBadge');
-    if(badge && !(txtInput.value||'').trim()){ badge.textContent=isVI?'VI→EN':'EN→VI'; badge.classList.remove('as-is'); }
+function updBtns(){
+  const isVI = appDir==='vi-en';
+  // During recording, keep only the mic (stop) button visible to prevent
+  // accidental text sends firing a second API call.
+  if(isRecording){
+    if(micCol) micCol.style.display='flex';
+    if(sendCol) sendCol.style.display='none';
+    return;
   }
-
-  // Set up input listener
-  txtInput.addEventListener('input',()=>{
+  const has=(txtInput.value||'').trim().length>0;
+  if(micCol) micCol.style.display=has?'none':'flex';
+  if(sendCol) sendCol.style.display=has?'flex':'none';
+  // Localize captions + direct label
+  const micSub = document.getElementById('micSub');
+  if(micSub) micSub.textContent = isVI ? 'Nhấn để ghi âm' : 'Tap for voice';
+  const sendSub = document.getElementById('sendSub');
+  if(sendSub) sendSub.textContent = isVI ? 'Enter để gửi' : 'Enter to send';
+  const lbl=document.getElementById('directLbl');
+  if(lbl) lbl.textContent = isVI ? 'Gửi thẳng' : 'Direct';
+  const badge=document.getElementById('langBadge');
+  if(badge && !(txtInput.value||'').trim()){ badge.textContent=isVI?'VI→EN':'EN→VI'; badge.classList.remove('as-is'); }
+}
+txtInput.addEventListener('input',()=>{
   txtInput.style.height='auto'; txtInput.style.height=Math.min(txtInput.scrollHeight,140)+'px'; updBtns();
   // Live-update the direction badge as the user types
   const val=(txtInput.value||'').trim();
@@ -6094,8 +6092,6 @@ micBtn.addEventListener('click',async()=>{
   if(!demoMode && !currentUser) return;
   if(!isRecording) await startRec(); else stopRec();
 });
-}
-initComposer(); // Call on script load to set up composer
 
 // ═══════════════════════════════════════════════════════
 // INSERT EMOJI (shared helper)
