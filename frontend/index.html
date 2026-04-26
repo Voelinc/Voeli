@@ -1134,7 +1134,7 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
             <button data-dir="en-vi" onclick="setAppDir('en-vi')" class="active">EN</button>
             <button data-dir="vi-en" onclick="setAppDir('vi-en')">VI</button>
           </div>
-          <button class="req-bell" id="reqBellBtn" onclick="showPendingRequests()" aria-label="Friend requests" title="Friend requests">
+          <button class="req-bell" id="reqBellBtn" onclick="showPendingRequests()" aria-label="Notifications" title="Notifications">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             <span class="badge" id="reqBadge"></span>
           </button>
@@ -4431,7 +4431,7 @@ function showPendingRequests(){
   if(!me) return;
   try{
     const list = JSON.parse(localStorage.getItem(_pendingKey(me))||'[]');
-    if(list.length === 0){ _showToast('No pending friend requests.'); return; }
+    if(list.length === 0){ _showToast(appDir==='vi-en' ? 'Không có thông báo.' : 'No notifications.'); return; }
     const overlay = document.getElementById('freqOverlay');
     overlay.innerHTML = '';
     list.forEach(req => _renderFreqCard(req));
