@@ -1162,7 +1162,7 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
       <button class="sb-tab active" id="tabAll">All</button>
       <button class="sb-tab" id="tabUnread">Unread</button>
       <button class="sb-tab" id="tabFav">★</button>
-      <button class="sb-tab" id="tabDict">📚 Dictionary</button>
+      <button class="sb-tab" id="tabDict">Dictionary</button>
       <button class="fab" onclick="openModal()" id="fabBtn" title="New contact" aria-label="New contact">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -4141,13 +4141,12 @@ function filterContacts(q){
   }));
 }
 
-// Fix 3: Dictionary/Learning Dashboard
+// Fix 3: Dictionary/Learning Dashboard (game-like, only show learned phrases)
 function renderDictionary(){
   const isVI = appDir === 'vi-en';
   const learned = JSON.parse(localStorage.getItem('learned_dictionary')||'{}');
-  const contactLearned = JSON.parse(localStorage.getItem('contact_learned')||'{}');
 
-  // Flatten all learned phrases
+  // Only learned phrases
   const allPhrases = [];
   Object.entries(learned).forEach(([key, data]) => {
     if(data && typeof data === 'object'){
@@ -4157,44 +4156,32 @@ function renderDictionary(){
 
   // Stats
   const totalCount = allPhrases.length;
-  const topContact = contacts.reduce((best, c) => {
-    const count = Object.values(contactLearned).filter(v => Array.isArray(v) ? v.includes(c.id) : false).length;
-    return count > best.count ? { ...c, count } : best;
-  }, { count: 0 });
-
-  const topLabel = topContact.count > 0 ? dispName(topContact) : 'None';
   const statsText = isVI
-    ? `Bạn đã học ${totalCount} cụm từ • Học nhiều nhất từ: ${topLabel}`
-    : `You've learned ${totalCount} phrases • Most learned from: ${topLabel}`;
+    ? `Bạn đã học ${totalCount} cụm từ`
+    : `You've learned ${totalCount} phrases`;
 
   document.getElementById('dictStats').textContent = statsText;
+  document.getElementById('dictTabs').innerHTML = ''; // Hide contact tabs for now
 
-  // Contact tabs
-  const tabsHTML = [
-    `<button class="sb-tab active" onclick="filterDictionaryBy('all')" style="cursor:pointer;border:none;background:var(--chip);padding:6px 12px;border-radius:6px;font-size:13px;">${isVI?'Tất cả':'All'}</button>`,
-    ...contacts.map(c =>
-      `<button class="sb-tab" onclick="filterDictionaryBy('${c.id}')" style="cursor:pointer;border:none;background:var(--chip);padding:6px 12px;border-radius:6px;font-size:13px;">${esc(dispName(c))}</button>`
-    )
-  ].join('');
-  document.getElementById('dictTabs').innerHTML = tabsHTML;
-
-  // Content grid
-  const contentHTML = allPhrases
-    .sort((a, b) => (b.ts||0) - (a.ts||0))
-    .map(p => {
-      const en = p.english || p.en || '';
-      const vi = p.vietnamese || p.vi || '';
-      const dateStr = p.ts ? new Date(p.ts).toLocaleDateString(isVI ? 'vi-VN' : 'en-US') : '';
-      const learnedLbl = isVI ? 'Học lúc:' : 'Learned:';
-      return `
-        <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px;">
-          <div style="font-weight:600;font-size:14px;margin-bottom:4px;">"${esc(p.phrase||p.key)}"</div>
-          ${en ? `<div style="font-size:13px;color:var(--ink);">EN: ${esc(en)}</div>` : ''}
-          ${vi ? `<div style="font-size:13px;color:var(--ink);">VN: ${esc(vi)}</div>` : ''}
-          ${dateStr ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">${learnedLbl} ${esc(dateStr)}</div>` : ''}
-        </div>
-      `;
-    }).join('') || `<p style="color:var(--muted);font-size:13px;">${isVI?'Chưa học cụm từ nào':'No phrases learned yet'}</p>`;
+  // Content grid — only learned phrases
+  const contentHTML = allPhrases.length > 0
+    ? allPhrases
+        .sort((a, b) => (b.ts||0) - (a.ts||0))
+        .map(p => {
+          const en = p.english || p.en || '';
+          const vi = p.vietnamese || p.vi || '';
+          const dateStr = p.ts ? new Date(p.ts).toLocaleDateString(isVI ? 'vi-VN' : 'en-US') : '';
+          const learnedLbl = isVI ? 'Học lúc:' : 'Learned:';
+          return `
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px;">
+              <div style="font-weight:600;font-size:14px;margin-bottom:4px;">"${esc(p.phrase||p.key)}"</div>
+              ${en ? `<div style="font-size:13px;color:var(--ink);">EN: ${esc(en)}</div>` : ''}
+              ${vi ? `<div style="font-size:13px;color:var(--ink);">VN: ${esc(vi)}</div>` : ''}
+              ${dateStr ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">${learnedLbl} ${esc(dateStr)}</div>` : ''}
+            </div>
+          `;
+        }).join('')
+    : `<p style="color:var(--muted);font-size:13px;">${isVI?'Chưa học cụm từ nào. Bắt đầu chat để học!':'No phrases learned yet. Start chatting to learn!'}</p>`;
 
   document.getElementById('dictContent').innerHTML = contentHTML;
 
@@ -4208,21 +4195,23 @@ function renderDictionary(){
         (p.english||'').toLowerCase().includes(q) ||
         (p.vietnamese||'').toLowerCase().includes(q)
       );
-      const html = filtered
-        .sort((a, b) => (b.ts||0) - (a.ts||0))
-        .map(p => {
-          const en = p.english || p.en || '';
-          const vi = p.vietnamese || p.vi || '';
-          const dateStr = p.ts ? new Date(p.ts).toLocaleDateString(isVI ? 'vi-VN' : 'en-US') : '';
-          return `
-            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px;">
-              <div style="font-weight:600;font-size:14px;margin-bottom:4px;">"${esc(p.phrase||p.key)}"</div>
-              ${en ? `<div style="font-size:13px;color:var(--ink);">EN: ${esc(en)}</div>` : ''}
-              ${vi ? `<div style="font-size:13px;color:var(--ink);">VN: ${esc(vi)}</div>` : ''}
-              ${dateStr ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">${isVI?'Học lúc:':'Learned:'} ${esc(dateStr)}</div>` : ''}
-            </div>
-          `;
-        }).join('') || `<p style="color:var(--muted);font-size:13px;">${isVI?'Không tìm thấy':'No results'}</p>`;
+      const html = filtered.length > 0
+        ? filtered
+            .sort((a, b) => (b.ts||0) - (a.ts||0))
+            .map(p => {
+              const en = p.english || p.en || '';
+              const vi = p.vietnamese || p.vi || '';
+              const dateStr = p.ts ? new Date(p.ts).toLocaleDateString(isVI ? 'vi-VN' : 'en-US') : '';
+              return `
+                <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px;">
+                  <div style="font-weight:600;font-size:14px;margin-bottom:4px;">"${esc(p.phrase||p.key)}"</div>
+                  ${en ? `<div style="font-size:13px;color:var(--ink);">EN: ${esc(en)}</div>` : ''}
+                  ${vi ? `<div style="font-size:13px;color:var(--ink);">VN: ${esc(vi)}</div>` : ''}
+                  ${dateStr ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">${isVI?'Học lúc:':'Learned:'} ${esc(dateStr)}</div>` : ''}
+                </div>
+              `;
+            }).join('')
+        : `<p style="color:var(--muted);font-size:13px;">${isVI?'Không tìm thấy':'No results'}</p>`;
       document.getElementById('dictContent').innerHTML = html;
     };
   }
@@ -6215,11 +6204,6 @@ function buildOptionCard(opt, index, isBest, original){
   const recBadge = isBest ? `<span class="oc-recbadge">★ ${esc(bestLbl)}</span>` : '';
   const isVI = appDir === 'vi-en';
   const back = opt.backTranslation ? `<div class="oc-back">"${esc(opt.backTranslation)}"</div>` : '';
-
-  // Fix 2: Show what receiver will see (back-translation preview)
-  const previewLbl = isVI ? "Họ sẽ thấy:" : "They'll see:";
-  const preview = opt.backTranslation ? `<div style="margin-top:8px;padding:8px;background:var(--chip);border-radius:6px;font-size:12px;color:var(--muted);"><strong>${previewLbl}</strong> "${esc(opt.backTranslation)}"</div>` : '';
-
   const landsText = pickUi(opt.howItLands);
   const lands = landsText ? `<div class="oc-lands">${esc(landsText)}</div>` : '';
   let chips = '';
@@ -6241,7 +6225,7 @@ function buildOptionCard(opt, index, isBest, original){
     ? `<button class="oc-details-toggle" type="button">${detailsLbl} <span class="dtchev">▾</span></button>
        <div class="oc-details">${lands}${chips}</div>`
     : '';
-  card.innerHTML = `${recBadge}<div class="oc-emo">${esc(el)}</div><div class="oc-trans">${esc(opt.translation||'')}</div>${back}${preview}${detailsBlock}`;
+  card.innerHTML = `${recBadge}<div class="oc-emo">${esc(el)}</div><div class="oc-trans">${esc(opt.translation||'')}</div>${back}${detailsBlock}`;
   card.addEventListener('click', () => pickOpt(opt, ek, original));
   // Details toggle — expand/collapse without triggering pickOpt
   const toggle = card.querySelector('.oc-details-toggle');
