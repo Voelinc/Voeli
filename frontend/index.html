@@ -4281,13 +4281,8 @@ async function saveContact(){
           if(newContact) newContact.dmRoomId = dmRoomId;
         }
       } catch(e){ if(window.Sentry) Sentry.captureException(e); }
-      // Demo-phase notice: we don't actually verify the email is a registered Voeli
-      // user yet, so just let the creator know their messages won't reach anyone
-      // until that person signs up. Replace with a real lookup post-demo.
       const isVI = appDir === 'vi-en';
-      _showToast(isVI
-        ? 'Nếu người này chưa có tài khoản Voeli, họ sẽ không nhận được tin nhắn cho đến khi đăng ký.'
-        : "If this person isn't on Voeli yet, they won't get your messages until they sign up.");
+      _showToast(isVI ? 'Đang tạo liên hệ mới' : 'Creating a new contact');
     }
   }
 }
