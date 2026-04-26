@@ -4294,9 +4294,6 @@ document.getElementById('tabUnread').addEventListener('click', ()=>setTab('unrea
 document.getElementById('tabFav').addEventListener('click', ()=>setTab('favorites'));
 document.getElementById('tabDict').addEventListener('click', ()=>setTab('dictionary'));
 
-// State for chat list vs individual chat view
-let currentMessagesView = 'list'; // 'list' or 'chat'
-
 // Bottom navigation tab switching
 function switchTab(tab){
   console.log('switchTab called with:', tab);
