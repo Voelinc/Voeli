@@ -2937,6 +2937,19 @@ document.getElementById('signOutBtn').addEventListener('click', async ()=>{
   // onAuthStateChanged routes back to the sign-in screen automatically.
 });
 
+// Sign-out from inside the Settings sheet. Works for both real auth and demo mode.
+document.getElementById('settSignOutBtn').addEventListener('click', async ()=>{
+  closeSettings();
+  if(demoMode){
+    // Demo mode never authed with Firebase — reload to get back to the sign-in screen cleanly.
+    demoMode = false;
+    window.location.reload();
+    return;
+  }
+  try { await fbAuth.signOut(); } catch(_){}
+  // onAuthStateChanged routes back to the sign-in screen.
+});
+
 // Map Firebase's terse error codes into human messages.
 function friendlyAuthError(err){
   const code = (err && err.code) || '';
@@ -7381,6 +7394,10 @@ function openSettings(){
   document.getElementById('settPrivacyPolicyBody').innerHTML    = POLICY_CONTENT.privacy[isVI ? 'vi' : 'en'];
   document.getElementById('settTermsBody').innerHTML            = POLICY_CONTENT.terms[isVI ? 'vi' : 'en'];
 
+  // Account section
+  document.getElementById('settAccountLabel').textContent = isVI ? 'Tài khoản' : 'Account';
+  document.getElementById('settSignOutBtn').textContent   = isVI ? 'Đăng xuất' : 'Sign out';
+
   // Restore toggle state
   document.getElementById('grammarToggle').checked = isGrammarCheckOn();
   const on = localStorage.getItem('style_insights_on') === 'true';
@@ -7605,6 +7622,9 @@ setTimeout(showOnboarding, 300);
         <div class="sett-section-label">Your style insights</div>
         <div id="stylePanelContent"></div>
       </div>
+      <div class="sett-divider"></div>
+      <div class="sett-section-label" id="settAccountLabel">Account</div>
+      <button id="settSignOutBtn" type="button" style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--red,#d93025);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px;">Sign out</button>
     </div>
   </div>
 </div>
