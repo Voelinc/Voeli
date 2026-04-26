@@ -2739,7 +2739,7 @@ async function initDMRoomListener(){
   if(!currentUser) return;
   try {
     const db = firebase.database();
-    // First, check for rooms we're invited to and auto-join them
+    // Check for rooms we're invited to and auto-join them
     const invitesSnap = await db.ref(`invites/${currentUser.email}`).once('value');
     if(invitesSnap.exists()){
       const invitedRooms = invitesSnap.val() || {};
@@ -2747,54 +2747,45 @@ async function initDMRoomListener(){
         try {
           // Add current user as participant to this room
           await db.ref(`dms/${roomId}/participants/${currentUser.uid}`).set(true);
+          // Now listen to this specific room for messages/changes
+          db.ref(`dms/${roomId}`).once('value', (snap)=>{
+            if(snap.exists()){
+              const data = snap.val();
+              // Find the other person's email from invites
+              let contactEmail = null;
+              for(const email in (invitedRooms || {})){
+                if(invitedRooms[email] && invitedRooms[email] === true){
+                  contactEmail = email;
+                  break;
+                }
+              }
+              // If still no email, try to find it from the room data
+              if(!contactEmail && data.invitedEmails){
+                contactEmail = Object.keys(data.invitedEmails)[0];
+              }
+              if(contactEmail){
+                // Check if contact already exists (by email)
+                let c = contacts.find(x => x.email === contactEmail);
+                if(!c){
+                  // Auto-create contact if they added you
+                  const newId = nxtId++;
+                  c = {id:newId, name:contactEmail.split('@')[0], phone:'', email:contactEmail,
+                    type:'formal', direction:'en-vi', msgs:[], favourite:false,
+                    emergency:false, blocked:false, dmRoomId:roomId};
+                  contacts.unshift(c);
+                  renderSidebar();
+                } else {
+                  // Store the room ID on the contact
+                  c.dmRoomId = roomId;
+                }
+              }
+            }
+          });
         } catch(e){
           if(window.Sentry) Sentry.captureException(e);
         }
       }
     }
-    // Now listen for all rooms we're a participant of
-    db.ref('dms').orderByChild(`participants/${currentUser.uid}`).equalTo(true)
-      .on('child_added', async (snap)=>{
-        const roomId = snap.key;
-        const data = snap.val();
-        const participants = data.participants || {};
-        // Find the other person's email by checking invitedEmails (if available)
-        // or deduce from participants UIDs
-        let contactEmail = null;
-        if(data.invitedEmails){
-          contactEmail = Object.keys(data.invitedEmails)[0];
-        }
-        // Fallback: if no invitedEmails, try to find from /invites by matching this roomId
-        if(!contactEmail){
-          // This is a room created by someone else; we need to find their email
-          // We can look through invites to find who invited us to this room
-          const allInvites = await db.ref('invites').once('value');
-          if(allInvites.exists()){
-            for(const email in allInvites.val()){
-              if(allInvites.val()[email][roomId]){
-                contactEmail = email;
-                break;
-              }
-            }
-          }
-        }
-        if(contactEmail){
-          // Check if contact already exists (by email)
-          let c = contacts.find(x => x.email === contactEmail);
-          if(!c){
-            // Auto-create contact if they added you
-            const newId = nxtId++;
-            c = {id:newId, name:contactEmail.split('@')[0], phone:'', email:contactEmail,
-              type:'formal', direction:'en-vi', msgs:[], favourite:false,
-              emergency:false, blocked:false, dmRoomId:roomId};
-            contacts.unshift(c);
-            renderSidebar();
-          } else {
-            // Store the room ID on the contact so we can reference it later
-            c.dmRoomId = roomId;
-          }
-        }
-      });
   } catch(e){
     if(window.Sentry) Sentry.captureException(e);
   }
