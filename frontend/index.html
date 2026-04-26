@@ -4157,14 +4157,21 @@ function saveContact(){
     const c=contacts.find(x=>x.id===editingId);
     if(c){ c.name=name; c.phone=phone; c.email=email; c.type=selRelType; c.direction=dir; }
     if(activeId===editingId) refreshHeader();
+    closeModal(); renderSidebar();
   } else {
-    contacts.unshift({id:nxtId++,name,phone,email,type:selRelType,direction:dir,msgs:[],
+    const newId = nxtId++;
+    contacts.unshift({id:newId,name,phone,email,type:selRelType,direction:dir,msgs:[],
       favourite:false,emergency:false,blocked:false});
-    openChat(contacts[0].id);
-    // Send a friend request if they gave an email
-    if(email) sendFriendRequest(email);
+    // Close the modal and refresh the list FIRST so the user always sees the
+    // new contact land, even if openChat or sendFriendRequest throws below.
+    closeModal(); renderSidebar();
+    try { openChat(newId); } catch(e){ if(window.Sentry) Sentry.captureException(e); }
+    // Send a friend request if they gave an email — guarded so a BroadcastChannel
+    // / localStorage hiccup can't take the whole create flow down with it.
+    if(email){
+      try { sendFriendRequest(email); } catch(e){ if(window.Sentry) Sentry.captureException(e); }
+    }
   }
-  closeModal(); renderSidebar();
 }
 function deleteContact(id){
   if(!confirm('Delete this contact and all messages?')) return;
