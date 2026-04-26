@@ -48,7 +48,7 @@
         },
         "emails": {
           ".read": "auth != null",
-          ".write": false
+          ".write": "auth != null"
         }
       }
     },
