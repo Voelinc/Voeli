@@ -4328,7 +4328,13 @@ function switchTab(tab){
       currentMessagesView = 'list';
       renderChatList();
     }
-    if(sidebar) sidebar.style.setProperty('display', 'none', 'important');
+    if(sidebar) {
+      sidebar.style.setProperty('display', 'none', 'important');
+      // On mobile, hide sidebar with slide-out transform
+      if(window.innerWidth <= 680) {
+        sidebar.classList.add('slide-out');
+      }
+    }
     if(cpanel) {
       cpanel.style.setProperty('display', 'flex', 'important');
       // On mobile, ensure slide-in class is added for the transform
