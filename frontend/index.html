@@ -2398,6 +2398,11 @@ function inferSenderGeneration(){
   }
 }
 
+// Alias for inferSenderGeneration (convenience)
+function getUserGeneration(){
+  return inferSenderGeneration();
+}
+
 // Infer receiver's (contact's) generation from their message patterns
 function inferReceiverGeneration(contactId){
   if(!contactId) return 'gen-mill'; // default if unknown
@@ -6069,6 +6074,28 @@ async function onSendText(ev){
     }
   }
 
+  // Check if message has slang whose equivalence has been dismissed + sender naturally knows it
+  const c = activeCont();
+  const slangHits = detectSlang(text, direction);
+  if(!forcePicker && slangHits.length > 0){
+    const slangPhrase = slangHits[0].phrase || String(slangHits[0]);
+    const phraseKey = getEquivPhraseKey(slangPhrase);
+    const scopeKey = c ? String(c.id) : null;
+
+    // If equivalence has been learned for this contact, check sender generation
+    if(scopeKey && isEquivDismissed(phraseKey, scopeKey)){
+      const generationsKnowingThis = _GEN_MAP[slangPhrase] || [];
+      const senderGen = getUserGeneration(); // Get sender's generation from birthday
+
+      if(generationsKnowingThis.includes(senderGen) || generationsKnowingThis.length === 3){
+        // Sender naturally knows this slang + equivalence already taught to receiver
+        // Send naturally without picker
+        await sendOptimistic(text, direction);
+        return;
+      }
+    }
+  }
+
   const showPicker = forcePicker || looksEmotional(text);
 
   if(!showPicker){
@@ -6441,6 +6468,55 @@ function finalizeStreamedSheet(result, original){
     pendingReceiverPhrase = null;
   }
 
+  // ── Cross-language equivalence teaching moment ──────────────────────────────
+  // If the message has slang and the tone translation also has slang, it's a
+  // teaching moment: "You say X in EN, they say [equivalent] in VI — same feeling"
+  // Show once per contact, then dismiss when user clicks "Got it"
+  {
+    const cont = activeCont();
+    if(cont && opts.length > 0){
+      const origSlang = detectSlang(original);
+      if(origSlang.length > 0){
+        // Check if any tone option's back-translation also has slang
+        const hasEquivSlang = opts.some(opt => {
+          const backTrans = opt.backTranslation || '';
+          const transSlang = detectSlang(backTrans);
+          return transSlang.length > 0;
+        });
+
+        if(hasEquivSlang){
+          // Get first slang phrase for the equiv key
+          const slangPhrase = origSlang[0].phrase || String(origSlang[0]);
+          const phraseKey = getEquivPhraseKey(slangPhrase);
+          const scopeKey = String(cont.id);
+
+          // Show teaching moment if not yet dismissed for this contact
+          if(!isEquivDismissed(phraseKey, scopeKey)){
+            const isVI = appDir === 'vi-en';
+            const banner = document.createElement('div');
+            banner.className = 'equiv-teaching';
+            banner.style.cssText = 'background:rgba(37,99,235,0.08);border:1px solid rgba(37,99,235,0.3);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px;line-height:1.4;';
+            banner.innerHTML = `
+              <div style="color:var(--text,#111);margin-bottom:6px;">
+                ${isVI ? '💡 <strong>Cách nói tương đương:</strong> Bạn nói điều này bằng tiếng Anh, họ sẽ nói cách tương đương bằng tiếng Việt — cùng ý nghĩa.' : '💡 <strong>Same meaning, different language:</strong> You say it in English, they\'ll say the equivalent in Vietnamese — same meaning.'}
+              </div>
+              <button class="equiv-dismiss" style="background:transparent;border:none;color:#2563eb;cursor:pointer;font-size:12px;font-weight:500;padding:0;margin-top:4px;">
+                ${isVI ? '✓ Hiểu rồi' : '✓ Got it'}
+              </button>
+            `;
+            list.insertBefore(banner, list.firstChild);
+
+            // Wire dismiss button
+            banner.querySelector('.equiv-dismiss').addEventListener('click', () => {
+              setEquivDismissed(phraseKey, scopeKey);
+              banner.remove();
+            });
+          }
+        }
+      }
+    }
+  }
+
   // Update the "You said" header with the detected emotion
   const emo = result.detectedEmotion || '';
   const isVI = appDir === 'vi-en';
@@ -6587,6 +6663,15 @@ function buildReceiverNote(phraseEntry, contactName){
   setTimeout(() => { if(el.parentElement) el.remove(); }, 7000);
   return el;
 }
+// Detects if the original message has slang AND the back-translation also has slang
+// This indicates a cross-language equivalence teaching moment
+function hasSlangInBothLanguages(originalText, direction, backTranslation){
+  if(!backTranslation) return false;
+  const origSlang = detectSlang(originalText, direction);
+  const transSlang = detectSlang(backTranslation, direction==='en-vi' ? 'vi-en' : 'en-vi');
+  return origSlang.length > 0 && transSlang.length > 0;
+}
+
 // Returns the equiv translation for a matched entry based on current direction
 function getEquivTranslation(m){
   return appDir === 'vi-en' ? m.englishEquiv : m.vietnameseEquiv;
