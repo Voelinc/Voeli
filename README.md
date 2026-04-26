@@ -31,3 +31,4 @@ For Worker development, see [`backend/README.md`](backend/README.md).
 - **Quotas:** Cloudflare KV per-user daily counters
 
 The frontend never sees the OpenAI key — the Worker holds it server-side and verifies a Firebase ID token on every request.
+<!-- test edit from second account -->
