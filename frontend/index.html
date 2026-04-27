@@ -2855,7 +2855,8 @@ const APP_STRINGS = {
     addFirstContact: 'Add your first contact to start translating.',
     deleteConfirm: 'Delete this contact and all messages?',
     cancelRequestConfirm: 'Cancel friend request?',
-    learned: 'Learned'
+    learned: 'Learned',
+    moreDetails: 'More details'
   },
   'vi-en': {
     contacts: 'Liên hệ',
@@ -2880,7 +2881,8 @@ const APP_STRINGS = {
     addFirstContact: 'Thêm liên hệ đầu tiên của bạn để bắt đầu dịch.',
     deleteConfirm: 'Xóa liên hệ này và tất cả tin nhắn?',
     cancelRequestConfirm: 'Hủy yêu cầu kết bạn?',
-    learned: 'Đã học'
+    learned: 'Đã học',
+    moreDetails: 'Chi tiết thêm'
   }
 };
 
@@ -2952,6 +2954,13 @@ function applyAppLang(){
     }
     if(p.textContent.includes('Add your') || p.textContent.includes('Thêm')) {
       p.textContent = s.addFirstContact;
+    }
+  });
+
+  // Update "More details" summary elements
+  document.querySelectorAll('summary').forEach(summary => {
+    if(summary.textContent.includes('More details') || summary.textContent.includes('Chi tiết')) {
+      summary.textContent = s.moreDetails;
     }
   });
 }
