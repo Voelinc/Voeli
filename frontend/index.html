@@ -2856,7 +2856,12 @@ const APP_STRINGS = {
     deleteConfirm: 'Delete this contact and all messages?',
     cancelRequestConfirm: 'Cancel friend request?',
     learned: 'Learned',
-    moreDetails: 'More details'
+    moreDetails: 'More details',
+    share: 'Share',
+    block: 'Block',
+    learnedPhrases: 'Learned phrases',
+    learning: 'Learning',
+    signOut: 'Sign out'
   },
   'vi-en': {
     contacts: 'Liên hệ',
@@ -2882,7 +2887,12 @@ const APP_STRINGS = {
     deleteConfirm: 'Xóa liên hệ này và tất cả tin nhắn?',
     cancelRequestConfirm: 'Hủy yêu cầu kết bạn?',
     learned: 'Đã học',
-    moreDetails: 'Chi tiết thêm'
+    moreDetails: 'Chi tiết thêm',
+    share: 'Chia sẻ',
+    block: 'Chặn',
+    learnedPhrases: 'Các cụm từ đã học',
+    learning: 'Đang học',
+    signOut: 'Đăng xuất'
   }
 };
 
@@ -2962,6 +2972,34 @@ function applyAppLang(){
     if(summary.textContent.includes('More details') || summary.textContent.includes('Chi tiết')) {
       summary.textContent = s.moreDetails;
     }
+  });
+
+  // Update Share and Block buttons
+  document.querySelectorAll('.cact-lbl').forEach(lbl => {
+    if(lbl.textContent.includes('Share')) lbl.textContent = s.share;
+    if(lbl.textContent.includes('Block')) lbl.textContent = s.block;
+  });
+
+  // Update Learned phrases and Learning labels
+  document.querySelectorAll('strong').forEach(el => {
+    if(el.textContent.includes('Learned phrases')) el.textContent = `${s.learnedPhrases}`;
+    if(el.textContent.includes('Learning (')) {
+      const match = el.textContent.match(/\((\d+)/);
+      if(match) el.textContent = `${s.learning} (${match[1]}`;
+    }
+  });
+
+  // Update Sign out button
+  const signOutBtn = document.getElementById('settSignOutBtn');
+  if(signOutBtn) signOutBtn.textContent = s.signOut;
+
+  // Update rel-edit save button
+  const relEditSave = document.querySelector('.rel-edit-save');
+  if(relEditSave) relEditSave.textContent = s.save;
+
+  // Update cancel button in sheet
+  document.querySelectorAll('.shcancel').forEach(btn => {
+    if(btn.textContent.includes('Cancel')) btn.textContent = s.cancel;
   });
 }
 
