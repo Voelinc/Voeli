@@ -3020,6 +3020,7 @@ async function loadContactsFromFirebase(){
 }
 
 let pendingFriendRequests = [];
+let friendRequestListenerActive = false;
 
 async function loadFriendRequests(){
   if(!currentUser || !firebaseDb || !currentUser.email) return;
@@ -3037,18 +3038,22 @@ async function loadFriendRequests(){
     }
     updateFriendRequestBadge();
 
-    // Now set up real-time listener for NEW incoming requests
-    firebaseDb.ref(`friendRequests/${currentUser.email.toLowerCase()}`).on('child_added', (snap) => {
-      const req = snap.val();
-      if(req && req.type === 'friend_request'){
-        // Check if we already have this request
-        if(!pendingFriendRequests.find(r => r.id === req.id)){
-          pendingFriendRequests.push(req);
-          updateFriendRequestBadge();
-          _renderFreqCard(req);
+    // Only set up the real-time listener ONCE to avoid duplicates
+    if(!friendRequestListenerActive){
+      friendRequestListenerActive = true;
+      // Now set up real-time listener for NEW incoming requests
+      firebaseDb.ref(`friendRequests/${currentUser.email.toLowerCase()}`).on('child_added', (snap) => {
+        const req = snap.val();
+        if(req && req.type === 'friend_request'){
+          // Check if we already have this request
+          if(!pendingFriendRequests.find(r => r.id === req.id)){
+            pendingFriendRequests.push(req);
+            updateFriendRequestBadge();
+            _renderFreqCard(req);
+          }
         }
-      }
-    });
+      });
+    }
   } catch(e){
     console.error('Error loading friend requests from Firebase:', e);
     if(window.Sentry) Sentry.captureException(e);
@@ -3441,6 +3446,9 @@ fbAuth.onAuthStateChanged(async (user)=>{
       document.getElementById('liveSetupScreen').style.display='none';
       document.getElementById('app').style.display='none';
     }
+    // Reset the listener flag so it will be set up again on next login
+    friendRequestListenerActive = false;
+    pendingFriendRequests = [];
     return;
   }
   // Signed in — surface email in session storage so the existing friend-request
