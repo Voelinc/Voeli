@@ -4347,7 +4347,10 @@ function switchTab(tab){
 
   if(tab === 'contacts'){
     sbTitle.textContent = 'Contacts';
-    if(sidebar) sidebar.style.setProperty('display', 'flex', 'important');
+    if(sidebar) {
+      sidebar.style.setProperty('display', 'flex', 'important');
+      sidebar.classList.remove('slide-out');
+    }
     if(cpanel) cpanel.style.setProperty('display', 'none', 'important');
     if(profilePanel) profilePanel.style.setProperty('display', 'none', 'important');
     renderSidebar(); // Render contacts list
