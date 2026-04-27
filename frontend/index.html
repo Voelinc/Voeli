@@ -5505,8 +5505,14 @@ function setupDMListener(dmRoomId){
     console.log(`[setupDMListener] Message received in ${dmRoomId}`);
     const m = snap.val();
     if(!m || m.senderId === currentUser.uid) return;
-    const c = activeCont();
-    if(!c || !c.dmRoomId || c.dmRoomId !== dmRoomId) return;
+
+    // Find the contact by dmRoomId instead of relying on activeCont()
+    // This ensures messages are added even if a different chat is currently open
+    const c = contacts.find(contact => contact.dmRoomId === dmRoomId);
+    if(!c) {
+      console.log(`[setupDMListener] Could not find contact for dmRoomId: ${dmRoomId}`);
+      return;
+    }
     if(!c.msgs) c.msgs = []; // Ensure msgs array exists
 
     const d = new Date(m.ts);
