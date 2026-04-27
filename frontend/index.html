@@ -5730,6 +5730,7 @@ async function migrateOldEmailPaths(email) {
 
 async function sendFriendRequest(toEmail){
   const me = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
+  console.log(`[sendFriendRequest] Starting, me=${me}, toEmail=${toEmail}`);
   if(!me || !toEmail) return;
   const normalizedEmail = toEmail.toLowerCase();
   if(!isValidEmail(normalizedEmail)) return;
@@ -5737,6 +5738,7 @@ async function sendFriendRequest(toEmail){
   // Migrate any old data for the recipient before sending
   await migrateOldEmailPaths(normalizedEmail);
   if(!(await emailExists(normalizedEmail))) return;
+  console.log(`[sendFriendRequest] Email exists, proceeding with request for ${normalizedEmail}`);
 
   // Rate limiting: check cooldown per recipient
   const lastRequest = friendRequestTimestamps[normalizedEmail] || 0;
@@ -5789,32 +5791,44 @@ async function setupSentRequestListener(toEmail, requestId){
   const hashedEmail = await hashEmailForPath(toEmail);
   const path = `friendRequests/${hashedEmail}/${requestId}`;
   const ref = firebaseDb.ref(path);
+  console.log(`[setupSentRequestListener] Setting up listener for ${toEmail} at path: ${path}`);
 
   // Listen for when the request is deleted (accepted or denied by recipient)
   ref.on('value', async (snap) => {
+    console.log(`[setupSentRequestListener] Listener fired for ${toEmail}. Exists: ${snap.exists()}`);
     if(!snap.exists()){
+      console.log(`[setupSentRequestListener] Request deleted for ${toEmail}, finding contact...`);
       // Request was deleted, meaning it was either accepted or denied
       const contact = contacts.find(c => c.email === toEmail);
+      console.log(`[setupSentRequestListener] Contact found: ${contact ? 'yes' : 'no'}, status: ${contact?.status}`);
       if(contact && contact.status === 'pending_acceptance'){
+        console.log(`[setupSentRequestListener] Updating status to 'accepted' for ${toEmail}`);
         // Mark contact as accepted since the request was deleted
         contact.status = 'accepted';
         renderSidebar();
         // If this contact is currently active, update the messages view to remove the pending banner
+        console.log(`[setupSentRequestListener] activeId=${activeId}, contact.id=${contact.id}, match=${activeId === contact.id}`);
         if(activeId === contact.id){
+          console.log(`[setupSentRequestListener] Calling renderMsgs() for active contact`);
           renderMsgs();
         }
         // Persist the status update to Firebase so it survives page refreshes
         if(currentUser && firebaseDb){
           try {
+            console.log(`[setupSentRequestListener] Saving contact to Firebase`);
             await saveContactToFirebase(contact);
+            console.log(`[setupSentRequestListener] Contact saved successfully`);
           } catch(e){
             console.error('Error saving accepted contact to Firebase:', e);
           }
         }
         _showToast(`${contact.name || toEmail} accepted your friend request!`);
         console.log(`Friend request to ${toEmail} was accepted`);
+      } else {
+        console.log(`[setupSentRequestListener] Contact not found or status is not pending_acceptance. Skipping update.`);
       }
       // Clean up this listener
+      console.log(`[setupSentRequestListener] Removing listener for ${toEmail}`);
       ref.off();
     }
   });
