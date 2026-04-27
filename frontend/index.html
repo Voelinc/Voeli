@@ -5498,13 +5498,16 @@ function setupDMListener(dmRoomId){
   activeDMRoomId = dmRoomId;
   const msgRef = firebaseDb.ref(`dms/${dmRoomId}/messages`);
   currentDMListenerRef = msgRef;
+  console.log(`[setupDMListener] Setting up listener for DM room: ${dmRoomId}`);
 
   // Listen for incoming messages in this DM room
   msgRef.on('child_added', snap=>{
+    console.log(`[setupDMListener] Message received in ${dmRoomId}`);
     const m = snap.val();
     if(!m || m.senderId === currentUser.uid) return;
     const c = activeCont();
     if(!c || !c.dmRoomId || c.dmRoomId !== dmRoomId) return;
+    if(!c.msgs) c.msgs = []; // Ensure msgs array exists
 
     const d = new Date(m.ts);
     c.msgs.push({
@@ -5920,6 +5923,8 @@ async function acceptFriendRequest(id, fromEmail, fromName){
       const dmRoomId = await createOrJoinDMRoom(fromEmail);
       if(dmRoomId){
         acceptedContact.dmRoomId = dmRoomId;
+        // Set up listener to receive messages from this DM room
+        setupDMListener(dmRoomId);
       }
     } catch(e){
       console.error('Error creating DM room after accepting request:', e);
