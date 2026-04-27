@@ -3133,9 +3133,9 @@ async function loadFriendRequests(){
   if(!currentUser || !firebaseDb || !currentUser.email) return;
   console.log('loadFriendRequests: Setting up for user', currentUser.email);
   try {
-    // First load existing requests (use encoded email for path)
-    const encodedEmail = encodeEmailForPath(currentUser.email);
-    const snap = await firebaseDb.ref(`friendRequests/${encodedEmail}`).once('value');
+    // First load existing requests (use hashed email for path)
+    const hashedEmail = await hashEmailForPath(currentUser.email);
+    const snap = await firebaseDb.ref(`friendRequests/${hashedEmail}`).once('value');
     pendingFriendRequests = [];
     initiallyLoadedRequestIds.clear();
     if(snap.exists()){
@@ -3155,7 +3155,7 @@ async function loadFriendRequests(){
     // Only set up the real-time listener ONCE to avoid duplicates
     if(!friendRequestListenerActive){
       friendRequestListenerActive = true;
-      const friendRequestPath = `friendRequests/${encodedEmail}`;
+      const friendRequestPath = `friendRequests/${hashedEmail}`;
       console.log('Setting up friend request listener at:', friendRequestPath);
       activeListenerPaths.add(friendRequestPath);
       // Now set up real-time listener for NEW incoming requests
@@ -3229,8 +3229,9 @@ let processedInvites = new Set(); // Track invites we've already processed to av
 async function initDMRoomListener(){
   if(!currentUser || !firebaseDb) return;
   try {
-    // Check for rooms we're invited to and auto-join them
-    const invitesSnap = await firebaseDb.ref(`invites/${currentUser.email.toLowerCase()}`).once('value');
+    // Check for rooms we're invited to and auto-join them (use hashed email for path)
+    const hashedEmail = await hashEmailForPath(currentUser.email);
+    const invitesSnap = await firebaseDb.ref(`invites/${hashedEmail}`).once('value');
     if(invitesSnap.exists()){
       const invitedRooms = invitesSnap.val() || {};
       for(const roomId of Object.keys(invitedRooms)){
@@ -3299,7 +3300,7 @@ async function initDMRoomListener(){
     // Set up real-time listener for NEW invites arriving after app load
     if(!inviteListenerActive){
       inviteListenerActive = true;
-      const invitePath = `invites/${currentUser.email.toLowerCase()}`;
+      const invitePath = `invites/${hashedEmail}`;
       activeListenerPaths.add(invitePath);
       firebaseDb.ref(invitePath).on('child_added', async (snap) => {
         const roomId = snap.key;
@@ -5240,8 +5241,9 @@ async function createOrJoinDMRoom(contactEmail){
       }
     });
 
-    // Write to /invites/{email}/{roomId} so they can discover this room (lowercase for consistency)
-    await firebaseDb.ref(`invites/${normalizedContactEmail}/${roomId}`).set(true);
+    // Write to /invites/{hashedEmail}/{roomId} so they can discover this room (hashed for Firebase safety)
+    const hashedContactEmail = await hashEmailForPath(normalizedContactEmail);
+    await firebaseDb.ref(`invites/${hashedContactEmail}/${roomId}`).set(true);
     return roomId;
   } catch(e){
     if(window.Sentry) Sentry.captureException(e);
@@ -5386,8 +5388,8 @@ async function deleteContact(id){
       if(isPending && contact.email){
         console.log('Cancelling friend request to', contact.email);
         // Find and delete any pending friend requests we sent to this person
-        const encodedEmail = encodeEmailForPath(contact.email);
-        const snap = await firebaseDb.ref(`friendRequests/${encodedEmail}`).once('value');
+        const hashedEmail = await hashEmailForPath(contact.email);
+        const snap = await firebaseDb.ref(`friendRequests/${hashedEmail}`).once('value');
         if(snap.exists()){
           const requests = snap.val();
           const meEmail = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
@@ -5395,7 +5397,7 @@ async function deleteContact(id){
             const req = requests[reqId];
             if(req && req.from === meEmail){
               // Delete the request we sent
-              await firebaseDb.ref(`friendRequests/${encodedEmail}/${reqId}`).remove()
+              await firebaseDb.ref(`friendRequests/${hashedEmail}/${reqId}`).remove()
                 .catch(e => console.error('Error deleting friend request:', e));
             }
           }
@@ -5658,9 +5660,17 @@ function mobileBack(){
 // ═══════════════════════════════════════════════════════
 
 // ── Send a request ─────────────────────────────────────
-// Encode email for use as Firebase path segment (Firebase doesn't allow dots, etc.)
-function encodeEmailForPath(email) {
-  return email.toLowerCase().replace(/[.@]/g, '_');
+// Hash email for use as Firebase path segment using SHA-256
+// Returns a collision-free, Firebase-safe identifier for any email address
+async function hashEmailForPath(email) {
+  if (!email) return null;
+  const normalized = email.toLowerCase();
+  const encoder = new TextEncoder();
+  const data = encoder.encode(normalized);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  // Convert to hex string (safe for Firebase paths: only 0-9, a-f)
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 async function sendFriendRequest(toEmail){
@@ -5691,8 +5701,8 @@ async function sendFriendRequest(toEmail){
   if(firebaseDb){
     try {
       console.log('Sending friend request to', normalizedEmail, 'from', me);
-      const encodedEmail = encodeEmailForPath(normalizedEmail);
-      await firebaseDb.ref(`friendRequests/${encodedEmail}/${req.id}`).set(req);
+      const hashedEmail = await hashEmailForPath(normalizedEmail);
+      await firebaseDb.ref(`friendRequests/${hashedEmail}/${req.id}`).set(req);
       console.log('Friend request saved successfully');
       // Track this sent request so we can listen for responses
       if(!sentFriendRequests.has(normalizedEmail)){
@@ -5700,7 +5710,7 @@ async function sendFriendRequest(toEmail){
       }
       sentFriendRequests.get(normalizedEmail).add(req.id);
       // Set up listener for this sent request (to detect when it's accepted/denied)
-      setupSentRequestListener(normalizedEmail, req.id);
+      await setupSentRequestListener(normalizedEmail, req.id);
       // Record timestamp for rate limiting
       friendRequestTimestamps[normalizedEmail] = Date.now();
       friendRequestHourlyCount++;
@@ -5717,10 +5727,10 @@ async function sendFriendRequest(toEmail){
 }
 
 // ── Listen for responses to sent friend requests ────────
-function setupSentRequestListener(toEmail, requestId){
+async function setupSentRequestListener(toEmail, requestId){
   if(!firebaseDb) return;
-  const encodedEmail = encodeEmailForPath(toEmail);
-  const path = `friendRequests/${encodedEmail}/${requestId}`;
+  const hashedEmail = await hashEmailForPath(toEmail);
+  const path = `friendRequests/${hashedEmail}/${requestId}`;
   const ref = firebaseDb.ref(path);
 
   // Listen for when the request is deleted (accepted or denied by recipient)
@@ -5847,8 +5857,8 @@ async function acceptFriendRequest(id, fromEmail, fromName){
   // Remove friend request from Firebase
   if(currentUser && firebaseDb){
     try {
-      const encodedEmail = encodeEmailForPath(currentUser.email);
-      await firebaseDb.ref(`friendRequests/${encodedEmail}/${id}`).remove();
+      const hashedEmail = await hashEmailForPath(currentUser.email);
+      await firebaseDb.ref(`friendRequests/${hashedEmail}/${id}`).remove();
     } catch(e){
       console.error('Error removing friend request from Firebase:', e);
     }
@@ -5866,8 +5876,8 @@ async function denyFriendRequest(id){
   // Remove friend request from Firebase
   if(currentUser && firebaseDb){
     try {
-      const encodedEmail = encodeEmailForPath(currentUser.email);
-      await firebaseDb.ref(`friendRequests/${encodedEmail}/${id}`).remove();
+      const hashedEmail = await hashEmailForPath(currentUser.email);
+      await firebaseDb.ref(`friendRequests/${hashedEmail}/${id}`).remove();
     } catch(e){
       console.error('Error removing friend request from Firebase:', e);
     }
