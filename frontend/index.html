@@ -377,6 +377,9 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
   color:inherit;font-family:inherit;}
 .btgl:hover{opacity:.95;}
 .nomsg{text-align:center;color:var(--muted);font-size:14px;padding:40px 20px;}
+.status-banner{text-align:center;color:#d97706;font-size:14px;padding:20px;background:rgba(217,118,6,0.1);border:1px solid rgba(217,118,6,0.3);border-radius:8px;margin:20px;font-weight:500;}
+.btn-request{background:#0066cc;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-top:12px;font-weight:600;}
+.btn-request:hover{background:#0052a3;}
 
 /* ── Media picker popover (Emoji · Stickers · GIF) ── */
 .media-pop{position:absolute;bottom:calc(100% + 6px);left:14px;
@@ -3081,14 +3084,13 @@ async function loadContactsFromFirebase(){
         const deletedContactId = snap.key;
         // Convert key to number since contact IDs are numbers
         const id = parseInt(deletedContactId);
-        const wasDeleted = contacts.some(c => c.id === id);
-        if(wasDeleted){
-          contacts = contacts.filter(c => c.id !== id);
-          // If the deleted contact was active, close the chat
+        const deletedContact = contacts.find(c => c.id === id);
+        if(deletedContact){
+          // Mark as deleted instead of removing, so user can see "Contact removed you" message
+          deletedContact.status = 'deleted';
+          // If the deleted contact was active, refresh to show the deletion message
           if(activeId === id){
-            activeId = null;
-            document.getElementById('activeChat').style.display = 'none';
-            document.getElementById('chatEmpty').style.display = 'flex';
+            renderMsgs();
           }
           renderSidebar();
         }
@@ -5835,8 +5837,21 @@ function buildBridgeCardHtml(bridge, isVI){
 function renderMsgs(){
   const c=activeCont();
   const area=document.getElementById('msgsArea');
+  const isVI=appDir==='vi-en';
+
+  // Check for pending acceptance or deleted contact status
+  if(c && c.status === 'pending_acceptance'){
+    area.innerHTML=`<div class="status-banner">${isVI?'⚠️ Tin nhắn đang chờ xử lý, chờ chấp nhận':'⚠️ Messages pending, waiting for acceptance'}</div>`;
+    return;
+  }
+
+  if(c && c.status === 'deleted'){
+    const sendRequestBtn = `<button class="btn-request" onclick="sendFriendRequest('${esc(c.email)}')">${isVI?'Gửi yêu cầu kết bạn':'Send Friend Request'}</button>`;
+    area.innerHTML=`<div class="status-banner">${isVI?'⚠️ Liên hệ đã xóa bạn, gửi yêu cầu kết bạn để kết nối lại':'⚠️ Contact removed you, send a friend request to reconnect'}<br>${sendRequestBtn}</div>`;
+    return;
+  }
+
   if(!c||!c.msgs.length){
-    const isVI=appDir==='vi-en';
     area.innerHTML=`<div class="nomsg" id="nomsg">${isVI?'Chưa có tin nhắn — bắt đầu bên dưới':'No messages yet — start below'}</div>`;
     return;
   }
