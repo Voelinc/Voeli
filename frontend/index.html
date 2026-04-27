@@ -5693,6 +5693,8 @@ async function hashEmailForPath(email) {
 
 // Migrate old unencoded email paths to new hashed paths
 // This handles data created before the SHA-256 hashing system was implemented
+// NOTE: Old unencoded paths would have failed Firebase validation anyway,
+// so we only need to handle any data that somehow exists at hashed paths already
 async function migrateOldEmailPaths(email) {
   if (!currentUser || !firebaseDb || !email) return;
 
@@ -5700,32 +5702,11 @@ async function migrateOldEmailPaths(email) {
   const hashedEmail = await hashEmailForPath(normalizedEmail);
 
   try {
-    console.log(`Migrating paths for email: ${normalizedEmail}`);
-
-    // Migrate friendRequests
-    const oldFriendRequestsPath = `friendRequests/${normalizedEmail}`;
-    const newFriendRequestsPath = `friendRequests/${hashedEmail}`;
-
-    const friendRequestsSnap = await firebaseDb.ref(oldFriendRequestsPath).once('value');
-    if (friendRequestsSnap.exists()) {
-      console.log('Migrating friendRequests...');
-      const data = friendRequestsSnap.val();
-      await firebaseDb.ref(newFriendRequestsPath).set(data);
-      // Keep old data for now (safety net), but log that migration happened
-      console.log('friendRequests migrated successfully');
-    }
-
-    // Migrate invites
-    const oldInvitesPath = `invites/${normalizedEmail}`;
-    const newInvitesPath = `invites/${hashedEmail}`;
-
-    const invitesSnap = await firebaseDb.ref(oldInvitesPath).once('value');
-    if (invitesSnap.exists()) {
-      console.log('Migrating invites...');
-      const data = invitesSnap.val();
-      await firebaseDb.ref(newInvitesPath).set(data);
-      console.log('invites migrated successfully');
-    }
+    // Since old unencoded email paths (like "email@domain.com") violate Firebase's
+    // path rules (no dots allowed), any old data would have failed to save anyway.
+    // The hashing system is already in place, so no migration is needed.
+    // This function is kept for safety and future-proofing.
+    console.log(`Email path migration check for: ${normalizedEmail} (hash: ${hashedEmail})`);
 
   } catch (e) {
     console.error('Error during email path migration:', e);
