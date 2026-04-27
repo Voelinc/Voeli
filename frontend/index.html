@@ -3096,6 +3096,11 @@ async function loadContactsFromFirebase(){
           if(idx !== -1){
             contacts[idx] = updatedContact;
             renderSidebar();
+            // If this contact is currently active, update the messages view too
+            // (important for status changes like pending_acceptance -> accepted)
+            if(activeId === updatedContact.id){
+              renderMsgs();
+            }
           }
         }
       });
@@ -5786,7 +5791,7 @@ async function setupSentRequestListener(toEmail, requestId){
   const ref = firebaseDb.ref(path);
 
   // Listen for when the request is deleted (accepted or denied by recipient)
-  ref.on('value', (snap) => {
+  ref.on('value', async (snap) => {
     if(!snap.exists()){
       // Request was deleted, meaning it was either accepted or denied
       const contact = contacts.find(c => c.email === toEmail);
@@ -5794,6 +5799,14 @@ async function setupSentRequestListener(toEmail, requestId){
         // Mark contact as accepted since the request was deleted
         contact.status = 'accepted';
         renderSidebar();
+        // Persist the status update to Firebase so it survives page refreshes
+        if(currentUser && firebaseDb){
+          try {
+            await saveContactToFirebase(contact);
+          } catch(e){
+            console.error('Error saving accepted contact to Firebase:', e);
+          }
+        }
         _showToast(`${contact.name || toEmail} accepted your friend request!`);
         console.log(`Friend request to ${toEmail} was accepted`);
       }
