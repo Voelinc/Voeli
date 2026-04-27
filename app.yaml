@@ -1,0 +1,2 @@
+runtime: nodejs22
+entrypoint: serve -s frontend -l 3000
