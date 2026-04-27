@@ -3131,6 +3131,7 @@ let sentFriendRequests = new Map(); // Track requests we've sent: email -> Set o
 
 async function loadFriendRequests(){
   if(!currentUser || !firebaseDb || !currentUser.email) return;
+  console.log('loadFriendRequests: Setting up for user', currentUser.email);
   try {
     // First load existing requests
     const snap = await firebaseDb.ref(`friendRequests/${currentUser.email.toLowerCase()}`).once('value');
@@ -3138,12 +3139,15 @@ async function loadFriendRequests(){
     initiallyLoadedRequestIds.clear();
     if(snap.exists()){
       const requestsData = snap.val();
+      console.log('Existing friend requests found:', Object.keys(requestsData).length);
       Object.values(requestsData).forEach(req => {
         if(req && req.type === 'friend_request'){
           pendingFriendRequests.push(req);
           initiallyLoadedRequestIds.add(req.id); // Track this ID to avoid duplicate rendering
         }
       });
+    } else {
+      console.log('No existing friend requests');
     }
     updateFriendRequestBadge();
 
@@ -3151,19 +3155,23 @@ async function loadFriendRequests(){
     if(!friendRequestListenerActive){
       friendRequestListenerActive = true;
       const friendRequestPath = `friendRequests/${currentUser.email.toLowerCase()}`;
+      console.log('Setting up friend request listener at:', friendRequestPath);
       activeListenerPaths.add(friendRequestPath);
       // Now set up real-time listener for NEW incoming requests
       // The listener will fire for all existing requests when attached, then for new ones
       // We skip requests we already loaded in the .once() call
       firebaseDb.ref(friendRequestPath).on('child_added', (snap) => {
         const req = snap.val();
+        console.log('Friend request listener fired:', req);
         if(req && req.type === 'friend_request'){
           // Skip if this was already loaded in the initial .once() call
           if(initiallyLoadedRequestIds.has(req.id)){
+            console.log('Skipping already-loaded request:', req.id);
             return;
           }
           // This is a genuinely new request
           if(!pendingFriendRequests.find(r => r.id === req.id)){
+            console.log('New friend request received from', req.from);
             pendingFriendRequests.push(req);
             updateFriendRequestBadge();
             _renderFreqCard(req);
@@ -5647,7 +5655,9 @@ async function sendFriendRequest(toEmail){
   // Save to Firebase so the recipient can see it
   if(firebaseDb){
     try {
+      console.log('Sending friend request to', normalizedEmail, 'from', me);
       await firebaseDb.ref(`friendRequests/${normalizedEmail}/${req.id}`).set(req);
+      console.log('Friend request saved successfully');
       // Track this sent request so we can listen for responses
       if(!sentFriendRequests.has(normalizedEmail)){
         sentFriendRequests.set(normalizedEmail, new Set());
@@ -5665,6 +5675,8 @@ async function sendFriendRequest(toEmail){
       _showToast('Failed to send friend request. Try again.');
       if(window.Sentry) Sentry.captureException(e);
     }
+  } else {
+    console.error('firebaseDb not initialized when trying to send friend request');
   }
 }
 
@@ -5697,8 +5709,12 @@ function setupSentRequestListener(toEmail, requestId){
 
 // ── Render a notification card ─────────────────────────
 function _renderFreqCard(req){
+  console.log('_renderFreqCard called with:', req);
   const overlay = document.getElementById('freqOverlay');
-  if(!overlay) return;
+  if(!overlay) {
+    console.error('freqOverlay not found in DOM');
+    return;
+  }
   // Don't show duplicates
   if(document.getElementById('freq_'+req.id)) return;
   const initials = (req.fromName||req.from).slice(0,2).toUpperCase();
