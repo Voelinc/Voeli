@@ -2986,7 +2986,6 @@ async function launchApp(){
   await loadContactsFromFirebase();
   renderSidebar(); // Pre-populate sidebar for when Contacts tab is clicked
   switchTab('messages'); // Show Messages tab with chat list by default
-  initFriendRequests();
   // Load and display pending friend requests
   await loadFriendRequests();
   // Listen for incoming DM rooms (when another user adds your email as contact)
@@ -5380,68 +5379,6 @@ function mobileBack(){
 // FRIEND REQUEST SYSTEM
 // ═══════════════════════════════════════════════════════
 
-const FREQ_CHANNEL = 'mta_friend_requests';
-let freqChannel = null;
-
-function initFriendRequests(){
-  freqChannel = new BroadcastChannel(FREQ_CHANNEL);
-  freqChannel.onmessage = (evt) => {
-    const d = evt.data;
-    if(!d) return;
-    const me = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
-    if(d.type === 'friend_request' && d.to === me){
-      _savePendingRequest(d);
-      _renderFreqCard(d);
-    }
-    if(d.type === 'friend_accepted' && d.to === me){
-      _showToast('✅ ' + (d.fromName||d.from) + ' accepted your request!');
-    }
-  };
-  // Check localStorage for requests received while this tab was closed
-  const me = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
-  if(me) _loadPendingRequests(me);
-}
-
-// ── Storage helpers ────────────────────────────────────
-function _pendingKey(email){ return 'mta_freq_' + email; }
-
-function _savePendingRequest(req){
-  const me = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
-  if(!me) return;
-  try{
-    const list = JSON.parse(localStorage.getItem(_pendingKey(me))||'[]');
-    if(!list.find(r=>r.id===req.id)) list.push(req);
-    localStorage.setItem(_pendingKey(me), JSON.stringify(list));
-    _updateBadge(list.length);
-  }catch(_){}
-}
-
-function _removePendingRequest(id){
-  const me = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
-  if(!me) return;
-  try{
-    let list = JSON.parse(localStorage.getItem(_pendingKey(me))||'[]');
-    list = list.filter(r=>r.id!==id);
-    localStorage.setItem(_pendingKey(me), JSON.stringify(list));
-    _updateBadge(list.length);
-  }catch(_){}
-}
-
-function _loadPendingRequests(email){
-  try{
-    const list = JSON.parse(localStorage.getItem(_pendingKey(email))||'[]');
-    _updateBadge(list.length);
-    list.forEach(req => _renderFreqCard(req));
-  }catch(_){}
-}
-
-function _updateBadge(count){
-  const badge = document.getElementById('reqBadge');
-  if(!badge) return;
-  badge.textContent = count > 9 ? '9+' : String(count);
-  badge.classList.toggle('show', count > 0);
-}
-
 // ── Send a request ─────────────────────────────────────
 async function sendFriendRequest(toEmail){
   const me = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
@@ -5463,16 +5400,6 @@ async function sendFriendRequest(toEmail){
       if(window.Sentry) Sentry.captureException(e);
     }
   }
-  // Persist for when the other tab isn't open yet
-  try{
-    const list = JSON.parse(localStorage.getItem(_pendingKey(toEmail))||'[]');
-    if(!list.find(r=>r.from===me)){
-      list.push(req);
-      localStorage.setItem(_pendingKey(toEmail), JSON.stringify(list));
-    }
-  }catch(_){}
-  // Live delivery if their tab is open
-  if(freqChannel) freqChannel.postMessage(req);
 }
 
 // ── Render a notification card ─────────────────────────
@@ -5510,8 +5437,10 @@ function _dismissFreqCard(id){
 
 // ── Accept ─────────────────────────────────────────────
 async function acceptFriendRequest(id, fromEmail, fromName){
-  _removePendingRequest(id);
   _dismissFreqCard(id);
+  // Remove from pending array
+  pendingFriendRequests = pendingFriendRequests.filter(r => r.id !== id);
+
   // Add them as a contact automatically if not already there
   const newContact = {
     id: generateUniqueContactId(), name: fromName, phone:'', email: fromEmail,
@@ -5556,18 +5485,14 @@ async function acceptFriendRequest(id, fromEmail, fromName){
   }
   // Update badge
   updateFriendRequestBadge();
-  // Notify the other tab
-  if(freqChannel){
-    const me = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
-    freqChannel.postMessage({ type:'friend_accepted', from: me, fromName: me.split('@')[0], to: fromEmail });
-  }
   _showToast('✅ You\'re now connected with ' + fromName + '!');
 }
 
 // ── Deny ───────────────────────────────────────────────
 async function denyFriendRequest(id){
-  _removePendingRequest(id);
   _dismissFreqCard(id);
+  // Remove from pending array
+  pendingFriendRequests = pendingFriendRequests.filter(r => r.id !== id);
   // Remove friend request from Firebase
   if(currentUser && firebaseDb){
     try {
@@ -5578,20 +5503,6 @@ async function denyFriendRequest(id){
   }
   // Update badge
   updateFriendRequestBadge();
-}
-
-// ── Bell: show all pending ─────────────────────────────
-function showPendingRequests(){
-  const me = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
-  if(!me) return;
-  try{
-    const list = JSON.parse(localStorage.getItem(_pendingKey(me))||'[]');
-    if(list.length === 0){ _showToast(appDir==='vi-en' ? 'Không có thông báo.' : 'No notifications.'); return; }
-    const overlay = document.getElementById('freqOverlay');
-    overlay.innerHTML = '';
-    list.forEach(req => _renderFreqCard(req));
-    overlay.classList.add('show');
-  }catch(_){}
 }
 
 // ── Simple toast ───────────────────────────────────────
