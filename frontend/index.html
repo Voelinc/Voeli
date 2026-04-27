@@ -3565,6 +3565,13 @@ function initApp(){
         if(cred && cred.user && cred.user.uid && signupBirthday){
           try{ localStorage.setItem('user_birthday_'+cred.user.uid, signupBirthday); }catch(_){}
         }
+        if(cred && cred.user && cred.user.email && firebaseDb){
+          try {
+            await firebaseDb.ref(`users/${cred.user.uid}/email`).set(cred.user.email);
+          } catch(e){
+            console.error('Error saving user email:', e);
+          }
+        }
       }
       setTimeout(()=>{
         if(cred && cred.user && document.getElementById('setupScreen').style.display !== 'none'){
@@ -3688,11 +3695,11 @@ fbAuth.onAuthStateChanged(async (user)=>{
     else     Sentry.setUser(null);
   }
   if(user && user.email && firebaseDb){
-    // Register this email as a registered user
+    // Save user email for contact lookup
     try {
-      await firebaseDb.ref(`registeredEmails/${user.email.toLowerCase()}`).set(true);
+      await firebaseDb.ref(`users/${user.uid}/email`).set(user.email);
     } catch(e){
-      console.error('Error registering email:', e);
+      console.error('Error saving user email:', e);
     }
   }
   if(!user){
@@ -5245,9 +5252,17 @@ function isValidEmail(email){
 
 async function emailExists(email){
   if(!firebaseDb || !email) return false;
+  const lowerEmail = email.toLowerCase();
   try {
-    const snap = await firebaseDb.ref(`registeredEmails/${email.toLowerCase()}`).once('value');
-    return snap.exists();
+    const snap = await firebaseDb.ref('users').once('value');
+    if(!snap.exists()) return false;
+    const users = snap.val();
+    for(const uid in users){
+      if(users[uid].email && users[uid].email.toLowerCase() === lowerEmail){
+        return true;
+      }
+    }
+    return false;
   } catch(e){
     console.error('Error checking email:', e);
     return false;
