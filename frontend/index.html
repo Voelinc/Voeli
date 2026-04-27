@@ -2980,6 +2980,8 @@ async function launchApp(){
   renderSidebar(); // Pre-populate sidebar for when Contacts tab is clicked
   switchTab('messages'); // Show Messages tab with chat list by default
   initFriendRequests();
+  // Load and display pending friend requests
+  await loadFriendRequests();
   // Listen for incoming DM rooms (when another user adds your email as contact)
   initDMRoomListener();
   // Pull new community-approved slang entries in the background
@@ -3009,6 +3011,24 @@ async function loadContactsFromFirebase(){
     }
   } catch(e){
     console.error('Error loading contacts from Firebase:', e);
+    if(window.Sentry) Sentry.captureException(e);
+  }
+}
+
+async function loadFriendRequests(){
+  if(!currentUser || !firebaseDb || !currentUser.email) return;
+  try {
+    const snap = await firebaseDb.ref(`friendRequests/${currentUser.email.toLowerCase()}`).once('value');
+    if(snap.exists()){
+      const requestsData = snap.val();
+      Object.values(requestsData).forEach(req => {
+        if(req && req.type === 'friend_request'){
+          _renderFreqCard(req);
+        }
+      });
+    }
+  } catch(e){
+    console.error('Error loading friend requests from Firebase:', e);
     if(window.Sentry) Sentry.captureException(e);
   }
 }
@@ -5159,7 +5179,7 @@ function _updateBadge(count){
 }
 
 // ── Send a request ─────────────────────────────────────
-function sendFriendRequest(toEmail){
+async function sendFriendRequest(toEmail){
   const me = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
   if(!me || !toEmail || toEmail === me) return;
   const req = {
@@ -5170,6 +5190,15 @@ function sendFriendRequest(toEmail){
     to:       toEmail,
     ts:       Date.now()
   };
+  // Save to Firebase so the recipient can see it
+  if(firebaseDb){
+    try {
+      await firebaseDb.ref(`friendRequests/${toEmail.toLowerCase()}/${req.id}`).set(req);
+    } catch(e){
+      console.error('Error saving friend request to Firebase:', e);
+      if(window.Sentry) Sentry.captureException(e);
+    }
+  }
   // Persist for when the other tab isn't open yet
   try{
     const list = JSON.parse(localStorage.getItem(_pendingKey(toEmail))||'[]');
