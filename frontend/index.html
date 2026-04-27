@@ -3024,6 +3024,7 @@ let pendingFriendRequests = [];
 async function loadFriendRequests(){
   if(!currentUser || !firebaseDb || !currentUser.email) return;
   try {
+    // First load existing requests
     const snap = await firebaseDb.ref(`friendRequests/${currentUser.email.toLowerCase()}`).once('value');
     pendingFriendRequests = [];
     if(snap.exists()){
@@ -3035,6 +3036,19 @@ async function loadFriendRequests(){
       });
     }
     updateFriendRequestBadge();
+
+    // Now set up real-time listener for NEW incoming requests
+    firebaseDb.ref(`friendRequests/${currentUser.email.toLowerCase()}`).on('child_added', (snap) => {
+      const req = snap.val();
+      if(req && req.type === 'friend_request'){
+        // Check if we already have this request
+        if(!pendingFriendRequests.find(r => r.id === req.id)){
+          pendingFriendRequests.push(req);
+          updateFriendRequestBadge();
+          _renderFreqCard(req);
+        }
+      }
+    });
   } catch(e){
     console.error('Error loading friend requests from Firebase:', e);
     if(window.Sentry) Sentry.captureException(e);
