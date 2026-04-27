@@ -3014,6 +3014,27 @@ function generateUniqueContactId(){
 
 let contactListenerActive = false;
 
+// Paths where we've attached listeners (for cleanup on logout)
+let activeListenerPaths = new Set();
+
+// Clean up all Firebase listeners to prevent memory leaks
+function cleanupFirebaseListeners(){
+  if(!firebaseDb) return;
+  try {
+    // Remove all listeners on the paths where we attached them
+    activeListenerPaths.forEach(path => {
+      try {
+        firebaseDb.ref(path).off(); // Remove all listeners on this path
+      } catch(e){
+        console.error(`Error removing listener on ${path}:`, e);
+      }
+    });
+    activeListenerPaths.clear();
+  } catch(e){
+    console.error('Error cleaning up Firebase listeners:', e);
+  }
+}
+
 async function loadContactsFromFirebase(){
   if(!currentUser || !firebaseDb) return;
   try {
@@ -3030,7 +3051,9 @@ async function loadContactsFromFirebase(){
     // Only set up real-time listeners ONCE to avoid duplicates
     if(!contactListenerActive){
       contactListenerActive = true;
-      const contactsRef = firebaseDb.ref(`users/${currentUser.uid}/contacts`);
+      const contactsPath = `users/${currentUser.uid}/contacts`;
+      activeListenerPaths.add(contactsPath);
+      const contactsRef = firebaseDb.ref(contactsPath);
 
       // Listen for new contacts being added
       contactsRef.on('child_added', (snap) => {
@@ -3084,10 +3107,12 @@ async function loadFriendRequests(){
     // Only set up the real-time listener ONCE to avoid duplicates
     if(!friendRequestListenerActive){
       friendRequestListenerActive = true;
+      const friendRequestPath = `friendRequests/${currentUser.email.toLowerCase()}`;
+      activeListenerPaths.add(friendRequestPath);
       // Now set up real-time listener for NEW incoming requests
       // The listener will fire for all existing requests when attached, then for new ones
       // We skip requests we already loaded in the .once() call
-      firebaseDb.ref(`friendRequests/${currentUser.email.toLowerCase()}`).on('child_added', (snap) => {
+      firebaseDb.ref(friendRequestPath).on('child_added', (snap) => {
         const req = snap.val();
         if(req && req.type === 'friend_request'){
           // Skip if this was already loaded in the initial .once() call
@@ -3166,8 +3191,10 @@ async function initDMRoomListener(){
           // Set up real-time listener for this room (only if not already listening)
           if(!activeDMRoomListeners.has(roomId)){
             activeDMRoomListeners.add(roomId);
+            const roomPath = `dms/${roomId}`;
+            activeListenerPaths.add(roomPath);
             // Listen to this specific room for real-time changes
-            db.ref(`dms/${roomId}`).on('value', (snap)=>{
+            db.ref(roomPath).on('value', (snap)=>{
               if(snap.exists()){
                 const data = snap.val();
                 // Find the other person's email from room data
@@ -3221,7 +3248,9 @@ async function initDMRoomListener(){
     // Set up real-time listener for NEW invites arriving after app load
     if(!inviteListenerActive){
       inviteListenerActive = true;
-      db.ref(`invites/${currentUser.email.toLowerCase()}`).on('child_added', async (snap) => {
+      const invitePath = `invites/${currentUser.email.toLowerCase()}`;
+      activeListenerPaths.add(invitePath);
+      db.ref(invitePath).on('child_added', async (snap) => {
         const roomId = snap.key;
         // Skip if we already processed this invite from the initial load
         if(processedInvites.has(roomId)){
@@ -3236,7 +3265,9 @@ async function initDMRoomListener(){
           // Set up real-time listener for this room
           if(!activeDMRoomListeners.has(roomId)){
             activeDMRoomListeners.add(roomId);
-            db.ref(`dms/${roomId}`).on('value', (roomSnap)=>{
+            const roomPath = `dms/${roomId}`;
+            activeListenerPaths.add(roomPath);
+            db.ref(roomPath).on('value', (roomSnap)=>{
               if(roomSnap.exists()){
                 const data = roomSnap.val();
                 let contactEmail = null;
@@ -3593,6 +3624,8 @@ fbAuth.onAuthStateChanged(async (user)=>{
     activeDMRoomListeners.clear();
     processedInvites.clear();
     contacts = [];
+    // Remove all Firebase listeners to prevent memory leaks
+    cleanupFirebaseListeners();
     return;
   }
   // Signed in — surface email in session storage so the existing friend-request
