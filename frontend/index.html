@@ -4995,7 +4995,10 @@ function renderProfileDictionary(){
   const cards = Object.values(learned || {}).filter(p => p && p.phrase);
 
   const stats = document.getElementById('dictStatsProfile');
-  if(stats) stats.innerHTML = `You've learned ${cards.length} phrases`;
+  if(stats) {
+    const isVI = appDir === 'vi-en';
+    stats.innerHTML = isVI ? `Bạn đã học ${cards.length} cụm từ` : `You've learned ${cards.length} phrases`;
+  }
 
   const content = document.getElementById('dictContentProfile');
   if(!content) return;
