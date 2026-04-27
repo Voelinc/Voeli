@@ -8215,9 +8215,25 @@ function syncToFirebase(msg){
       c.queuedMsgs.push(msgData);
       return;
     }
-    firebaseDb.ref(`dms/${c.dmRoomId}/messages`).push(msgData);
+    const msgRef = firebaseDb.ref(`dms/${c.dmRoomId}/messages`).push(msgData);
+    // Update the local message with the Firebase-generated ID
+    if(msg && msg.id){
+      msgRef.then(() => {
+        const fbId = msgRef.key;
+        msg.id = fbId;
+        if(activeId === c.id) renderMsgs();
+      }).catch(() => {});
+    }
   } else if(roomCode){
-    firebaseDb.ref(`rooms/${roomCode}/messages`).push(msgData);
+    const msgRef = firebaseDb.ref(`rooms/${roomCode}/messages`).push(msgData);
+    // Update the local message with the Firebase-generated ID
+    if(msg && msg.id){
+      msgRef.then(() => {
+        const fbId = msgRef.key;
+        msg.id = fbId;
+        if(activeId) renderMsgs();
+      }).catch(() => {});
+    }
   }
 }
 
