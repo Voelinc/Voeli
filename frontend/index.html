@@ -3094,7 +3094,13 @@ async function loadContactsFromFirebase(){
         if(updatedContact){
           const idx = contacts.findIndex(c => c.id === updatedContact.id);
           if(idx !== -1){
-            contacts[idx] = updatedContact;
+            // Preserve local-only properties (msgs and queuedMsgs) when updating from Firebase
+            const existingContact = contacts[idx];
+            contacts[idx] = {
+              ...updatedContact,
+              msgs: existingContact.msgs || [],
+              queuedMsgs: existingContact.queuedMsgs || []
+            };
             renderSidebar();
             // If this contact is currently active, update the messages view too
             // (important for status changes like pending_acceptance -> accepted)
@@ -6226,7 +6232,7 @@ function renderMsgs(){
     return;
   }
 
-  if(!c||!c.msgs.length){
+  if(!c || !c.msgs || !c.msgs.length){
     area.innerHTML=`<div class="nomsg" id="nomsg">${isVI?'Chưa có tin nhắn — bắt đầu bên dưới':'No messages yet — start below'}</div>`;
     return;
   }
