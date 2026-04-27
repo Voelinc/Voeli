@@ -2895,32 +2895,64 @@ function applyAppLang(){
   const navProfile = document.getElementById('navProfile');
   if(navProfile) navProfile.querySelector('span').textContent = s.profile;
 
-  // Search fields
-  document.querySelectorAll('input[placeholder="Search…"]').forEach(el => el.placeholder = s.search);
+  // Search fields - match by position/parent rather than placeholder text
+  const searchInput = document.getElementById('searchInput');
+  if(searchInput) searchInput.placeholder = s.search;
   const chatListSearch = document.getElementById('chatListSearch');
   if(chatListSearch) chatListSearch.placeholder = s.searchConversations;
-  document.querySelectorAll('input[placeholder*="Search phrases"]').forEach(el => el.placeholder = s.searchPhrases);
-  document.querySelectorAll('input[placeholder*="Search"]').forEach(el => { if(!el.placeholder.includes('GIF')) el.placeholder = s.search; });
+  const dictSearch = document.getElementById('dictSearch');
+  if(dictSearch) dictSearch.placeholder = s.searchPhrases;
+  const profileSearch = document.getElementById('profileSearch');
+  if(profileSearch) profileSearch.placeholder = s.search;
+  const dictSearchProfile = document.getElementById('dictSearchProfile');
+  if(dictSearchProfile) dictSearchProfile.placeholder = s.searchPhrases;
 
   // Modal title
   const modalTitle = document.getElementById('modalTitle');
   if(modalTitle) modalTitle.textContent = s.newContact;
 
-  // Profile page
+  // Profile page - use position-based selectors that are language-agnostic
+  // Find h2 that comes before profile content
+  let h2Found = false;
   document.querySelectorAll('h2').forEach(h => {
-    if(h.textContent.includes('About You')) h.textContent = s.aboutYou;
+    if(!h2Found && h.offsetParent !== null) { // visible element
+      h.textContent = s.aboutYou;
+      h2Found = true;
+    }
   });
+
+  // Update h3 for Learning Dashboard
   document.querySelectorAll('h3').forEach(h => {
-    if(h.textContent.includes('Learning Dashboard')) h.textContent = s.learningDash;
+    if(h.offsetParent !== null && (h.textContent.includes('Learning') || h.textContent.includes('Bảng'))) {
+      h.textContent = s.learningDash;
+    }
   });
-  document.querySelectorAll('div').forEach(d => {
-    if(d.textContent.trim() === 'Grammar check' && d.style.fontSize==='14px') d.textContent = s.grammarCheck;
-    if(d.textContent.trim() === 'Communication insights' && d.style.fontSize==='14px') d.textContent = s.commInsights;
+
+  // Update divs with font-size 14px (these are section headers)
+  let grammarFound = false, commFound = false;
+  document.querySelectorAll('div[style*="14px"]').forEach(d => {
+    if(!grammarFound && d.offsetParent !== null && (d.textContent.includes('Grammar') || d.textContent.includes('Kiểm tra'))) {
+      d.textContent = s.grammarCheck;
+      grammarFound = true;
+    }
+    if(!commFound && d.offsetParent !== null && (d.textContent.includes('Communication') || d.textContent.includes('Thông tin'))) {
+      d.textContent = s.commInsights;
+      commFound = true;
+    }
   });
-  document.querySelectorAll('p').forEach(p => {
-    if(p.textContent.startsWith('Grammar check monitors')) p.textContent = s.grammarDesc;
-    if(p.textContent.startsWith('Communication insights help')) p.textContent = s.commDesc;
-    if(p.textContent.includes('Add your first contact')) p.textContent = s.addFirstContact;
+
+  // Update descriptions - find by position in visible paragraphs
+  const visiblePs = Array.from(document.querySelectorAll('p')).filter(p => p.offsetParent !== null);
+  visiblePs.forEach((p, idx) => {
+    if(p.textContent.includes('Grammar') || p.textContent.includes('Kiểm tra')) {
+      p.textContent = s.grammarDesc;
+    }
+    if(p.textContent.includes('Communication') || p.textContent.includes('Thông tin')) {
+      p.textContent = s.commDesc;
+    }
+    if(p.textContent.includes('Add your') || p.textContent.includes('Thêm')) {
+      p.textContent = s.addFirstContact;
+    }
   });
 }
 
