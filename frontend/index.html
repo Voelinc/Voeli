@@ -3224,7 +3224,7 @@ async function initDMRoomListener(){
             const roomPath = `dms/${roomId}`;
             activeListenerPaths.add(roomPath);
             // Listen to this specific room for real-time changes
-            firebaseDb.ref(roomPath).on('value', (snap)=>{
+            firebaseDb.ref(roomPath).on('value', async (snap)=>{
               if(snap.exists()){
                 const data = snap.val();
                 // Find the other person's email from room data
