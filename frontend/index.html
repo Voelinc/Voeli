@@ -1387,7 +1387,6 @@ body.is-offline::before{
       <!-- Learning Dashboard Section -->
       <div style="margin-bottom:28px;">
         <h3 style="font-size:16px;font-weight:600;margin-bottom:12px;margin-top:0;">📚 Learning Dashboard</h3>
-        <p id="dictStatsProfile" style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:16px;margin-top:0;">You've learned 0 phrases</p>
         <input type="text" id="dictSearchProfile" placeholder="Search phrases..." style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:12px;">
         <div id="dictContentProfile" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:12px;"></div>
         <div id="emptyDictProfile" style="display:none;"></div>
@@ -5040,12 +5039,6 @@ function renderProfileDictionary(){
 
   const learned = getLearnedDictionary();
   const cards = Object.values(learned || {}).filter(p => p && p.phrase);
-
-  const stats = document.getElementById('dictStatsProfile');
-  if(stats) {
-    const isVI = appDir === 'vi-en';
-    stats.innerHTML = isVI ? `Bạn đã học ${cards.length} cụm từ` : `You've learned ${cards.length} phrases`;
-  }
 
   const content = document.getElementById('dictContentProfile');
   if(!content) return;
