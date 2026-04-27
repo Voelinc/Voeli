@@ -7084,10 +7084,11 @@ function sendAsIs(text){
 }
 
 async function sendOptimistic(text, direction){
+  console.log(`[sendOptimistic] Called with text: "${text}", direction: ${direction}`);
   const c = activeCont();
-  if(!c) return;
+  if(!c) { console.log(`[sendOptimistic] No active contact!`); return; }
   if(!c.msgs) c.msgs = []; // Ensure msgs array exists
-  if(c.blocked){ alert('You have blocked this contact. Unblock them to message.'); return; }
+  if(c.blocked){ console.log(`[sendOptimistic] Contact is blocked`); alert('You have blocked this contact. Unblock them to message.'); return; }
   const now = new Date();
   const isMe = direction==='en-vi' ? (appDir==='en-vi') : (appDir==='vi-en');
   const reply = _replyState ? { id: _replyState.id, text: _replyState.text } : null;
@@ -7122,7 +7123,13 @@ async function sendOptimistic(text, direction){
   }finally{
     msg.translating = false;
     renderMsgs(); renderSidebar();
-    if(c.msgs.includes(msg) && msg.isMe) syncToFirebase(msg);
+    console.log(`[sendOptimistic] finally block: msg in array=${c.msgs.includes(msg)}, msg.isMe=${msg.isMe}`);
+    if(c.msgs.includes(msg) && msg.isMe) {
+      console.log(`[sendOptimistic] Calling syncToFirebase`);
+      syncToFirebase(msg);
+    } else {
+      console.log(`[sendOptimistic] NOT calling syncToFirebase - condition not met`);
+    }
     clearTimeout(typingTimer); setMyTyping(false);
   }
 }
