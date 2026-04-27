@@ -1409,19 +1409,19 @@ body.is-offline::before{
         </div>
 
         <!-- Communication Insights Toggle -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:12px;background:var(--panel-2);border-radius:8px;">
-          <div>
-            <div style="font-size:14px;font-weight:500;">Communication insights</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:12px;background:var(--panel-2);border-radius:8px;flex-wrap:wrap;gap:12px;">
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:500;margin-bottom:6px;">Communication insights</div>
+            <details style="padding:0;margin:0;">
+              <summary style="cursor:pointer;font-size:11px;color:var(--blue);user-select:none;">More details</summary>
+              <p style="font-size:13px;color:var(--muted);margin:8px 0 0 0;line-height:1.6;">Communication insights help you understand your own communication style and how you naturally express yourself. We analyze patterns in how you communicate, like your message length, frequency, and tone preferences. We don't save your messages, read their content, or know what you're talking about. Think of it like analyzing the shape of your handwriting, not the words you wrote.</p>
+            </details>
           </div>
-          <label class="sett-toggle" style="margin:0;">
+          <label class="sett-toggle" style="margin:0;align-self:flex-start;">
             <input type="checkbox" id="styleToggleProfile" onchange="onStyleToggleChange(this.checked)">
             <span class="sett-toggle-track"></span>
           </label>
         </div>
-        <details style="margin-bottom:16px;padding:0;">
-          <summary style="cursor:pointer;font-size:13px;color:var(--blue);margin-left:12px;user-select:none;">More details</summary>
-          <p style="font-size:13px;color:var(--muted);margin:12px 12px 0 12px;line-height:1.6;">Communication insights help you understand your own communication style and how you naturally express yourself. We analyze patterns in how you communicate, like your message length, frequency, and tone preferences. We don't save your messages, read their content, or know what you're talking about. Think of it like analyzing the shape of your handwriting, not the words you wrote.</p>
-        </details>
       </div>
     </div>
   </div>
