@@ -3050,6 +3050,7 @@ async function loadContactsFromFirebase(){
 
 let pendingFriendRequests = [];
 let friendRequestListenerActive = false;
+let initiallyLoadedRequestIds = new Set(); // Track requests loaded in initial .once() to avoid duplicates with listener
 
 async function loadFriendRequests(){
   if(!currentUser || !firebaseDb || !currentUser.email) return;
@@ -3057,11 +3058,13 @@ async function loadFriendRequests(){
     // First load existing requests
     const snap = await firebaseDb.ref(`friendRequests/${currentUser.email.toLowerCase()}`).once('value');
     pendingFriendRequests = [];
+    initiallyLoadedRequestIds.clear();
     if(snap.exists()){
       const requestsData = snap.val();
       Object.values(requestsData).forEach(req => {
         if(req && req.type === 'friend_request'){
           pendingFriendRequests.push(req);
+          initiallyLoadedRequestIds.add(req.id); // Track this ID to avoid duplicate rendering
         }
       });
     }
@@ -3071,10 +3074,16 @@ async function loadFriendRequests(){
     if(!friendRequestListenerActive){
       friendRequestListenerActive = true;
       // Now set up real-time listener for NEW incoming requests
+      // The listener will fire for all existing requests when attached, then for new ones
+      // We skip requests we already loaded in the .once() call
       firebaseDb.ref(`friendRequests/${currentUser.email.toLowerCase()}`).on('child_added', (snap) => {
         const req = snap.val();
         if(req && req.type === 'friend_request'){
-          // Check if we already have this request
+          // Skip if this was already loaded in the initial .once() call
+          if(initiallyLoadedRequestIds.has(req.id)){
+            return;
+          }
+          // This is a genuinely new request
           if(!pendingFriendRequests.find(r => r.id === req.id)){
             pendingFriendRequests.push(req);
             updateFriendRequestBadge();
@@ -3495,6 +3504,7 @@ fbAuth.onAuthStateChanged(async (user)=>{
     friendRequestListenerActive = false;
     contactListenerActive = false;
     pendingFriendRequests = [];
+    initiallyLoadedRequestIds.clear();
     contacts = [];
     return;
   }
