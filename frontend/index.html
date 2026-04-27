@@ -3231,7 +3231,7 @@ async function initDMRoomListener(){
                     const newId = generateUniqueContactId();
                     c = {id:newId, name:contactEmail.split('@')[0], phone:'', email:contactEmail,
                       type:'formal', direction:'en-vi', msgs:[], favourite:false,
-                      emergency:false, blocked:false, dmRoomId:roomId};
+                      emergency:false, blocked:false, status:'accepted', queuedMsgs:[], dmRoomId:roomId};
                     contacts.unshift(c);
                     renderSidebar();
                     // Save the auto-created contact to Firebase
@@ -3301,7 +3301,7 @@ async function initDMRoomListener(){
                     const newId = generateUniqueContactId();
                     c = {id:newId, name:contactEmail.split('@')[0], phone:'', email:contactEmail,
                       type:'formal', direction:'en-vi', msgs:[], favourite:false,
-                      emergency:false, blocked:false, dmRoomId:roomId};
+                      emergency:false, blocked:false, status:'accepted', queuedMsgs:[], dmRoomId:roomId};
                     contacts.unshift(c);
                     renderSidebar();
                     if(currentUser && firebaseDb){
