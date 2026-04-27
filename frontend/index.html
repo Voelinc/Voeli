@@ -3075,6 +3075,24 @@ async function loadContactsFromFirebase(){
           }
         }
       });
+
+      // Listen for contacts being deleted on other devices
+      contactsRef.on('child_removed', (snap) => {
+        const deletedContactId = snap.key;
+        // Convert key to number since contact IDs are numbers
+        const id = parseInt(deletedContactId);
+        const wasDeleted = contacts.some(c => c.id === id);
+        if(wasDeleted){
+          contacts = contacts.filter(c => c.id !== id);
+          // If the deleted contact was active, close the chat
+          if(activeId === id){
+            activeId = null;
+            document.getElementById('activeChat').style.display = 'none';
+            document.getElementById('chatEmpty').style.display = 'flex';
+          }
+          renderSidebar();
+        }
+      });
     }
   } catch(e){
     console.error('Error loading contacts from Firebase:', e);
