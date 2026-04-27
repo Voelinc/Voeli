@@ -4954,21 +4954,39 @@ function filterProfileContent(q){
   const profileContent = document.getElementById('profileContent');
   if(!profileContent) return;
   const ql = q.toLowerCase();
-  const sections = profileContent.querySelectorAll('h3');
-  const cards = profileContent.querySelectorAll('[style*="background"]');
 
   if(!q.trim()){
-    sections.forEach(s => s.parentElement.style.display = '');
-    cards.forEach(c => c.style.display = '');
+    // Reset: show all sections, don't change toggles
+    profileContent.querySelectorAll('div').forEach(d => d.style.display = '');
     return;
   }
 
-  sections.forEach(s => {
-    const text = s.textContent.toLowerCase();
-    const parent = s.closest('div');
-    parent.style.display = text.includes(ql) ? '' : 'none';
-  });
+  // Check Learning Dashboard
+  const learnDash = profileContent.querySelector('h3')?.parentElement;
+  if(learnDash){
+    const learnText = learnDash.textContent.toLowerCase();
+    learnDash.style.display = learnText.includes(ql) ? '' : 'none';
+  }
 
+  // Check Grammar Check toggle label and expand if matches
+  const grammarSection = document.evaluate(
+    "//div[contains(., 'Grammar check')]", profileContent, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+  ).singleNodeValue;
+  if(grammarSection){
+    const grammarText = grammarSection.textContent.toLowerCase();
+    grammarSection.style.display = grammarText.includes(ql) ? '' : 'none';
+  }
+
+  // Check Communication Style toggle label and expand if matches
+  const styleSection = document.evaluate(
+    "//div[contains(., 'My communication style')]", profileContent, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+  ).singleNodeValue;
+  if(styleSection){
+    const styleText = styleSection.textContent.toLowerCase();
+    styleSection.style.display = styleText.includes(ql) ? '' : 'none';
+  }
+
+  // Check user profile card
   const profileCard = profileContent.querySelector('[style*="padding:20px"]');
   const name = document.getElementById('profileName')?.textContent.toLowerCase();
   const email = document.getElementById('profileEmail')?.textContent.toLowerCase();
