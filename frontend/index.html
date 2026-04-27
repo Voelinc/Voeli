@@ -5239,11 +5239,16 @@ async function hashEmailPair(email1, email2){
 }
 
 async function createOrJoinDMRoom(contactEmail){
-  if(!contactEmail || !currentUser || !firebaseDb) return null;
+  console.log(`[createOrJoinDMRoom] Called for email: ${contactEmail}`);
+  if(!contactEmail || !currentUser || !firebaseDb) {
+    console.log(`[createOrJoinDMRoom] Missing params: email=${!!contactEmail}, currentUser=${!!currentUser}, firebaseDb=${!!firebaseDb}`);
+    return null;
+  }
   try {
     const myEmail = currentUser.email.toLowerCase();
     const normalizedContactEmail = contactEmail.toLowerCase();
     const roomId = await hashEmailPair(myEmail, normalizedContactEmail);
+    console.log(`[createOrJoinDMRoom] Created/joined room: ${roomId}`);
     const roomRef = firebaseDb.ref(`dms/${roomId}`);
 
     // Use a transaction to atomically initialize the room and add participants
@@ -5368,17 +5373,25 @@ async function saveContact(){
       try { sendFriendRequest(email); } catch(e){ if(window.Sentry) Sentry.captureException(e); }
       // Create or join a DM room for two-phone messaging
       try {
+        console.log(`[saveContact] Creating DM room for ${email}`);
         const dmRoomId = await createOrJoinDMRoom(email);
+        console.log(`[saveContact] createOrJoinDMRoom returned: ${dmRoomId}`);
         if(dmRoomId) {
           const savedContact = contacts.find(c => c.id === newId);
           if(savedContact) {
+            console.log(`[saveContact] Setting dmRoomId on contact and saving`);
             savedContact.dmRoomId = dmRoomId;
             await saveContactToFirebase(savedContact);
             // Set up listener to receive messages from this DM room
             setupDMListener(dmRoomId);
           }
+        } else {
+          console.log(`[saveContact] WARNING: createOrJoinDMRoom returned null!`);
         }
-      } catch(e){ if(window.Sentry) Sentry.captureException(e); }
+      } catch(e){
+        console.error(`[saveContact] Error creating DM room:`, e);
+        if(window.Sentry) Sentry.captureException(e);
+      }
       const isVI = appDir === 'vi-en';
       _showToast(isVI ? 'Đang tạo liên hệ mới' : 'Creating a new contact');
     }
