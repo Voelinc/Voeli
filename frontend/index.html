@@ -3243,9 +3243,6 @@ async function initDMRoomListener(){
       for(const roomId of Object.keys(invitedRooms)){
         processedInvites.add(roomId); // Mark as processed from initial load
         console.log('initDMRoomListener: Processing invited room:', roomId);
-    } else {
-      console.log('initDMRoomListener: No invites found at path');
-    }
         try {
           // Add current user as participant to this room
           await firebaseDb.ref(`dms/${roomId}/participants/${currentUser.uid}`).set(true);
@@ -3305,6 +3302,8 @@ async function initDMRoomListener(){
           if(window.Sentry) Sentry.captureException(e);
         }
       }
+    } else {
+      console.log('initDMRoomListener: No invites found at path');
     }
 
     // Set up real-time listener for NEW invites arriving after app load
