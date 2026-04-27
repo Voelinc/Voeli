@@ -6005,7 +6005,6 @@ function renderMsgs(){
     area.innerHTML=`<div class="nomsg" id="nomsg">${isVI?'Chưa có tin nhắn — bắt đầu bên dưới':'No messages yet — start below'}</div>`;
     return;
   }
-  const isVI=appDir==='vi-en';
   const todayLbl=isVI?'Hôm nay':'Today';
   // Detect bridge moment once for this render pass
   const bridgeResult = detectBridgeMoment(c.msgs);
