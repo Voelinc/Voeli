@@ -2971,10 +2971,12 @@ function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,
 // ═══════════════════════════════════════════════════════
 let demoMode = false;
 
-function launchApp(){
+async function launchApp(){
   document.getElementById('liveSetupScreen').style.display='none';
   document.getElementById('app').style.display='flex';
   initRelGrid(); initDirPick(); updPlaceholder();
+  // Load contacts from Firebase first
+  await loadContactsFromFirebase();
   renderSidebar(); // Pre-populate sidebar for when Contacts tab is clicked
   switchTab('messages'); // Show Messages tab with chat list by default
   initFriendRequests();
@@ -2991,6 +2993,24 @@ function syncProfileToggles(){
   const styleToggle = document.getElementById('styleToggleProfile');
   if(grammarToggle) grammarToggle.checked = isGrammarCheckOn();
   if(styleToggle) styleToggle.checked = localStorage.getItem('style_insights_on') === 'true';
+}
+
+async function loadContactsFromFirebase(){
+  if(!currentUser || !firebaseDb) return;
+  try {
+    const snap = await firebaseDb.ref(`users/${currentUser.uid}/contacts`).once('value');
+    if(snap.exists()){
+      const contactsData = snap.val();
+      contacts = Object.values(contactsData);
+      // Update nxtId to be higher than any existing contact id
+      const maxId = Math.max(...contacts.map(c => c.id || 0), 0);
+      nxtId = maxId + 1;
+      renderSidebar();
+    }
+  } catch(e){
+    console.error('Error loading contacts from Firebase:', e);
+    if(window.Sentry) Sentry.captureException(e);
+  }
 }
 
 async function initDMRoomListener(){
@@ -4789,6 +4809,16 @@ async function createOrJoinDMRoom(contactEmail){
 
 function closeModal(){ document.getElementById('modalBg').style.display='none'; }
 
+async function saveContactToFirebase(contact){
+  if(!currentUser || !firebaseDb) return;
+  try {
+    await firebaseDb.ref(`users/${currentUser.uid}/contacts/${contact.id}`).set(contact);
+  } catch(e){
+    console.error('Error saving contact to Firebase:', e);
+    if(window.Sentry) Sentry.captureException(e);
+  }
+}
+
 async function saveContact(){
   if(!selRelType){ alert('Please select a relationship type.'); return; }
   const name=document.getElementById('mcName').value.trim();
@@ -4800,15 +4830,18 @@ async function saveContact(){
     const c=contacts.find(x=>x.id===editingId);
     if(c){ c.name=name; c.phone=phone; c.email=email; c.type=selRelType; c.direction=dir; }
     if(activeId===editingId) refreshHeader();
+    if(c) await saveContactToFirebase(c);
     closeModal(); renderSidebar();
   } else {
     const newId = nxtId++;
-    contacts.unshift({id:newId,name,phone,email,type:selRelType,direction:dir,msgs:[],
-      favourite:false,emergency:false,blocked:false});
+    const newContact = {id:newId,name,phone,email,type:selRelType,direction:dir,msgs:[],
+      favourite:false,emergency:false,blocked:false};
+    contacts.unshift(newContact);
     // Close the modal and refresh the list FIRST so the user always sees the
     // new contact land, even if openChat or sendFriendRequest throws below.
     closeModal(); renderSidebar();
     activeId = newId; // Explicitly set activeId before switching tabs
+    await saveContactToFirebase(newContact);
     try {
       switchTab('messages');
       openChat(newId);
@@ -4821,8 +4854,11 @@ async function saveContact(){
       try {
         const dmRoomId = await createOrJoinDMRoom(email);
         if(dmRoomId) {
-          const newContact = contacts.find(c => c.id === newId);
-          if(newContact) newContact.dmRoomId = dmRoomId;
+          const savedContact = contacts.find(c => c.id === newId);
+          if(savedContact) {
+            savedContact.dmRoomId = dmRoomId;
+            await saveContactToFirebase(savedContact);
+          }
         }
       } catch(e){ if(window.Sentry) Sentry.captureException(e); }
       const isVI = appDir === 'vi-en';
@@ -4830,7 +4866,7 @@ async function saveContact(){
     }
   }
 }
-function deleteContact(id){
+async function deleteContact(id){
   if(!confirm('Delete this contact and all messages?')) return;
   contacts=contacts.filter(c=>c.id!==id);
   closeModal();
@@ -4840,6 +4876,15 @@ function deleteContact(id){
     document.getElementById('chatEmpty').style.display='flex';
   }
   renderSidebar();
+  // Delete from Firebase
+  if(currentUser && firebaseDb){
+    try {
+      await firebaseDb.ref(`users/${currentUser.uid}/contacts/${id}`).remove();
+    } catch(e){
+      console.error('Error deleting contact from Firebase:', e);
+      if(window.Sentry) Sentry.captureException(e);
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════
