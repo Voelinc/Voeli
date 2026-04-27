@@ -5374,6 +5374,8 @@ async function saveContact(){
           if(savedContact) {
             savedContact.dmRoomId = dmRoomId;
             await saveContactToFirebase(savedContact);
+            // Set up listener to receive messages from this DM room
+            setupDMListener(dmRoomId);
           }
         }
       } catch(e){ if(window.Sentry) Sentry.captureException(e); }
@@ -8703,8 +8705,10 @@ function syncToFirebase(msg){
   // Check if this is a DM contact (has dmRoomId)
   const c = activeCont();
   if(c && c.dmRoomId){
+    console.log(`[syncToFirebase] Saving message to DM room: ${c.dmRoomId}, status: ${c.status}`);
     // If contact is pending acceptance, queue the message locally instead of sending
     if(c.status === 'pending_acceptance'){
+      console.log(`[syncToFirebase] Contact status is pending_acceptance, queueing message`);
       if(!c.queuedMsgs) c.queuedMsgs = [];
       c.queuedMsgs.push(msgData);
       msg.queued = true;
@@ -8713,9 +8717,11 @@ function syncToFirebase(msg){
     }
     // If offline, queue the message to send when back online
     if(!isOnline){
+      console.log(`[syncToFirebase] Offline, queueing message`);
       offlineMessageQueue.push({ contactId: c.id, msgData });
       return;
     }
+    console.log(`[syncToFirebase] Pushing message to Firebase at dms/${c.dmRoomId}/messages`);
     const msgRef = firebaseDb.ref(`dms/${c.dmRoomId}/messages`).push(msgData);
     // Update the local message with the Firebase-generated ID and mark as delivered
     if(msg && msg.id){
@@ -8746,6 +8752,8 @@ function syncToFirebase(msg){
         if(activeId) renderMsgs();
       }).catch(() => {});
     }
+  } else {
+    console.error(`[syncToFirebase] ERROR: Contact has no dmRoomId or roomCode! Cannot save message.`, c);
   }
 }
 
