@@ -103,6 +103,15 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
 /* LAYOUT */
 #app{display:none;height:100%;height:100dvh;}
 
+/* OFFLINE INDICATOR */
+body.is-offline{opacity:.7;}
+body.is-offline::before{
+  content:'Offline - messages will sync when you reconnect';
+  position:fixed;bottom:0;left:0;right:0;
+  background:#DC2626;color:#fff;padding:8px 12px;
+  text-align:center;font-size:12px;font-weight:600;
+  z-index:10000;pointer-events:none;}
+
 /* SIDEBAR */
 .sidebar{width:320px;min-width:320px;background:var(--panel);
   border-right:1px solid var(--line);display:flex;flex-direction:column;height:100%;position:relative;}
@@ -3370,6 +3379,42 @@ let currentUser = null;
 let activeTab = 'all'; // Sidebar tab filter: 'all' | 'unread' | 'favorites'
 let activeDMRoomId = null; // Track currently-listened DM to avoid duplicate listeners
 let currentDMListenerRef = null; // Reference to the current active DM message listener
+let isOnline = navigator.onLine; // Track online/offline state
+let offlineMessageQueue = []; // Queue for messages sent while offline
+
+// ═══════════════════════════════════════════════════════
+// OFFLINE HANDLING — detect and queue messages when offline
+
+window.addEventListener('online', () => {
+  isOnline = true;
+  document.body.classList.remove('is-offline');
+  _showToast('Connection restored');
+  // Flush any queued messages
+  flushOfflineMessageQueue();
+});
+
+window.addEventListener('offline', () => {
+  isOnline = false;
+  document.body.classList.add('is-offline');
+  _showToast('You are offline. Messages will be sent when you reconnect.');
+});
+
+async function flushOfflineMessageQueue(){
+  if(!isOnline || offlineMessageQueue.length === 0) return;
+  const queue = [...offlineMessageQueue];
+  offlineMessageQueue = [];
+  for(const queuedMsg of queue){
+    try {
+      const c = contacts.find(ct => ct.id === queuedMsg.contactId);
+      if(c && c.dmRoomId){
+        await firebaseDb.ref(`dms/${c.dmRoomId}/messages`).push(queuedMsg.msgData);
+      }
+    } catch(e){
+      console.error('Error flushing offline message:', e);
+      offlineMessageQueue.push(queuedMsg); // Re-queue on failure
+    }
+  }
+}
 
 // ═══════════════════════════════════════════════════════
 // SIGN-IN SCREEN — handlers for email/password, Google, demo
@@ -8313,6 +8358,11 @@ function syncToFirebase(msg){
       c.queuedMsgs.push(msgData);
       return;
     }
+    // If offline, queue the message to send when back online
+    if(!isOnline){
+      offlineMessageQueue.push({ contactId: c.id, msgData });
+      return;
+    }
     const msgRef = firebaseDb.ref(`dms/${c.dmRoomId}/messages`).push(msgData);
     // Update the local message with the Firebase-generated ID
     if(msg && msg.id){
@@ -8320,9 +8370,19 @@ function syncToFirebase(msg){
         const fbId = msgRef.key;
         msg.id = fbId;
         if(activeId === c.id) renderMsgs();
-      }).catch(() => {});
+      }).catch(() => {
+        // If send fails, queue for retry
+        if(!isOnline || offlineMessageQueue.findIndex(m => m.msgData.ts === msgData.ts) === -1){
+          offlineMessageQueue.push({ contactId: c.id, msgData });
+        }
+      });
     }
   } else if(roomCode){
+    // If offline, don't send (live sessions require real-time connection)
+    if(!isOnline){
+      _showToast('Cannot send to live session while offline');
+      return;
+    }
     const msgRef = firebaseDb.ref(`rooms/${roomCode}/messages`).push(msgData);
     // Update the local message with the Firebase-generated ID
     if(msg && msg.id){
