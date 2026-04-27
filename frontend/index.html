@@ -5087,11 +5087,24 @@ async function createOrJoinDMRoom(contactEmail){
     const roomId = await hashEmailPair(myEmail, normalizedContactEmail);
     const db = firebase.database();
     const roomRef = db.ref(`dms/${roomId}`);
-    // Add current user as a participant (by UID, per Firebase rules)
-    await roomRef.child('participants').child(currentUser.uid).set(true);
-    // Store both emails as metadata so either person can identify the other (lowercase for consistency)
-    await roomRef.child('emails').child(myEmail).set(true);
-    await roomRef.child('emails').child(normalizedContactEmail).set(true);
+
+    // Use a transaction to atomically initialize the room and add participants
+    // This prevents race conditions when two users create the room simultaneously
+    await roomRef.transaction(current => {
+      if(current === null) {
+        // Room doesn't exist, initialize it
+        return {
+          participants: { [currentUser.uid]: true },
+          emails: { [myEmail]: true, [normalizedContactEmail]: true }
+        };
+      } else {
+        // Room exists, just add current user as participant if not already there
+        if(!current.participants) current.participants = {};
+        current.participants[currentUser.uid] = true;
+        return current;
+      }
+    });
+
     // Write to /invites/{email}/{roomId} so they can discover this room (lowercase for consistency)
     await db.ref(`invites/${normalizedContactEmail}/${roomId}`).set(true);
     return roomId;
@@ -5472,19 +5485,26 @@ async function acceptFriendRequest(id, fromEmail, fromName){
   // Remove from pending array
   pendingFriendRequests = pendingFriendRequests.filter(r => r.id !== id);
 
-  // Add them as a contact automatically if not already there
-  const newContact = {
-    id: generateUniqueContactId(), name: fromName, phone:'', email: fromEmail,
-    type:'formal', direction:'en-vi', msgs:[],
-    favourite:false, emergency:false, blocked:false, status:'accepted', queuedMsgs:[]
-  };
+  // Check for existing contact (race-condition safe: re-check immediately before using)
   let acceptedContact = contacts.find(c=>c.email===fromEmail);
+
   if(!acceptedContact){
-    contacts.unshift(newContact);
-    acceptedContact = newContact;
-    renderSidebar();
+    // Create a new contact only if still not found
+    acceptedContact = {
+      id: generateUniqueContactId(), name: fromName, phone:'', email: fromEmail,
+      type:'formal', direction:'en-vi', msgs:[],
+      favourite:false, emergency:false, blocked:false, status:'accepted', queuedMsgs:[]
+    };
+    // Re-check one more time before adding to local array (in case another tab just added it)
+    if(!contacts.find(c=>c.email===fromEmail)){
+      contacts.unshift(acceptedContact);
+      renderSidebar();
+    } else {
+      // Another instance already added it, use the existing one
+      acceptedContact = contacts.find(c=>c.email===fromEmail);
+    }
   } else {
-    // Mark existing contact as accepted and flush queued messages
+    // Mark existing contact as accepted
     acceptedContact.status = 'accepted';
     renderSidebar();
   }
