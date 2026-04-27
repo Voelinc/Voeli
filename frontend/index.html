@@ -5799,6 +5799,10 @@ async function setupSentRequestListener(toEmail, requestId){
         // Mark contact as accepted since the request was deleted
         contact.status = 'accepted';
         renderSidebar();
+        // If this contact is currently active, update the messages view to remove the pending banner
+        if(activeId === contact.id){
+          renderMsgs();
+        }
         // Persist the status update to Firebase so it survives page refreshes
         if(currentUser && firebaseDb){
           try {
