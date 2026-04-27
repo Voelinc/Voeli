@@ -1374,6 +1374,9 @@ body.is-offline::before{
         </div>
       </div>
     </div>
+    <div style="padding:12px 16px;border-bottom:1px solid var(--line);background:var(--bg);">
+      <input type="text" id="profileSearch" placeholder="Search..." style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;outline:none;font-family:inherit;background:var(--panel);" oninput="filterProfileContent(this.value)">
+    </div>
     <div id="profileContent" style="padding:24px;flex:1;overflow-y:auto;">
       <!-- User Profile Card -->
       <div style="background:var(--panel);border-radius:16px;padding:20px;text-align:center;margin-bottom:32px;border:1px solid var(--line);">
@@ -4945,6 +4948,33 @@ function filterContacts(q){
       || (r.label||'').toLowerCase().includes(ql)
       || (r.labelVI||'').toLowerCase().includes(ql);
   }));
+}
+
+function filterProfileContent(q){
+  const profileContent = document.getElementById('profileContent');
+  if(!profileContent) return;
+  const ql = q.toLowerCase();
+  const sections = profileContent.querySelectorAll('h3');
+  const cards = profileContent.querySelectorAll('[style*="background"]');
+
+  if(!q.trim()){
+    sections.forEach(s => s.parentElement.style.display = '');
+    cards.forEach(c => c.style.display = '');
+    return;
+  }
+
+  sections.forEach(s => {
+    const text = s.textContent.toLowerCase();
+    const parent = s.closest('div');
+    parent.style.display = text.includes(ql) ? '' : 'none';
+  });
+
+  const profileCard = profileContent.querySelector('[style*="padding:20px"]');
+  const name = document.getElementById('profileName')?.textContent.toLowerCase();
+  const email = document.getElementById('profileEmail')?.textContent.toLowerCase();
+  if(profileCard){
+    profileCard.style.display = (name?.includes(ql) || email?.includes(ql)) ? '' : 'none';
+  }
 }
 
 // Fix 3: Dictionary/Learning Dashboard (game-like, only show learned phrases)
