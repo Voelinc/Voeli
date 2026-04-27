@@ -5280,7 +5280,6 @@ async function saveContact(){
   if(!email){ alert('Please enter an email address.'); return; }
   if(!isValidEmail(email)){ alert('Please enter a valid email address.'); return; }
   if(email === (currentUser?.email||'').toLowerCase()){ alert('You cannot add yourself as a contact.'); return; }
-  if(!(await emailExists(email))){ alert('This email is not registered with Voeli.'); return; }
 
   // Rate limiting check: warn user if they've sent to this person recently
   const lastRequest = friendRequestTimestamps[email] || 0;
