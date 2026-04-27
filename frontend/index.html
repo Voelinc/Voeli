@@ -3103,7 +3103,9 @@ async function loadContactsFromFirebase(){
 
 let pendingFriendRequests = [];
 let friendRequestListenerActive = false;
+let sentFriendRequestListenerActive = false;
 let initiallyLoadedRequestIds = new Set(); // Track requests loaded in initial .once() to avoid duplicates with listener
+let sentFriendRequests = new Map(); // Track requests we've sent: email -> Set of request IDs
 
 async function loadFriendRequests(){
   if(!currentUser || !firebaseDb || !currentUser.email) return;
@@ -5439,11 +5441,44 @@ async function sendFriendRequest(toEmail){
   if(firebaseDb){
     try {
       await firebaseDb.ref(`friendRequests/${normalizedEmail}/${req.id}`).set(req);
+      // Track this sent request so we can listen for responses
+      if(!sentFriendRequests.has(normalizedEmail)){
+        sentFriendRequests.set(normalizedEmail, new Set());
+      }
+      sentFriendRequests.get(normalizedEmail).add(req.id);
+      // Set up listener for this sent request (to detect when it's accepted/denied)
+      setupSentRequestListener(normalizedEmail, req.id);
     } catch(e){
       console.error('Error saving friend request to Firebase:', e);
       if(window.Sentry) Sentry.captureException(e);
     }
   }
+}
+
+// ── Listen for responses to sent friend requests ────────
+function setupSentRequestListener(toEmail, requestId){
+  if(!firebaseDb) return;
+  const path = `friendRequests/${toEmail}/${requestId}`;
+  const ref = firebaseDb.ref(path);
+
+  // Listen for when the request is deleted (accepted or denied by recipient)
+  ref.on('value', (snap) => {
+    if(!snap.exists()){
+      // Request was deleted, meaning it was either accepted or denied
+      const contact = contacts.find(c => c.email === toEmail);
+      if(contact && contact.status === 'pending_acceptance'){
+        // If they accepted, the request should be removed and contact status updated
+        // Check if contact now has a dmRoomId (sign of acceptance)
+        // For now, just log that the request was handled
+        console.log(`Friend request to ${toEmail} was handled`);
+      }
+      // Clean up this listener
+      ref.off();
+    }
+  });
+
+  // Track this listener path for cleanup
+  activeListenerPaths.add(path);
 }
 
 // ── Render a notification card ─────────────────────────
