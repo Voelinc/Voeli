@@ -3267,12 +3267,11 @@ async function initDMRoomListener(){
             firebaseDb.ref(roomPath).on('value', async (snap)=>{
               if(snap.exists()){
                 const data = snap.val();
-                // Find the other person's email from room data
+                // Find the other person's email from room metadata
                 let contactEmail = null;
-                if(data.emails){
-                  const emailList = Object.keys(data.emails);
+                if(data.metadata && data.metadata.emails && Array.isArray(data.metadata.emails)){
                   // Get the email that's not the current user (compare lowercase)
-                  contactEmail = emailList.find(e => e !== currentUser.email.toLowerCase());
+                  contactEmail = data.metadata.emails.find(e => e.toLowerCase() !== currentUser.email.toLowerCase());
                 }
                 if(contactEmail){
                   // Check if contact already exists (by email)
@@ -3343,9 +3342,8 @@ async function initDMRoomListener(){
               if(roomSnap.exists()){
                 const data = roomSnap.val();
                 let contactEmail = null;
-                if(data.emails){
-                  const emailList = Object.keys(data.emails);
-                  contactEmail = emailList.find(e => e !== currentUser.email.toLowerCase());
+                if(data.metadata && data.metadata.emails && Array.isArray(data.metadata.emails)){
+                  contactEmail = data.metadata.emails.find(e => e.toLowerCase() !== currentUser.email.toLowerCase());
                 }
                 if(contactEmail){
                   let c = contacts.find(x => x.email === contactEmail);
@@ -5261,11 +5259,10 @@ async function createOrJoinDMRoom(contactEmail){
     // This prevents race conditions when two users create the room simultaneously
     await roomRef.transaction(current => {
       if(current === null) {
-        // Room doesn't exist, initialize it
-        // Use hashed emails as keys for Firebase safety (no dots in keys)
+        // Room doesn't exist, initialize it with only participants
+        // Emails are not stored in the room (they're discovered via the invites/{hashedEmail} path)
         return {
-          participants: { [currentUser.uid]: true },
-          emails: { [hashedMyEmail]: true, [hashedContactEmail]: true }
+          participants: { [currentUser.uid]: true }
         };
       } else {
         // Room exists, just add current user as participant if not already there
@@ -5277,6 +5274,12 @@ async function createOrJoinDMRoom(contactEmail){
 
     // Write to /invites/{hashedEmail}/{roomId} so they can discover this room (hashed for Firebase safety)
     await firebaseDb.ref(`invites/${hashedContactEmail}/${roomId}`).set(true);
+
+    // Store contact emails at a metadata path (not as object keys) so initDMRoomListener can find them
+    await firebaseDb.ref(`dms/${roomId}/metadata`).set({
+      emails: [myEmail, normalizedContactEmail]
+    }).catch(e => console.warn('[createOrJoinDMRoom] Warning: Could not store metadata:', e));
+
     console.log(`[createOrJoinDMRoom] Room created successfully: ${roomId}`);
     return roomId;
   } catch(e){
