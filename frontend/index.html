@@ -5289,18 +5289,37 @@ function _dismissFreqCard(id){
 }
 
 // ── Accept ─────────────────────────────────────────────
-function acceptFriendRequest(id, fromEmail, fromName){
+async function acceptFriendRequest(id, fromEmail, fromName){
   _removePendingRequest(id);
   _dismissFreqCard(id);
   // Add them as a contact automatically if not already there
+  const newContact = {
+    id: nxtId++, name: fromName, phone:'', email: fromEmail,
+    type:'formal', direction:'en-vi', msgs:[],
+    favourite:false, emergency:false, blocked:false
+  };
   if(!contacts.find(c=>c.email===fromEmail)){
-    contacts.unshift({
-      id: nxtId++, name: fromName, phone:'', email: fromEmail,
-      type:'formal', direction:'en-vi', msgs:[],
-      favourite:false, emergency:false, blocked:false
-    });
+    contacts.unshift(newContact);
     renderSidebar();
+    // Save to Firebase
+    if(currentUser && firebaseDb){
+      try {
+        await saveContactToFirebase(newContact);
+      } catch(e){
+        console.error('Error saving contact to Firebase:', e);
+      }
+    }
   }
+  // Remove friend request from Firebase
+  if(currentUser && firebaseDb){
+    try {
+      await firebaseDb.ref(`friendRequests/${currentUser.email.toLowerCase()}/${id}`).remove();
+    } catch(e){
+      console.error('Error removing friend request from Firebase:', e);
+    }
+  }
+  // Update badge
+  updateFriendRequestBadge();
   // Notify the other tab
   if(freqChannel){
     const me = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
@@ -5310,9 +5329,19 @@ function acceptFriendRequest(id, fromEmail, fromName){
 }
 
 // ── Deny ───────────────────────────────────────────────
-function denyFriendRequest(id){
+async function denyFriendRequest(id){
   _removePendingRequest(id);
   _dismissFreqCard(id);
+  // Remove friend request from Firebase
+  if(currentUser && firebaseDb){
+    try {
+      await firebaseDb.ref(`friendRequests/${currentUser.email.toLowerCase()}/${id}`).remove();
+    } catch(e){
+      console.error('Error removing friend request from Firebase:', e);
+    }
+  }
+  // Update badge
+  updateFriendRequestBadge();
 }
 
 // ── Bell: show all pending ─────────────────────────────
