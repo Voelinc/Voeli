@@ -3130,7 +3130,7 @@ async function initDMRoomListener(){
   try {
     const db = firebase.database();
     // Check for rooms we're invited to and auto-join them
-    const invitesSnap = await db.ref(`invites/${currentUser.email}`).once('value');
+    const invitesSnap = await db.ref(`invites/${currentUser.email.toLowerCase()}`).once('value');
     if(invitesSnap.exists()){
       const invitedRooms = invitesSnap.val() || {};
       for(const roomId of Object.keys(invitedRooms)){
@@ -3145,8 +3145,8 @@ async function initDMRoomListener(){
               let contactEmail = null;
               if(data.emails){
                 const emailList = Object.keys(data.emails);
-                // Get the email that's not the current user
-                contactEmail = emailList.find(e => e !== currentUser.email);
+                // Get the email that's not the current user (compare lowercase)
+                contactEmail = emailList.find(e => e !== currentUser.email.toLowerCase());
               }
               if(contactEmail){
                 // Check if contact already exists (by email)
@@ -4925,17 +4925,18 @@ async function hashEmailPair(email1, email2){
 async function createOrJoinDMRoom(contactEmail){
   if(!contactEmail || !currentUser) return null;
   try {
-    const myEmail = currentUser.email;
-    const roomId = await hashEmailPair(myEmail, contactEmail);
+    const myEmail = currentUser.email.toLowerCase();
+    const normalizedContactEmail = contactEmail.toLowerCase();
+    const roomId = await hashEmailPair(myEmail, normalizedContactEmail);
     const db = firebase.database();
     const roomRef = db.ref(`dms/${roomId}`);
     // Add current user as a participant (by UID, per Firebase rules)
     await roomRef.child('participants').child(currentUser.uid).set(true);
-    // Store both emails as metadata so either person can identify the other
+    // Store both emails as metadata so either person can identify the other (lowercase for consistency)
     await roomRef.child('emails').child(myEmail).set(true);
-    await roomRef.child('emails').child(contactEmail).set(true);
-    // Write to /invites/{contactEmail}/{roomId} so they can discover this room
-    await db.ref(`invites/${contactEmail}/${roomId}`).set(true);
+    await roomRef.child('emails').child(normalizedContactEmail).set(true);
+    // Write to /invites/{email}/{roomId} so they can discover this room (lowercase for consistency)
+    await db.ref(`invites/${normalizedContactEmail}/${roomId}`).set(true);
     return roomId;
   } catch(e){
     if(window.Sentry) Sentry.captureException(e);
