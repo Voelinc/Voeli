@@ -1,5 +1,25 @@
 {
   "rules": {
+    "users": {
+      "$uid": {
+        "contacts": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid",
+          "$contactId": {
+            ".validate": "newData.hasChildren(['id', 'name', 'email'])"
+          }
+        }
+      }
+    },
+    "friendRequests": {
+      "$email": {
+        ".read": "auth != null && auth.token.email === $email",
+        ".write": "auth != null",
+        "$requestId": {
+          ".validate": "newData.hasChildren(['type', 'from', 'to', 'ts'])"
+        }
+      }
+    },
     "rooms": {
       "$roomCode": {
         "messages": {
