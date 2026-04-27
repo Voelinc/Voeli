@@ -5118,9 +5118,9 @@ async function saveContact(){
     if(c) await saveContactToFirebase(c);
     closeModal(); renderSidebar();
   } else {
-    const newId = nxtId++;
+    const newId = generateUniqueContactId();
     const newContact = {id:newId,name,phone,email,type:selRelType,direction:dir,msgs:[],
-      favourite:false,emergency:false,blocked:false};
+      favourite:false,emergency:false,blocked:false,status:'pending_acceptance',queuedMsgs:[]};
     contacts.unshift(newContact);
     // Close the modal and refresh the list FIRST so the user always sees the
     // new contact land, even if openChat or sendFriendRequest throws below.
@@ -5514,20 +5514,36 @@ async function acceptFriendRequest(id, fromEmail, fromName){
   const newContact = {
     id: generateUniqueContactId(), name: fromName, phone:'', email: fromEmail,
     type:'formal', direction:'en-vi', msgs:[],
-    favourite:false, emergency:false, blocked:false
+    favourite:false, emergency:false, blocked:false, status:'accepted', queuedMsgs:[]
   };
-  if(!contacts.find(c=>c.email===fromEmail)){
+  let acceptedContact = contacts.find(c=>c.email===fromEmail);
+  if(!acceptedContact){
     contacts.unshift(newContact);
+    acceptedContact = newContact;
     renderSidebar();
-    // Save to Firebase
-    if(currentUser && firebaseDb){
-      try {
-        await saveContactToFirebase(newContact);
-      } catch(e){
-        console.error('Error saving contact to Firebase:', e);
+  } else {
+    // Mark existing contact as accepted and flush queued messages
+    acceptedContact.status = 'accepted';
+    renderSidebar();
+  }
+
+  // Save to Firebase
+  if(currentUser && firebaseDb){
+    try {
+      await saveContactToFirebase(acceptedContact);
+      // Flush queued messages to Firebase if any exist
+      if(acceptedContact.queuedMsgs && acceptedContact.queuedMsgs.length > 0 && acceptedContact.dmRoomId){
+        const queuedMsgs = acceptedContact.queuedMsgs;
+        acceptedContact.queuedMsgs = [];
+        for(const msgData of queuedMsgs){
+          await firebaseDb.ref(`dms/${acceptedContact.dmRoomId}/messages`).push(msgData);
+        }
       }
+    } catch(e){
+      console.error('Error saving accepted contact to Firebase:', e);
     }
   }
+
   // Remove friend request from Firebase
   if(currentUser && firebaseDb){
     try {
@@ -8267,6 +8283,12 @@ function syncToFirebase(msg){
   // Check if this is a DM contact (has dmRoomId)
   const c = activeCont();
   if(c && c.dmRoomId){
+    // If contact is pending acceptance, queue the message locally instead of sending
+    if(c.status === 'pending_acceptance'){
+      if(!c.queuedMsgs) c.queuedMsgs = [];
+      c.queuedMsgs.push(msgData);
+      return;
+    }
     firebaseDb.ref(`dms/${c.dmRoomId}/messages`).push(msgData);
   } else if(roomCode){
     firebaseDb.ref(`rooms/${roomCode}/messages`).push(msgData);
