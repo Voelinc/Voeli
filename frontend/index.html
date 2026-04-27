@@ -3135,6 +3135,8 @@ function showPendingRequests(){
 }
 
 let activeDMRoomListeners = new Set(); // Track which rooms we're already listening to
+let inviteListenerActive = false; // Track if real-time invite listener is set up
+let processedInvites = new Set(); // Track invites we've already processed to avoid duplicates
 
 async function initDMRoomListener(){
   if(!currentUser) return;
@@ -3145,6 +3147,7 @@ async function initDMRoomListener(){
     if(invitesSnap.exists()){
       const invitedRooms = invitesSnap.val() || {};
       for(const roomId of Object.keys(invitedRooms)){
+        processedInvites.add(roomId); // Mark as processed from initial load
         try {
           // Add current user as participant to this room
           await db.ref(`dms/${roomId}/participants/${currentUser.uid}`).set(true);
@@ -3202,6 +3205,69 @@ async function initDMRoomListener(){
           if(window.Sentry) Sentry.captureException(e);
         }
       }
+    }
+
+    // Set up real-time listener for NEW invites arriving after app load
+    if(!inviteListenerActive){
+      inviteListenerActive = true;
+      db.ref(`invites/${currentUser.email.toLowerCase()}`).on('child_added', async (snap) => {
+        const roomId = snap.key;
+        // Skip if we already processed this invite from the initial load
+        if(processedInvites.has(roomId)){
+          return;
+        }
+        processedInvites.add(roomId);
+
+        try {
+          // Add current user as participant to this new room
+          await db.ref(`dms/${roomId}/participants/${currentUser.uid}`).set(true);
+
+          // Set up real-time listener for this room
+          if(!activeDMRoomListeners.has(roomId)){
+            activeDMRoomListeners.add(roomId);
+            db.ref(`dms/${roomId}`).on('value', (roomSnap)=>{
+              if(roomSnap.exists()){
+                const data = roomSnap.val();
+                let contactEmail = null;
+                if(data.emails){
+                  const emailList = Object.keys(data.emails);
+                  contactEmail = emailList.find(e => e !== currentUser.email.toLowerCase());
+                }
+                if(contactEmail){
+                  let c = contacts.find(x => x.email === contactEmail);
+                  if(!c){
+                    // Auto-create contact for new room invite
+                    const newId = nxtId++;
+                    c = {id:newId, name:contactEmail.split('@')[0], phone:'', email:contactEmail,
+                      type:'formal', direction:'en-vi', msgs:[], favourite:false,
+                      emergency:false, blocked:false, dmRoomId:roomId};
+                    contacts.unshift(c);
+                    renderSidebar();
+                    if(currentUser && firebaseDb){
+                      try {
+                        await saveContactToFirebase(c);
+                      } catch(e){
+                        console.error('Error saving auto-created contact from new invite:', e);
+                      }
+                    }
+                  } else {
+                    c.dmRoomId = roomId;
+                    if(currentUser && firebaseDb){
+                      try {
+                        await saveContactToFirebase(c);
+                      } catch(e){
+                        console.error('Error updating contact with dmRoomId from new invite:', e);
+                      }
+                    }
+                  }
+                }
+              }
+            });
+          }
+        } catch(e){
+          if(window.Sentry) Sentry.captureException(e);
+        }
+      });
     }
   } catch(e){
     if(window.Sentry) Sentry.captureException(e);
@@ -3510,9 +3576,11 @@ fbAuth.onAuthStateChanged(async (user)=>{
     // Reset the listener flags so they will be set up again on next login
     friendRequestListenerActive = false;
     contactListenerActive = false;
+    inviteListenerActive = false;
     pendingFriendRequests = [];
     initiallyLoadedRequestIds.clear();
     activeDMRoomListeners.clear();
+    processedInvites.clear();
     contacts = [];
     return;
   }
