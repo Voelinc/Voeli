@@ -455,6 +455,7 @@ body.is-offline::before{
 
 /* ── Edited label ── */
 .b-edited{font-size:10px;opacity:.65;font-style:italic;margin-right:3px;}
+.b-queued{font-size:10px;opacity:.65;color:#FF9500;margin-right:3px;}
 
 /* ── Context menu (right-click / long-press) ── */
 .edit-ctx-menu{position:fixed;z-index:9999;background:var(--panel);border:1px solid var(--line);
@@ -5221,12 +5222,23 @@ async function saveContact(){
 
   const dir='en-vi';
   if(editingId){
+    // When editing, check if new email is already used by another contact
+    const existingContact = contacts.find(x => x.email === email && x.id !== editingId);
+    if(existingContact){
+      alert('You already have a contact with this email address.');
+      return;
+    }
     const c=contacts.find(x=>x.id===editingId);
     if(c){ c.name=name; c.phone=phone; c.email=email; c.type=selRelType; c.direction=dir; }
     if(activeId===editingId) refreshHeader();
     if(c) await saveContactToFirebase(c);
     closeModal(); renderSidebar();
   } else {
+    // Check if this email is already in contacts (prevent duplicates)
+    if(contacts.find(x => x.email === email)){
+      alert('You already have a contact with this email address.');
+      return;
+    }
     const newId = generateUniqueContactId();
     const newContact = {id:newId,name,phone,email,type:selRelType,direction:dir,msgs:[],
       favourite:false,emergency:false,blocked:false,status:'pending_acceptance',queuedMsgs:[]};
@@ -5284,6 +5296,40 @@ async function deleteContact(id){
 // ═══════════════════════════════════════════════════════
 // OPEN CHAT
 // ═══════════════════════════════════════════════════════
+async function loadHistoricalMessages(contact){
+  if(!firebaseDb || !contact || !contact.dmRoomId) return;
+  try {
+    const snap = await firebaseDb.ref(`dms/${contact.dmRoomId}/messages`).limitToLast(50).once('value');
+    if(snap.exists()){
+      const messages = snap.val();
+      if(messages){
+        const msgArray = [];
+        Object.entries(messages).forEach(([key, m]) => {
+          if(m){
+            const d = new Date(m.ts);
+            msgArray.push({
+              id: key,
+              text: m.text, translated: m.text, original: m.original||m.text,
+              emotion: m.emotion||'', isMe: m.senderId === currentUser.uid, mode: 'text',
+              direction: m.direction||'en-vi', ts: m.ts,
+              delivered: true,
+              time: d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+              day: d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'})
+            });
+          }
+        });
+        // Sort by timestamp
+        msgArray.sort((a,b) => a.ts - b.ts);
+        // Replace empty msgs array with historical messages
+        contact.msgs = msgArray;
+        if(activeId === contact.id) renderMsgs();
+      }
+    }
+  } catch(e){
+    console.error('Error loading historical messages:', e);
+  }
+}
+
 function setupDMListener(dmRoomId){
   if(!firebaseDb || !currentUser || !dmRoomId) return;
   // Skip if we're already listening to this room
@@ -5311,6 +5357,7 @@ function setupDMListener(dmRoomId){
       text: m.text, translated: m.text, original: m.original||m.text,
       emotion:'', isMe:false, mode:'text', direction: m.direction||'en-vi',
       ts: m.ts,
+      delivered: true,
       time: d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
       day: d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'})
     });
@@ -5331,13 +5378,15 @@ function openChat(id){
   // Hide any previous drift banner before checking for a new one
   dismissDriftBanner();
   renderMsgs(); renderSidebar();
-  // If this is a DM contact, set up Firebase listener for messages
+  // If this is a DM contact, load historical messages then set up real-time listener
   if(c.dmRoomId){
     // Ensure current user is in participants (handles case where chat was opened in another tab)
     if(currentUser && firebaseDb){
       firebaseDb.ref(`dms/${c.dmRoomId}/participants/${currentUser.uid}`).set(true).catch(e=>
         console.error('Error adding user to DM room participants:', e)
       );
+      // Load historical messages before setting up real-time listener
+      loadHistoricalMessages(c);
     }
     setupDMListener(c.dmRoomId);
   }
@@ -5532,8 +5581,11 @@ async function sendFriendRequest(toEmail){
       // Record timestamp for rate limiting
       friendRequestTimestamps[normalizedEmail] = Date.now();
       friendRequestHourlyCount++;
+      // Confirm to user that request was sent
+      _showToast(`Friend request sent to ${normalizedEmail}`);
     } catch(e){
       console.error('Error saving friend request to Firebase:', e);
+      _showToast('Failed to send friend request. Try again.');
       if(window.Sentry) Sentry.captureException(e);
     }
   }
@@ -5551,10 +5603,11 @@ function setupSentRequestListener(toEmail, requestId){
       // Request was deleted, meaning it was either accepted or denied
       const contact = contacts.find(c => c.email === toEmail);
       if(contact && contact.status === 'pending_acceptance'){
-        // If they accepted, the request should be removed and contact status updated
-        // Check if contact now has a dmRoomId (sign of acceptance)
-        // For now, just log that the request was handled
-        console.log(`Friend request to ${toEmail} was handled`);
+        // Mark contact as accepted since the request was deleted
+        contact.status = 'accepted';
+        renderSidebar();
+        _showToast(`${contact.name || toEmail} accepted your friend request!`);
+        console.log(`Friend request to ${toEmail} was accepted`);
       }
       // Clean up this listener
       ref.off();
@@ -5625,7 +5678,23 @@ async function acceptFriendRequest(id, fromEmail, fromName){
   } else {
     // Mark existing contact as accepted
     acceptedContact.status = 'accepted';
+    // Clear queued flag from all messages since they're about to be sent
+    if(acceptedContact.msgs){
+      acceptedContact.msgs.forEach(m => m.queued = false);
+    }
     renderSidebar();
+  }
+
+  // Create or join the DM room so queued messages can be flushed
+  if(!acceptedContact.dmRoomId && currentUser && firebaseDb){
+    try {
+      const dmRoomId = await createOrJoinDMRoom(fromEmail);
+      if(dmRoomId){
+        acceptedContact.dmRoomId = dmRoomId;
+      }
+    } catch(e){
+      console.error('Error creating DM room after accepting request:', e);
+    }
   }
 
   // Save to Firebase
@@ -5941,10 +6010,11 @@ function renderMsgs(){
   // Detect bridge moment once for this render pass
   const bridgeResult = detectBridgeMoment(c.msgs);
   const bridgeTriggerMsgId = bridgeResult ? bridgeResult.triggerMsgId : null;
-  // Read ticks: double checkmarks rendered as stacked SVGs (WhatsApp-style).
-  // In this demo we don't have real delivery state, so "me" messages show as
-  // "read" (blue double-check) right away.
-  const ticksSvg = `<span class="ticks read" aria-hidden="true">
+  // Read ticks: single checkmark for sent, double checkmarks for delivered (WhatsApp-style)
+  const singleTick = `<span class="ticks sent" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </span>`;
+  const doubleTicks = `<span class="ticks read" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-left:-9px;"><polyline points="20 6 9 17 4 12"/></svg>
     </span>`;
@@ -5993,7 +6063,9 @@ function renderMsgs(){
       : '';
     const timeStr = fmtTime(m.ts);
     const editedLabel = m.edited ? `<span class="b-edited">${isVI?'đã sửa':'edited'}</span>` : '';
-    const metaRow = `<div class="b-meta">${editedLabel}${esc(timeStr)}${altBtn}${m.isMe?ticksSvg:''}</div>`;
+    const queuedLabel = m.queued ? `<span class="b-queued">${isVI?'chờ xử lý':'pending'}</span>` : '';
+    const ticksDisplay = m.isMe ? (m.delivered ? doubleTicks : singleTick) : '';
+    const metaRow = `<div class="b-meta">${editedLabel}${queuedLabel}${esc(timeStr)}${altBtn}${ticksDisplay}</div>`;
     // "sent as playful · Change" chip — sender-only
     const changeChip = (m.isMe && m.autoSent && m.id)
       ? `<button class="auto-change-chip" data-msgid="${esc(m.id)}">${isVI ? `Đã gửi dạng ${esc(m.emotion||'trung lập')} · Đổi` : `sent as ${esc(m.emotion||'neutral')} · Change`}</button>`
@@ -6746,6 +6818,7 @@ function looksEmotional(text){
 function sendAsIs(text){
   const c = activeCont();
   if(!c) return;
+  if(c.blocked){ alert('You have blocked this contact. Unblock them to message.'); return; }
   const now = new Date();
   const reply = _replyState ? { id: _replyState.id, text: _replyState.text } : null;
   cancelReply();
@@ -6754,6 +6827,7 @@ function sendAsIs(text){
     text, translated: text, original: text,
     emotion: '', isMe: true, mode: 'text', direction: appDir,
     ts: now.getTime(), translating: false,
+    delivered: false,
     replyTo: reply
   };
   c.msgs.push(msg);
@@ -6767,6 +6841,7 @@ function sendAsIs(text){
 async function sendOptimistic(text, direction){
   const c = activeCont();
   if(!c) return;
+  if(c.blocked){ alert('You have blocked this contact. Unblock them to message.'); return; }
   const now = new Date();
   const isMe = direction==='en-vi' ? (appDir==='en-vi') : (appDir==='vi-en');
   const reply = _replyState ? { id: _replyState.id, text: _replyState.text } : null;
@@ -6777,6 +6852,7 @@ async function sendOptimistic(text, direction){
     emotion: '', isMe, mode: 'text', direction,
     ts: now.getTime(),
     translating: true,
+    delivered: false,
     replyTo: reply
   };
   c.msgs.push(msg);
@@ -6809,6 +6885,7 @@ async function sendOptimistic(text, direction){
 async function sendWithLearnedTone(text, direction, learnedTone){
   const c = activeCont();
   if(!c) return;
+  if(c.blocked){ alert('You have blocked this contact. Unblock them to message.'); return; }
   const now = new Date();
   const isMe = direction==='en-vi' ? (appDir==='en-vi') : (appDir==='vi-en');
   const reply = _replyState ? { id: _replyState.id, text: _replyState.text } : null;
@@ -6819,6 +6896,7 @@ async function sendWithLearnedTone(text, direction, learnedTone){
     emotion: learnedTone, isMe, mode: 'text', direction,
     ts: now.getTime(),
     translating: true,
+    delivered: false,
     replyTo: reply
   };
   c.msgs.push(msg);
@@ -8383,6 +8461,8 @@ function syncToFirebase(msg){
     if(c.status === 'pending_acceptance'){
       if(!c.queuedMsgs) c.queuedMsgs = [];
       c.queuedMsgs.push(msgData);
+      msg.queued = true;
+      renderMsgs();
       return;
     }
     // If offline, queue the message to send when back online
@@ -8391,11 +8471,12 @@ function syncToFirebase(msg){
       return;
     }
     const msgRef = firebaseDb.ref(`dms/${c.dmRoomId}/messages`).push(msgData);
-    // Update the local message with the Firebase-generated ID
+    // Update the local message with the Firebase-generated ID and mark as delivered
     if(msg && msg.id){
       msgRef.then(() => {
         const fbId = msgRef.key;
         msg.id = fbId;
+        msg.delivered = true;
         if(activeId === c.id) renderMsgs();
       }).catch(() => {
         // If send fails, queue for retry
