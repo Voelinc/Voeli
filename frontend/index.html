@@ -1158,7 +1158,7 @@ body.is-offline::before{
     <aside class="sidebar" style="display:none;">
     <div class="sb-top">
       <div class="sb-top-row">
-        <h2 id="sbTitle">Chats</h2>
+        <h2 id="sbTitle" style="display:none;">Chats</h2>
         <div style="display:flex;align-items:center;gap:8px;">
           <button class="req-bell" id="reqBellBtn" onclick="showPendingRequests()" aria-label="Notifications" title="Notifications">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -1424,7 +1424,7 @@ body.is-offline::before{
 
   <!-- BOTTOM NAVIGATION -->
   <div id="bottomNav" style="display:flex;background:var(--panel);height:calc(60px + env(safe-area-inset-bottom));width:100%;align-items:center;justify-content:space-around;box-sizing:border-box;">
-    <button id="navContacts" class="nav-btn" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0.6;transition:all 0.2s;padding:0;" onclick="switchTab('contacts')">
+    <button id="navContacts" class="nav-btn" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:0.6;transition:all 0.2s;padding:8px 0;font-size:11px;" onclick="switchTab('contacts')">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="11"/>
         <circle cx="7.5" cy="9" r="2"/>
@@ -1432,18 +1432,21 @@ body.is-offline::before{
         <circle cx="16.5" cy="9" r="2"/>
         <path d="M5 18c1-2 2.5-3 7-3s6 1 7 3"/>
       </svg>
+      <span>Contacts</span>
     </button>
-    <button id="navMessages" class="nav-btn active" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:1;transition:all 0.2s;padding:0;color:var(--blue);" onclick="switchTab('messages')">
+    <button id="navMessages" class="nav-btn active" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:1;transition:all 0.2s;padding:8px 0;font-size:11px;color:var(--blue);" onclick="switchTab('messages')">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
+      <span>Messages</span>
     </button>
-    <button id="navProfile" class="nav-btn" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0.6;transition:all 0.2s;padding:0;" onclick="switchTab('profile')">
+    <button id="navProfile" class="nav-btn" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:0.6;transition:all 0.2s;padding:8px 0;font-size:11px;" onclick="switchTab('profile')">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="11"/>
         <circle cx="12" cy="8" r="2.5"/>
         <path d="M4 18c1.5-2 3-3 8-3s6.5 1 8 3"/>
       </svg>
+      <span>Profile</span>
     </button>
   </div>
 </div>
