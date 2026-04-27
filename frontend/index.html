@@ -3133,8 +3133,9 @@ async function loadFriendRequests(){
   if(!currentUser || !firebaseDb || !currentUser.email) return;
   console.log('loadFriendRequests: Setting up for user', currentUser.email);
   try {
-    // First load existing requests
-    const snap = await firebaseDb.ref(`friendRequests/${currentUser.email.toLowerCase()}`).once('value');
+    // First load existing requests (use encoded email for path)
+    const encodedEmail = encodeEmailForPath(currentUser.email);
+    const snap = await firebaseDb.ref(`friendRequests/${encodedEmail}`).once('value');
     pendingFriendRequests = [];
     initiallyLoadedRequestIds.clear();
     if(snap.exists()){
@@ -3154,7 +3155,7 @@ async function loadFriendRequests(){
     // Only set up the real-time listener ONCE to avoid duplicates
     if(!friendRequestListenerActive){
       friendRequestListenerActive = true;
-      const friendRequestPath = `friendRequests/${currentUser.email.toLowerCase()}`;
+      const friendRequestPath = `friendRequests/${encodedEmail}`;
       console.log('Setting up friend request listener at:', friendRequestPath);
       activeListenerPaths.add(friendRequestPath);
       // Now set up real-time listener for NEW incoming requests
@@ -5385,20 +5386,20 @@ async function deleteContact(id){
       if(isPending && contact.email){
         console.log('Cancelling friend request to', contact.email);
         // Find and delete any pending friend requests we sent to this person
-        await firebaseDb.ref(`friendRequests/${contact.email.toLowerCase()}`).once('value', (snap)=>{
-          if(snap.exists()){
-            const requests = snap.val();
-            const meEmail = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
-            for(const reqId in requests){
-              const req = requests[reqId];
-              if(req && req.from === meEmail){
-                // Delete the request we sent
-                firebaseDb.ref(`friendRequests/${contact.email.toLowerCase()}/${reqId}`).remove()
-                  .catch(e => console.error('Error deleting friend request:', e));
-              }
+        const encodedEmail = encodeEmailForPath(contact.email);
+        const snap = await firebaseDb.ref(`friendRequests/${encodedEmail}`).once('value');
+        if(snap.exists()){
+          const requests = snap.val();
+          const meEmail = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
+          for(const reqId in requests){
+            const req = requests[reqId];
+            if(req && req.from === meEmail){
+              // Delete the request we sent
+              await firebaseDb.ref(`friendRequests/${encodedEmail}/${reqId}`).remove()
+                .catch(e => console.error('Error deleting friend request:', e));
             }
           }
-        });
+        }
       }
     } catch(e){
       console.error('Error deleting contact from Firebase:', e);
@@ -5657,6 +5658,11 @@ function mobileBack(){
 // ═══════════════════════════════════════════════════════
 
 // ── Send a request ─────────────────────────────────────
+// Encode email for use as Firebase path segment (Firebase doesn't allow dots, etc.)
+function encodeEmailForPath(email) {
+  return email.toLowerCase().replace(/[.@]/g, '_');
+}
+
 async function sendFriendRequest(toEmail){
   const me = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
   if(!me || !toEmail) return;
@@ -5685,7 +5691,8 @@ async function sendFriendRequest(toEmail){
   if(firebaseDb){
     try {
       console.log('Sending friend request to', normalizedEmail, 'from', me);
-      await firebaseDb.ref(`friendRequests/${normalizedEmail}/${req.id}`).set(req);
+      const encodedEmail = encodeEmailForPath(normalizedEmail);
+      await firebaseDb.ref(`friendRequests/${encodedEmail}/${req.id}`).set(req);
       console.log('Friend request saved successfully');
       // Track this sent request so we can listen for responses
       if(!sentFriendRequests.has(normalizedEmail)){
@@ -5712,7 +5719,8 @@ async function sendFriendRequest(toEmail){
 // ── Listen for responses to sent friend requests ────────
 function setupSentRequestListener(toEmail, requestId){
   if(!firebaseDb) return;
-  const path = `friendRequests/${toEmail}/${requestId}`;
+  const encodedEmail = encodeEmailForPath(toEmail);
+  const path = `friendRequests/${encodedEmail}/${requestId}`;
   const ref = firebaseDb.ref(path);
 
   // Listen for when the request is deleted (accepted or denied by recipient)
@@ -5839,7 +5847,8 @@ async function acceptFriendRequest(id, fromEmail, fromName){
   // Remove friend request from Firebase
   if(currentUser && firebaseDb){
     try {
-      await firebaseDb.ref(`friendRequests/${currentUser.email.toLowerCase()}/${id}`).remove();
+      const encodedEmail = encodeEmailForPath(currentUser.email);
+      await firebaseDb.ref(`friendRequests/${encodedEmail}/${id}`).remove();
     } catch(e){
       console.error('Error removing friend request from Firebase:', e);
     }
@@ -5857,7 +5866,8 @@ async function denyFriendRequest(id){
   // Remove friend request from Firebase
   if(currentUser && firebaseDb){
     try {
-      await firebaseDb.ref(`friendRequests/${currentUser.email.toLowerCase()}/${id}`).remove();
+      const encodedEmail = encodeEmailForPath(currentUser.email);
+      await firebaseDb.ref(`friendRequests/${encodedEmail}/${id}`).remove();
     } catch(e){
       console.error('Error removing friend request from Firebase:', e);
     }
