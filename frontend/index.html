@@ -5358,7 +5358,14 @@ async function saveContact(){
   }
 }
 async function deleteContact(id){
-  if(!confirm('Delete this contact and all messages?')) return;
+  const contact = contacts.find(c=>c.id===id);
+  const isPending = contact && contact.status === 'pending_acceptance';
+  const confirmMsg = isPending
+    ? (appDir === 'vi-en' ? 'Hủy yêu cầu kết bạn?' : 'Cancel friend request?')
+    : (appDir === 'vi-en' ? 'Xóa liên hệ và tất cả tin nhắn?' : 'Delete this contact and all messages?');
+
+  if(!confirm(confirmMsg)) return;
+
   contacts=contacts.filter(c=>c.id!==id);
   closeModal();
   if(activeId===id){
@@ -5367,10 +5374,32 @@ async function deleteContact(id){
     document.getElementById('chatEmpty').style.display='flex';
   }
   renderSidebar();
+
   // Delete from Firebase
-  if(currentUser && firebaseDb){
+  if(currentUser && firebaseDb && contact){
     try {
+      // Always delete the contact itself
       await firebaseDb.ref(`users/${currentUser.uid}/contacts/${id}`).remove();
+
+      // If this was a pending request we sent, also cancel the friend request
+      if(isPending && contact.email){
+        console.log('Cancelling friend request to', contact.email);
+        // Find and delete any pending friend requests we sent to this person
+        await firebaseDb.ref(`friendRequests/${contact.email.toLowerCase()}`).once('value', (snap)=>{
+          if(snap.exists()){
+            const requests = snap.val();
+            const meEmail = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
+            for(const reqId in requests){
+              const req = requests[reqId];
+              if(req && req.from === meEmail){
+                // Delete the request we sent
+                firebaseDb.ref(`friendRequests/${contact.email.toLowerCase()}/${reqId}`).remove()
+                  .catch(e => console.error('Error deleting friend request:', e));
+              }
+            }
+          }
+        });
+      }
     } catch(e){
       console.error('Error deleting contact from Firebase:', e);
       if(window.Sentry) Sentry.captureException(e);
