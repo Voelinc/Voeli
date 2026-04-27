@@ -3381,6 +3381,11 @@ let activeDMRoomId = null; // Track currently-listened DM to avoid duplicate lis
 let currentDMListenerRef = null; // Reference to the current active DM message listener
 let isOnline = navigator.onLine; // Track online/offline state
 let offlineMessageQueue = []; // Queue for messages sent while offline
+let friendRequestTimestamps = {}; // Track when friend requests were sent: email -> timestamp
+const FRIEND_REQUEST_COOLDOWN = 60 * 60 * 1000; // 1 hour in milliseconds
+const MAX_REQUESTS_PER_HOUR = 5;
+let friendRequestHourlyCount = 0;
+let friendRequestHourStart = Date.now();
 
 // ═══════════════════════════════════════════════════════
 // OFFLINE HANDLING — detect and queue messages when offline
@@ -5204,6 +5209,16 @@ async function saveContact(){
   if(!isValidEmail(email)){ alert('Please enter a valid email address.'); return; }
   if(email === (currentUser?.email||'').toLowerCase()){ alert('You cannot add yourself as a contact.'); return; }
   if(!(await emailExists(email))){ alert('This email is not registered with Voeli.'); return; }
+
+  // Rate limiting check: warn user if they've sent to this person recently
+  const lastRequest = friendRequestTimestamps[email] || 0;
+  const timeSinceLastRequest = Date.now() - lastRequest;
+  if(timeSinceLastRequest < FRIEND_REQUEST_COOLDOWN){
+    const minutesLeft = Math.ceil((FRIEND_REQUEST_COOLDOWN - timeSinceLastRequest) / 60000);
+    alert(`You can send another request to this person in ${minutesLeft} minute${minutesLeft>1?'s':''}.`);
+    return;
+  }
+
   const dir='en-vi';
   if(editingId){
     const c=contacts.find(x=>x.id===editingId);
@@ -5486,6 +5501,15 @@ async function sendFriendRequest(toEmail){
   if(!isValidEmail(normalizedEmail)) return;
   if(normalizedEmail === me) return;
   if(!(await emailExists(normalizedEmail))) return;
+
+  // Rate limiting: check cooldown per recipient
+  const lastRequest = friendRequestTimestamps[normalizedEmail] || 0;
+  const timeSinceLastRequest = Date.now() - lastRequest;
+  if(timeSinceLastRequest < FRIEND_REQUEST_COOLDOWN){
+    const minutesLeft = Math.ceil((FRIEND_REQUEST_COOLDOWN - timeSinceLastRequest) / 60000);
+    _showToast(`Wait ${minutesLeft}m before sending another request to this person`);
+    return;
+  }
   const req = {
     id:       Date.now() + '_' + Math.random().toString(36).slice(2,6),
     type:     'friend_request',
@@ -5505,6 +5529,9 @@ async function sendFriendRequest(toEmail){
       sentFriendRequests.get(normalizedEmail).add(req.id);
       // Set up listener for this sent request (to detect when it's accepted/denied)
       setupSentRequestListener(normalizedEmail, req.id);
+      // Record timestamp for rate limiting
+      friendRequestTimestamps[normalizedEmail] = Date.now();
+      friendRequestHourlyCount++;
     } catch(e){
       console.error('Error saving friend request to Firebase:', e);
       if(window.Sentry) Sentry.captureException(e);
