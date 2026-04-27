@@ -3001,6 +3001,17 @@ function syncProfileToggles(){
   if(styleToggle) styleToggle.checked = localStorage.getItem('style_insights_on') === 'true';
 }
 
+// Generate a truly unique contact ID using timestamp + random
+// This prevents collisions when multiple devices create contacts simultaneously
+function generateUniqueContactId(){
+  if(!currentUser) return Date.now(); // Fallback if no user
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).slice(2, 6);
+  const uid = currentUser.uid.substring(0, 4); // First 4 chars of UID for extra uniqueness
+  // Return as integer: timestamp + random suffix as fractional part
+  return parseInt(`${timestamp}${random.padEnd(4, '0')}`);
+}
+
 let contactListenerActive = false;
 
 async function loadContactsFromFirebase(){
@@ -3171,7 +3182,7 @@ async function initDMRoomListener(){
                   let c = contacts.find(x => x.email === contactEmail);
                   if(!c){
                     // Auto-create contact if they added you
-                    const newId = nxtId++;
+                    const newId = generateUniqueContactId();
                     c = {id:newId, name:contactEmail.split('@')[0], phone:'', email:contactEmail,
                       type:'formal', direction:'en-vi', msgs:[], favourite:false,
                       emergency:false, blocked:false, dmRoomId:roomId};
@@ -3237,7 +3248,7 @@ async function initDMRoomListener(){
                   let c = contacts.find(x => x.email === contactEmail);
                   if(!c){
                     // Auto-create contact for new room invite
-                    const newId = nxtId++;
+                    const newId = generateUniqueContactId();
                     c = {id:newId, name:contactEmail.split('@')[0], phone:'', email:contactEmail,
                       type:'formal', direction:'en-vi', msgs:[], favourite:false,
                       emergency:false, blocked:false, dmRoomId:roomId};
@@ -5450,7 +5461,7 @@ async function acceptFriendRequest(id, fromEmail, fromName){
   _dismissFreqCard(id);
   // Add them as a contact automatically if not already there
   const newContact = {
-    id: nxtId++, name: fromName, phone:'', email: fromEmail,
+    id: generateUniqueContactId(), name: fromName, phone:'', email: fromEmail,
     type:'formal', direction:'en-vi', msgs:[],
     favourite:false, emergency:false, blocked:false
   };
@@ -8123,7 +8134,7 @@ function ensureRoomContact(){
   let rc = contacts.find(c=>c._isRoom);
   if(!rc){
     const rel = typeof liveSelRel!=='undefined' ? liveSelRel : 'formal';
-    rc = { id:nxtId++, name:'Live Room', type:rel, direction:'en-vi',
+    rc = { id:generateUniqueContactId(), name:'Live Room', type:rel, direction:'en-vi',
            msgs:[], _isRoom:true, phone:'', favourite:false, emergency:false, blocked:false };
     contacts.unshift(rc);
   }
