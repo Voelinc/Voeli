@@ -3196,18 +3196,17 @@ let inviteListenerActive = false; // Track if real-time invite listener is set u
 let processedInvites = new Set(); // Track invites we've already processed to avoid duplicates
 
 async function initDMRoomListener(){
-  if(!currentUser) return;
+  if(!currentUser || !firebaseDb) return;
   try {
-    const db = firebase.database();
     // Check for rooms we're invited to and auto-join them
-    const invitesSnap = await db.ref(`invites/${currentUser.email.toLowerCase()}`).once('value');
+    const invitesSnap = await firebaseDb.ref(`invites/${currentUser.email.toLowerCase()}`).once('value');
     if(invitesSnap.exists()){
       const invitedRooms = invitesSnap.val() || {};
       for(const roomId of Object.keys(invitedRooms)){
         processedInvites.add(roomId); // Mark as processed from initial load
         try {
           // Add current user as participant to this room
-          await db.ref(`dms/${roomId}/participants/${currentUser.uid}`).set(true);
+          await firebaseDb.ref(`dms/${roomId}/participants/${currentUser.uid}`).set(true);
 
           // Set up real-time listener for this room (only if not already listening)
           if(!activeDMRoomListeners.has(roomId)){
@@ -3215,7 +3214,7 @@ async function initDMRoomListener(){
             const roomPath = `dms/${roomId}`;
             activeListenerPaths.add(roomPath);
             // Listen to this specific room for real-time changes
-            db.ref(roomPath).on('value', (snap)=>{
+            firebaseDb.ref(roomPath).on('value', (snap)=>{
               if(snap.exists()){
                 const data = snap.val();
                 // Find the other person's email from room data
@@ -3271,7 +3270,7 @@ async function initDMRoomListener(){
       inviteListenerActive = true;
       const invitePath = `invites/${currentUser.email.toLowerCase()}`;
       activeListenerPaths.add(invitePath);
-      db.ref(invitePath).on('child_added', async (snap) => {
+      firebaseDb.ref(invitePath).on('child_added', async (snap) => {
         const roomId = snap.key;
         // Skip if we already processed this invite from the initial load
         if(processedInvites.has(roomId)){
@@ -3281,14 +3280,14 @@ async function initDMRoomListener(){
 
         try {
           // Add current user as participant to this new room
-          await db.ref(`dms/${roomId}/participants/${currentUser.uid}`).set(true);
+          await firebaseDb.ref(`dms/${roomId}/participants/${currentUser.uid}`).set(true);
 
           // Set up real-time listener for this room
           if(!activeDMRoomListeners.has(roomId)){
             activeDMRoomListeners.add(roomId);
             const roomPath = `dms/${roomId}`;
             activeListenerPaths.add(roomPath);
-            db.ref(roomPath).on('value', (roomSnap)=>{
+            firebaseDb.ref(roomPath).on('value', (roomSnap)=>{
               if(roomSnap.exists()){
                 const data = roomSnap.val();
                 let contactEmail = null;
@@ -5082,13 +5081,12 @@ async function hashEmailPair(email1, email2){
 }
 
 async function createOrJoinDMRoom(contactEmail){
-  if(!contactEmail || !currentUser) return null;
+  if(!contactEmail || !currentUser || !firebaseDb) return null;
   try {
     const myEmail = currentUser.email.toLowerCase();
     const normalizedContactEmail = contactEmail.toLowerCase();
     const roomId = await hashEmailPair(myEmail, normalizedContactEmail);
-    const db = firebase.database();
-    const roomRef = db.ref(`dms/${roomId}`);
+    const roomRef = firebaseDb.ref(`dms/${roomId}`);
 
     // Use a transaction to atomically initialize the room and add participants
     // This prevents race conditions when two users create the room simultaneously
@@ -5108,7 +5106,7 @@ async function createOrJoinDMRoom(contactEmail){
     });
 
     // Write to /invites/{email}/{roomId} so they can discover this room (lowercase for consistency)
-    await db.ref(`invites/${normalizedContactEmail}/${roomId}`).set(true);
+    await firebaseDb.ref(`invites/${normalizedContactEmail}/${roomId}`).set(true);
     return roomId;
   } catch(e){
     if(window.Sentry) Sentry.captureException(e);
