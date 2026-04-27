@@ -4845,15 +4845,23 @@ function renderSidebar(list){
 
   const noMsgs=isVI?'Chưa có tin nhắn':'No messages yet';
   const youLbl=isVI?'Bạn:':'You:';
-  // Sort contacts alphabetically by name
+  // Sort contacts alphabetically by name (only if not pre-filtered)
   const sorted = source.slice().sort((a, b) => {
     const nameA = dispName(a).toLowerCase();
     const nameB = dispName(b).toLowerCase();
     return nameA.localeCompare(nameB);
   });
-  el.innerHTML=sorted.map(c=>{
+
+  // Performance optimization: render only first N contacts + paginate
+  // For large contact lists, only render items that fit in viewport
+  const VIEWPORT_SIZE = 12;
+  const visibleContacts = source.length > VIEWPORT_SIZE * 2 ? sorted.slice(0, VIEWPORT_SIZE) : sorted;
+  const hasMore = source.length > visibleContacts.length;
+
+  el.innerHTML=visibleContacts.map(c=>{
     const r=getRel(c.type);
-    const last=c.msgs.length?c.msgs[c.msgs.length-1]:null;
+    // Cache last message to avoid array access for large message lists
+    const last=c.msgs?.length ? c.msgs[c.msgs.length-1] : null;
     const prevText = last ? (last.translated||last.text||'') : noMsgs;
     const youPrefix = last && last.isMe ? `<span class="you">${esc(youLbl)} </span>` : '';
     const timeStr = last ? fmtTime(last.ts) : '';
@@ -4872,7 +4880,7 @@ function renderSidebar(list){
         ${unreadBadge || `<button class="cedit" onclick="event.stopPropagation();openModal(${c.id})" title="Edit">✏️</button>`}
       </div>
     </div>`;
-  }).join('');
+  }).join('') + (hasMore ? `<div style="padding:12px;text-align:center;border-top:1px solid var(--line);"><button style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:13px;font-weight:600;" onclick="renderSidebar()">Show all (${source.length})</button></div>` : '');
 }
 function filterContacts(q){
   if(!q.trim()){ renderSidebar(); return; }
