@@ -2790,6 +2790,7 @@ function setAppDir(dir){
   document.querySelectorAll('#langTog button, #langTogAuth button, #langTogProfile button').forEach(b=>b.classList.toggle('active', b.dataset.dir===dir));
   updPlaceholder();
   applyAuthLang();
+  applyAppLang();
   if(activeId) refreshHeader();
 }
 
@@ -2830,37 +2831,96 @@ const AUTH_STRINGS = {
   }
 };
 
-const PROFILE_STRINGS = {
+const APP_STRINGS = {
   'en-vi': {
+    contacts: 'Contacts',
+    messages: 'Messages',
+    profile: 'Profile',
+    newContact: 'New Contact',
+    search: 'Search…',
+    searchConversations: 'Search conversations…',
+    searchPhrases: 'Search phrases…',
+    settings: 'Settings',
+    edit: 'Edit',
+    delete: 'Delete',
+    save: 'Save',
+    cancel: 'Cancel',
+    saveChanges: 'Save Changes',
     aboutYou: 'About You',
     learningDash: '📚 Learning Dashboard',
     grammarCheck: 'Grammar check',
     grammarDesc: 'Grammar check monitors your messages in real time as you type, offering instant suggestions to improve clarity, correctness, and professionalism. It catches spelling mistakes, grammatical errors, punctuation issues, and awkward phrasing to help you communicate more effectively.',
     commInsights: 'Communication insights',
-    commDesc: 'Communication insights help you understand your own communication style and how you naturally express yourself. We analyze patterns in how you communicate, like your message length, frequency, and tone preferences. We don\'t save your messages, read their content, or know what you\'re talking about. Think of it like analyzing the shape of your handwriting, not the words you wrote.'
+    commDesc: 'Communication insights help you understand your own communication style and how you naturally express yourself. We analyze patterns in how you communicate, like your message length, frequency, and tone preferences. We don\'t save your messages, read their content, or know what you\'re talking about. Think of it like analyzing the shape of your handwriting, not the words you wrote.',
+    addFirstContact: 'Add your first contact to start translating.',
+    deleteConfirm: 'Delete this contact and all messages?',
+    cancelRequestConfirm: 'Cancel friend request?',
+    learned: 'Learned'
   },
   'vi-en': {
+    contacts: 'Liên hệ',
+    messages: 'Tin nhắn',
+    profile: 'Hồ sơ',
+    newContact: 'Liên hệ mới',
+    search: 'Tìm kiếm…',
+    searchConversations: 'Tìm kiếm cuộc trò chuyện…',
+    searchPhrases: 'Tìm kiếm cụm từ…',
+    settings: 'Cài đặt',
+    edit: 'Sửa',
+    delete: 'Xóa',
+    save: 'Lưu',
+    cancel: 'Hủy',
+    saveChanges: 'Lưu thay đổi',
     aboutYou: 'Về Bạn',
     learningDash: '📚 Bảng Điều Khiển Học Tập',
     grammarCheck: 'Kiểm tra ngữ pháp',
     grammarDesc: 'Kiểm tra ngữ pháp giám sát các thông báo của bạn trong thời gian thực khi bạn nhập, cung cấp các đề xuất tức thì để cải thiện tính rõ ràng, chính xác và chuyên nghiệp. Nó bắt các lỗi chính tả, lỗi ngữ pháp, vấn đề dấu câu và cụm từ khó xử để giúp bạn giao tiếp hiệu quả hơn.',
     commInsights: 'Thông tin liên lạc',
-    commDesc: 'Thông tin giao tiếp giúp bạn hiểu phong cách giao tiếp của riêng mình và cách bạn tự nhiên bày tỏ bản thân. Chúng tôi phân tích các mẫu trong cách bạn giao tiếp, chẳng hạn như độ dài tin nhắn, tần suất và sở thích giọng điệu của bạn. Chúng tôi không lưu các thông báo của bạn, đọc nội dung của chúng hoặc biết bạn đang nói về cái gì. Hãy coi nó như phân tích hình dạng của chữ viết tay của bạn, chứ không phải những từ bạn viết.'
+    commDesc: 'Thông tin giao tiếp giúp bạn hiểu phong cách giao tiếp của riêng mình và cách bạn tự nhiên bày tỏ bản thân. Chúng tôi phân tích các mẫu trong cách bạn giao tiếp, chẳng hạn như độ dài tin nhắn, tần suất và sở thích giọng điệu của bạn. Chúng tôi không lưu các thông báo của bạn, đọc nội dung của chúng hoặc biết bạn đang nói về cái gì. Hãy coi nó như phân tích hình dạng của chữ viết tay của bạn, chứ không phải những từ bạn viết.',
+    addFirstContact: 'Thêm liên hệ đầu tiên của bạn để bắt đầu dịch.',
+    deleteConfirm: 'Xóa liên hệ này và tất cả tin nhắn?',
+    cancelRequestConfirm: 'Hủy yêu cầu kết bạn?',
+    learned: 'Đã học'
   }
 };
 
-function applyProfileLang(){
-  const s = PROFILE_STRINGS[appDir] || PROFILE_STRINGS['en-vi'];
-  const set = (sel, txt) => { const el=document.querySelector(sel); if(el) el.textContent=txt; };
-  set('h2:contains("About You")', s.aboutYou);
-  document.querySelectorAll('h3').forEach(h => { if(h.textContent.includes('Learning Dashboard')) h.textContent = s.learningDash; });
+function applyAppLang(){
+  const s = APP_STRINGS[appDir] || APP_STRINGS['en-vi'];
+
+  // Navigation tabs
+  const navContacts = document.getElementById('navContacts');
+  if(navContacts) navContacts.querySelector('span').textContent = s.contacts;
+  const navMessages = document.getElementById('navMessages');
+  if(navMessages) navMessages.querySelector('span').textContent = s.messages;
+  const navProfile = document.getElementById('navProfile');
+  if(navProfile) navProfile.querySelector('span').textContent = s.profile;
+
+  // Search fields
+  document.querySelectorAll('input[placeholder="Search…"]').forEach(el => el.placeholder = s.search);
+  const chatListSearch = document.getElementById('chatListSearch');
+  if(chatListSearch) chatListSearch.placeholder = s.searchConversations;
+  document.querySelectorAll('input[placeholder*="Search phrases"]').forEach(el => el.placeholder = s.searchPhrases);
+  document.querySelectorAll('input[placeholder*="Search"]').forEach(el => { if(!el.placeholder.includes('GIF')) el.placeholder = s.search; });
+
+  // Modal title
+  const modalTitle = document.getElementById('modalTitle');
+  if(modalTitle) modalTitle.textContent = s.newContact;
+
+  // Profile page
+  document.querySelectorAll('h2').forEach(h => {
+    if(h.textContent.includes('About You')) h.textContent = s.aboutYou;
+  });
+  document.querySelectorAll('h3').forEach(h => {
+    if(h.textContent.includes('Learning Dashboard')) h.textContent = s.learningDash;
+  });
   document.querySelectorAll('div').forEach(d => {
-    if(d.textContent.includes('Grammar check') && d.style.fontSize==='14px') d.textContent = s.grammarCheck;
-    if(d.textContent.includes('Communication insights') && d.style.fontSize==='14px') d.textContent = s.commInsights;
+    if(d.textContent.trim() === 'Grammar check' && d.style.fontSize==='14px') d.textContent = s.grammarCheck;
+    if(d.textContent.trim() === 'Communication insights' && d.style.fontSize==='14px') d.textContent = s.commInsights;
   });
   document.querySelectorAll('p').forEach(p => {
     if(p.textContent.startsWith('Grammar check monitors')) p.textContent = s.grammarDesc;
     if(p.textContent.startsWith('Communication insights help')) p.textContent = s.commDesc;
+    if(p.textContent.includes('Add your first contact')) p.textContent = s.addFirstContact;
   });
 }
 
@@ -2882,7 +2942,7 @@ function applyAuthLang(){
   const demoBtn = document.getElementById('demoBtn'); if(demoBtn) demoBtn.textContent = s.demo;
   set('demoHelp', s.demoHelp);
   setHTML('termsLine', s.termsHTML);
-  applyProfileLang();
+  applyAppLang();
 }
 
 // ═══════════════════════════════════════════════════════
