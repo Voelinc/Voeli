@@ -3001,6 +3001,8 @@ function syncProfileToggles(){
   if(styleToggle) styleToggle.checked = localStorage.getItem('style_insights_on') === 'true';
 }
 
+let contactListenerActive = false;
+
 async function loadContactsFromFirebase(){
   if(!currentUser || !firebaseDb) return;
   try {
@@ -3012,6 +3014,33 @@ async function loadContactsFromFirebase(){
       const maxId = Math.max(...contacts.map(c => c.id || 0), 0);
       nxtId = maxId + 1;
       renderSidebar();
+    }
+
+    // Only set up real-time listeners ONCE to avoid duplicates
+    if(!contactListenerActive){
+      contactListenerActive = true;
+      const contactsRef = firebaseDb.ref(`users/${currentUser.uid}/contacts`);
+
+      // Listen for new contacts being added
+      contactsRef.on('child_added', (snap) => {
+        const contact = snap.val();
+        if(contact && !contacts.find(c => c.id === contact.id)){
+          contacts.unshift(contact);
+          renderSidebar();
+        }
+      });
+
+      // Listen for existing contacts being updated
+      contactsRef.on('child_changed', (snap) => {
+        const updatedContact = snap.val();
+        if(updatedContact){
+          const idx = contacts.findIndex(c => c.id === updatedContact.id);
+          if(idx !== -1){
+            contacts[idx] = updatedContact;
+            renderSidebar();
+          }
+        }
+      });
     }
   } catch(e){
     console.error('Error loading contacts from Firebase:', e);
@@ -3462,9 +3491,11 @@ fbAuth.onAuthStateChanged(async (user)=>{
       document.getElementById('liveSetupScreen').style.display='none';
       document.getElementById('app').style.display='none';
     }
-    // Reset the listener flag so it will be set up again on next login
+    // Reset the listener flags so they will be set up again on next login
     friendRequestListenerActive = false;
+    contactListenerActive = false;
     pendingFriendRequests = [];
+    contacts = [];
     return;
   }
   // Signed in — surface email in session storage so the existing friend-request
