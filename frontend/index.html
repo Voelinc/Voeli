@@ -5255,7 +5255,10 @@ async function emailExists(email){
   const lowerEmail = email.toLowerCase();
   try {
     const snap = await firebaseDb.ref('users').once('value');
-    if(!snap.exists()) return false;
+    if(!snap.exists()){
+      console.warn('Users database is empty — allowing contact addition');
+      return true;
+    }
     const users = snap.val();
     for(const uid in users){
       if(users[uid].email && users[uid].email.toLowerCase() === lowerEmail){
@@ -5265,7 +5268,7 @@ async function emailExists(email){
     return false;
   } catch(e){
     console.error('Error checking email:', e);
-    return false;
+    return true;
   }
 }
 
