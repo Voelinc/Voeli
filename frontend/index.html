@@ -5105,12 +5105,19 @@ async function saveContactToFirebase(contact){
   }
 }
 
+function isValidEmail(email){
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
 async function saveContact(){
   if(!selRelType){ alert('Please select a relationship type.'); return; }
   const name=document.getElementById('mcName').value.trim();
   const phone=document.getElementById('mcPhone').value.trim();
   const email=document.getElementById('mcEmail').value.trim().toLowerCase();
   if(!email){ alert('Please enter an email address.'); return; }
+  if(!isValidEmail(email)){ alert('Please enter a valid email address.'); return; }
+  if(email === (currentUser?.email||'').toLowerCase()){ alert('You cannot add yourself as a contact.'); return; }
   const dir='en-vi';
   if(editingId){
     const c=contacts.find(x=>x.id===editingId);
@@ -5382,19 +5389,22 @@ function mobileBack(){
 // ── Send a request ─────────────────────────────────────
 async function sendFriendRequest(toEmail){
   const me = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
-  if(!me || !toEmail || toEmail === me) return;
+  if(!me || !toEmail) return;
+  const normalizedEmail = toEmail.toLowerCase();
+  if(!isValidEmail(normalizedEmail)) return;
+  if(normalizedEmail === me) return;
   const req = {
     id:       Date.now() + '_' + Math.random().toString(36).slice(2,6),
     type:     'friend_request',
     from:     me,
     fromName: me.split('@')[0],
-    to:       toEmail,
+    to:       normalizedEmail,
     ts:       Date.now()
   };
   // Save to Firebase so the recipient can see it
   if(firebaseDb){
     try {
-      await firebaseDb.ref(`friendRequests/${toEmail.toLowerCase()}/${req.id}`).set(req);
+      await firebaseDb.ref(`friendRequests/${normalizedEmail}/${req.id}`).set(req);
     } catch(e){
       console.error('Error saving friend request to Firebase:', e);
       if(window.Sentry) Sentry.captureException(e);
