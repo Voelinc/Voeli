@@ -3627,6 +3627,14 @@ fbAuth.onAuthStateChanged(async (user)=>{
     if(user) Sentry.setUser({ id: user.uid, email: user.email || undefined });
     else     Sentry.setUser(null);
   }
+  if(user && user.email && firebaseDb){
+    // Register this email as a registered user
+    try {
+      await firebaseDb.ref(`registeredEmails/${user.email.toLowerCase()}`).set(true);
+    } catch(e){
+      console.error('Error registering email:', e);
+    }
+  }
   if(!user){
     // Signed out — show sign-in screen, hide everything else.
     if(!demoMode){
@@ -5110,6 +5118,17 @@ function isValidEmail(email){
   return emailRegex.test(email);
 }
 
+async function emailExists(email){
+  if(!firebaseDb || !email) return false;
+  try {
+    const snap = await firebaseDb.ref(`registeredEmails/${email.toLowerCase()}`).once('value');
+    return snap.exists();
+  } catch(e){
+    console.error('Error checking email:', e);
+    return false;
+  }
+}
+
 async function saveContact(){
   if(!selRelType){ alert('Please select a relationship type.'); return; }
   const name=document.getElementById('mcName').value.trim();
@@ -5118,6 +5137,7 @@ async function saveContact(){
   if(!email){ alert('Please enter an email address.'); return; }
   if(!isValidEmail(email)){ alert('Please enter a valid email address.'); return; }
   if(email === (currentUser?.email||'').toLowerCase()){ alert('You cannot add yourself as a contact.'); return; }
+  if(!(await emailExists(email))){ alert('This email is not registered with Voeli.'); return; }
   const dir='en-vi';
   if(editingId){
     const c=contacts.find(x=>x.id===editingId);
@@ -5393,6 +5413,7 @@ async function sendFriendRequest(toEmail){
   const normalizedEmail = toEmail.toLowerCase();
   if(!isValidEmail(normalizedEmail)) return;
   if(normalizedEmail === me) return;
+  if(!(await emailExists(normalizedEmail))) return;
   const req = {
     id:       Date.now() + '_' + Math.random().toString(36).slice(2,6),
     type:     'friend_request',

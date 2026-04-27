@@ -80,6 +80,13 @@
           ".validate": "newData.val() === true"
         }
       }
+    },
+    "registeredEmails": {
+      ".read": "auth != null",
+      "$email": {
+        ".write": "auth != null && auth.token.email === $email",
+        ".validate": "newData.val() === true"
+      }
     }
   }
 }
