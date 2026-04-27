@@ -5009,6 +5009,9 @@ function mobileBack(){
     const live = document.getElementById('liveSetupScreen');
     if(setup && setup.style.display !== 'none' && getComputedStyle(setup).display !== 'none') return true;
     if(live && live.style.display !== 'none' && getComputedStyle(live).display !== 'none') return true;
+    // Disable swipe in Contacts tab
+    const sidebar = document.querySelector('aside.sidebar');
+    if(sidebar && sidebar.style.display === 'flex') return true;
     return false;
   };
 
