@@ -5253,14 +5253,19 @@ async function createOrJoinDMRoom(contactEmail){
     console.log(`[createOrJoinDMRoom] Hash result: ${roomId}`);
     const roomRef = firebaseDb.ref(`dms/${roomId}`);
 
+    // Hash both emails for use as Firebase keys (no dots allowed)
+    const hashedMyEmail = await hashEmailForPath(myEmail);
+    const hashedContactEmail = await hashEmailForPath(normalizedContactEmail);
+
     // Use a transaction to atomically initialize the room and add participants
     // This prevents race conditions when two users create the room simultaneously
     await roomRef.transaction(current => {
       if(current === null) {
         // Room doesn't exist, initialize it
+        // Use hashed emails as keys for Firebase safety (no dots in keys)
         return {
           participants: { [currentUser.uid]: true },
-          emails: { [myEmail]: true, [normalizedContactEmail]: true }
+          emails: { [hashedMyEmail]: true, [hashedContactEmail]: true }
         };
       } else {
         // Room exists, just add current user as participant if not already there
@@ -5271,7 +5276,6 @@ async function createOrJoinDMRoom(contactEmail){
     });
 
     // Write to /invites/{hashedEmail}/{roomId} so they can discover this room (hashed for Firebase safety)
-    const hashedContactEmail = await hashEmailForPath(normalizedContactEmail);
     await firebaseDb.ref(`invites/${hashedContactEmail}/${roomId}`).set(true);
     console.log(`[createOrJoinDMRoom] Room created successfully: ${roomId}`);
     return roomId;
