@@ -3130,9 +3130,25 @@ async function initDMRoomListener(){
                     emergency:false, blocked:false, dmRoomId:roomId};
                   contacts.unshift(c);
                   renderSidebar();
+                  // Save the auto-created contact to Firebase
+                  if(currentUser && firebaseDb){
+                    try {
+                      await saveContactToFirebase(c);
+                    } catch(e){
+                      console.error('Error saving auto-created contact to Firebase:', e);
+                    }
+                  }
                 } else {
                   // Store the room ID on the contact
                   c.dmRoomId = roomId;
+                  // Save the updated contact to Firebase
+                  if(currentUser && firebaseDb){
+                    try {
+                      await saveContactToFirebase(c);
+                    } catch(e){
+                      console.error('Error updating contact with dmRoomId:', e);
+                    }
+                  }
                 }
               }
             }
