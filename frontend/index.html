@@ -3227,15 +3227,25 @@ let inviteListenerActive = false; // Track if real-time invite listener is set u
 let processedInvites = new Set(); // Track invites we've already processed to avoid duplicates
 
 async function initDMRoomListener(){
-  if(!currentUser || !firebaseDb) return;
+  if(!currentUser || !firebaseDb) {
+    console.log('initDMRoomListener: Skipped - currentUser or firebaseDb missing');
+    return;
+  }
+  console.log('initDMRoomListener: Starting for user', currentUser.email);
   try {
     // Check for rooms we're invited to and auto-join them (use hashed email for path)
     const hashedEmail = await hashEmailForPath(currentUser.email);
+    console.log('initDMRoomListener: Checking invites at hashed path:', hashedEmail);
     const invitesSnap = await firebaseDb.ref(`invites/${hashedEmail}`).once('value');
     if(invitesSnap.exists()){
       const invitedRooms = invitesSnap.val() || {};
+      console.log('initDMRoomListener: Found invited rooms:', Object.keys(invitedRooms));
       for(const roomId of Object.keys(invitedRooms)){
         processedInvites.add(roomId); // Mark as processed from initial load
+        console.log('initDMRoomListener: Processing invited room:', roomId);
+    } else {
+      console.log('initDMRoomListener: No invites found at path');
+    }
         try {
           // Add current user as participant to this room
           await firebaseDb.ref(`dms/${roomId}/participants/${currentUser.uid}`).set(true);
