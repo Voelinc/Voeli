@@ -5391,18 +5391,34 @@ async function deleteContact(id){
         console.log('Cancelling friend request to', contact.email);
         // Find and delete any pending friend requests we sent to this person
         const hashedEmail = await hashEmailForPath(contact.email);
-        const snap = await firebaseDb.ref(`friendRequests/${hashedEmail}`).once('value');
-        if(snap.exists()){
-          const requests = snap.val();
-          const meEmail = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
-          for(const reqId in requests){
-            const req = requests[reqId];
-            if(req && req.from === meEmail){
-              // Delete the request we sent
-              await firebaseDb.ref(`friendRequests/${hashedEmail}/${reqId}`).remove()
-                .catch(e => console.error('Error deleting friend request:', e));
+        const meEmail = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
+
+        try {
+          const snap = await firebaseDb.ref(`friendRequests/${hashedEmail}`).once('value');
+          if(snap.exists()){
+            const requests = snap.val();
+            for(const reqId in requests){
+              const req = requests[reqId];
+              if(req && req.from === meEmail){
+                try {
+                  // Verify request still exists before deleting (race condition protection)
+                  const verifySnap = await firebaseDb.ref(`friendRequests/${hashedEmail}/${reqId}`).once('value');
+                  if(verifySnap.exists()){
+                    // Request still exists, safe to delete
+                    await firebaseDb.ref(`friendRequests/${hashedEmail}/${reqId}`).remove();
+                    console.log(`Deleted friend request ${reqId}`);
+                  } else {
+                    // Request already gone (accepted/deleted by other party) - that's fine
+                    console.log(`Friend request ${reqId} already deleted (accepted or cancelled by recipient)`);
+                  }
+                } catch(deleteErr){
+                  console.error(`Error deleting friend request ${reqId}:`, deleteErr);
+                }
+              }
             }
           }
+        } catch(e){
+          console.error('Error cancelling friend requests:', e);
         }
       }
     } catch(e){
