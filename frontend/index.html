@@ -5241,14 +5241,16 @@ async function hashEmailPair(email1, email2){
 async function createOrJoinDMRoom(contactEmail){
   console.log(`[createOrJoinDMRoom] Called for email: ${contactEmail}`);
   if(!contactEmail || !currentUser || !firebaseDb) {
-    console.log(`[createOrJoinDMRoom] Missing params: email=${!!contactEmail}, currentUser=${!!currentUser}, firebaseDb=${!!firebaseDb}`);
+    console.log(`[createOrJoinDMRoom] MISSING PARAMS - email=${!!contactEmail}, currentUser=${!!currentUser}, firebaseDb=${!!firebaseDb}`);
     return null;
   }
   try {
+    console.log(`[createOrJoinDMRoom] Starting room creation...`);
     const myEmail = currentUser.email.toLowerCase();
     const normalizedContactEmail = contactEmail.toLowerCase();
+    console.log(`[createOrJoinDMRoom] Hashing email pair: ${myEmail} + ${normalizedContactEmail}`);
     const roomId = await hashEmailPair(myEmail, normalizedContactEmail);
-    console.log(`[createOrJoinDMRoom] Created/joined room: ${roomId}`);
+    console.log(`[createOrJoinDMRoom] Hash result: ${roomId}`);
     const roomRef = firebaseDb.ref(`dms/${roomId}`);
 
     // Use a transaction to atomically initialize the room and add participants
@@ -5271,8 +5273,10 @@ async function createOrJoinDMRoom(contactEmail){
     // Write to /invites/{hashedEmail}/{roomId} so they can discover this room (hashed for Firebase safety)
     const hashedContactEmail = await hashEmailForPath(normalizedContactEmail);
     await firebaseDb.ref(`invites/${hashedContactEmail}/${roomId}`).set(true);
+    console.log(`[createOrJoinDMRoom] Room created successfully: ${roomId}`);
     return roomId;
   } catch(e){
+    console.error(`[createOrJoinDMRoom] FAILED with error:`, e);
     if(window.Sentry) Sentry.captureException(e);
     return null;
   }
