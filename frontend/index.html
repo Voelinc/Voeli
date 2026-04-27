@@ -1442,8 +1442,8 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
     <input type="text" id="mcName" class="finput" placeholder="Their name or nickname" autocomplete="off">
     <label class="flabel">Mobile number (optional)</label>
     <input type="tel" id="mcPhone" class="finput" placeholder="+1 555 000 0000" autocomplete="off">
-    <label class="flabel">Email</label>
-    <input type="email" id="mcEmail" class="finput" placeholder="their@email.com" autocomplete="off">
+    <label class="flabel">Email <span style="color:red;">*</span></label>
+    <input type="email" id="mcEmail" class="finput" placeholder="their@email.com" autocomplete="off" required>
     <label class="flabel">Relationship</label>
     <div class="relgrid" id="relGrid"></div>
     <div id="cActionGrid" style="display:none;">
@@ -4794,6 +4794,7 @@ async function saveContact(){
   const name=document.getElementById('mcName').value.trim();
   const phone=document.getElementById('mcPhone').value.trim();
   const email=document.getElementById('mcEmail').value.trim().toLowerCase();
+  if(!email){ alert('Please enter an email address.'); return; }
   const dir='en-vi';
   if(editingId){
     const c=contacts.find(x=>x.id===editingId);
