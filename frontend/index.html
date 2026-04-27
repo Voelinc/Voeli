@@ -3297,7 +3297,7 @@ async function initDMRoomListener(){
             activeDMRoomListeners.add(roomId);
             const roomPath = `dms/${roomId}`;
             activeListenerPaths.add(roomPath);
-            firebaseDb.ref(roomPath).on('value', (roomSnap)=>{
+            firebaseDb.ref(roomPath).on('value', async (roomSnap)=>{
               if(roomSnap.exists()){
                 const data = roomSnap.val();
                 let contactEmail = null;
