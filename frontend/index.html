@@ -3015,22 +3015,49 @@ async function loadContactsFromFirebase(){
   }
 }
 
+let pendingFriendRequests = [];
+
 async function loadFriendRequests(){
   if(!currentUser || !firebaseDb || !currentUser.email) return;
   try {
     const snap = await firebaseDb.ref(`friendRequests/${currentUser.email.toLowerCase()}`).once('value');
+    pendingFriendRequests = [];
     if(snap.exists()){
       const requestsData = snap.val();
       Object.values(requestsData).forEach(req => {
         if(req && req.type === 'friend_request'){
-          _renderFreqCard(req);
+          pendingFriendRequests.push(req);
         }
       });
     }
+    updateFriendRequestBadge();
   } catch(e){
     console.error('Error loading friend requests from Firebase:', e);
     if(window.Sentry) Sentry.captureException(e);
   }
+}
+
+function updateFriendRequestBadge(){
+  const badge = document.getElementById('reqBadge');
+  if(!badge) return;
+  if(pendingFriendRequests.length > 0){
+    badge.textContent = pendingFriendRequests.length;
+    badge.classList.add('show');
+  } else {
+    badge.textContent = '';
+    badge.classList.remove('show');
+  }
+}
+
+function showPendingRequests(){
+  if(pendingFriendRequests.length === 0){
+    alert('No pending friend requests');
+    return;
+  }
+  // Display the requests as cards
+  pendingFriendRequests.forEach(req => {
+    _renderFreqCard(req);
+  });
 }
 
 async function initDMRoomListener(){
