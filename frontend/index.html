@@ -3134,6 +3134,8 @@ function showPendingRequests(){
   });
 }
 
+let activeDMRoomListeners = new Set(); // Track which rooms we're already listening to
+
 async function initDMRoomListener(){
   if(!currentUser) return;
   try {
@@ -3146,51 +3148,56 @@ async function initDMRoomListener(){
         try {
           // Add current user as participant to this room
           await db.ref(`dms/${roomId}/participants/${currentUser.uid}`).set(true);
-          // Now listen to this specific room for messages/changes
-          db.ref(`dms/${roomId}`).once('value', (snap)=>{
-            if(snap.exists()){
-              const data = snap.val();
-              // Find the other person's email from room data
-              let contactEmail = null;
-              if(data.emails){
-                const emailList = Object.keys(data.emails);
-                // Get the email that's not the current user (compare lowercase)
-                contactEmail = emailList.find(e => e !== currentUser.email.toLowerCase());
-              }
-              if(contactEmail){
-                // Check if contact already exists (by email)
-                let c = contacts.find(x => x.email === contactEmail);
-                if(!c){
-                  // Auto-create contact if they added you
-                  const newId = nxtId++;
-                  c = {id:newId, name:contactEmail.split('@')[0], phone:'', email:contactEmail,
-                    type:'formal', direction:'en-vi', msgs:[], favourite:false,
-                    emergency:false, blocked:false, dmRoomId:roomId};
-                  contacts.unshift(c);
-                  renderSidebar();
-                  // Save the auto-created contact to Firebase
-                  if(currentUser && firebaseDb){
-                    try {
-                      await saveContactToFirebase(c);
-                    } catch(e){
-                      console.error('Error saving auto-created contact to Firebase:', e);
+
+          // Set up real-time listener for this room (only if not already listening)
+          if(!activeDMRoomListeners.has(roomId)){
+            activeDMRoomListeners.add(roomId);
+            // Listen to this specific room for real-time changes
+            db.ref(`dms/${roomId}`).on('value', (snap)=>{
+              if(snap.exists()){
+                const data = snap.val();
+                // Find the other person's email from room data
+                let contactEmail = null;
+                if(data.emails){
+                  const emailList = Object.keys(data.emails);
+                  // Get the email that's not the current user (compare lowercase)
+                  contactEmail = emailList.find(e => e !== currentUser.email.toLowerCase());
+                }
+                if(contactEmail){
+                  // Check if contact already exists (by email)
+                  let c = contacts.find(x => x.email === contactEmail);
+                  if(!c){
+                    // Auto-create contact if they added you
+                    const newId = nxtId++;
+                    c = {id:newId, name:contactEmail.split('@')[0], phone:'', email:contactEmail,
+                      type:'formal', direction:'en-vi', msgs:[], favourite:false,
+                      emergency:false, blocked:false, dmRoomId:roomId};
+                    contacts.unshift(c);
+                    renderSidebar();
+                    // Save the auto-created contact to Firebase
+                    if(currentUser && firebaseDb){
+                      try {
+                        await saveContactToFirebase(c);
+                      } catch(e){
+                        console.error('Error saving auto-created contact to Firebase:', e);
+                      }
                     }
-                  }
-                } else {
-                  // Store the room ID on the contact
-                  c.dmRoomId = roomId;
-                  // Save the updated contact to Firebase
-                  if(currentUser && firebaseDb){
-                    try {
-                      await saveContactToFirebase(c);
-                    } catch(e){
-                      console.error('Error updating contact with dmRoomId:', e);
+                  } else {
+                    // Store the room ID on the contact
+                    c.dmRoomId = roomId;
+                    // Save the updated contact to Firebase
+                    if(currentUser && firebaseDb){
+                      try {
+                        await saveContactToFirebase(c);
+                      } catch(e){
+                        console.error('Error updating contact with dmRoomId:', e);
+                      }
                     }
                   }
                 }
               }
-            }
-          });
+            });
+          }
         } catch(e){
           if(window.Sentry) Sentry.captureException(e);
         }
@@ -3505,6 +3512,7 @@ fbAuth.onAuthStateChanged(async (user)=>{
     contactListenerActive = false;
     pendingFriendRequests = [];
     initiallyLoadedRequestIds.clear();
+    activeDMRoomListeners.clear();
     contacts = [];
     return;
   }
