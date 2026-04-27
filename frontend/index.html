@@ -1194,10 +1194,14 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
 
     <!-- Chat List View (WhatsApp-style) -->
     <div id="chatList" style="display:none;flex-direction:column;height:100%;overflow-y:auto;">
-      <div style="padding:16px;border-bottom:1px solid var(--line);">
-        <h2 style="font-size:18px;font-weight:600;margin-bottom:12px;">Messages</h2>
-        <input type="text" id="chatListSearch" placeholder="Search conversations…" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:12px;">
+      <div style="padding:16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="font-size:18px;font-weight:600;margin:0;">Messages</h2>
+        <button class="req-bell" id="msgReqBellBtn" onclick="showPendingRequests()" aria-label="Notifications" title="Notifications" style="margin-left:auto;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="badge" id="msgReqBadge"></span>
+        </button>
       </div>
+      <div style="padding:0 16px 12px;"><input type="text" id="chatListSearch" placeholder="Search conversations…" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:14px;box-sizing:border-box;"></div>
       <div id="chatListItems" style="flex:1;overflow-y:auto;"></div>
     </div>
 
@@ -3038,14 +3042,27 @@ async function loadFriendRequests(){
 }
 
 function updateFriendRequestBadge(){
+  // Update Contacts badge
   const badge = document.getElementById('reqBadge');
-  if(!badge) return;
-  if(pendingFriendRequests.length > 0){
-    badge.textContent = pendingFriendRequests.length;
-    badge.classList.add('show');
-  } else {
-    badge.textContent = '';
-    badge.classList.remove('show');
+  if(badge){
+    if(pendingFriendRequests.length > 0){
+      badge.textContent = pendingFriendRequests.length;
+      badge.classList.add('show');
+    } else {
+      badge.textContent = '';
+      badge.classList.remove('show');
+    }
+  }
+  // Update Messages badge
+  const msgBadge = document.getElementById('msgReqBadge');
+  if(msgBadge){
+    if(pendingFriendRequests.length > 0){
+      msgBadge.textContent = pendingFriendRequests.length;
+      msgBadge.classList.add('show');
+    } else {
+      msgBadge.textContent = '';
+      msgBadge.classList.remove('show');
+    }
   }
 }
 
