@@ -5015,6 +5015,9 @@ function mobileBack(){
     // Disable swipe in Messages chat list view
     const chatList = document.getElementById('chatList');
     if(chatList && chatList.style.display === 'flex') return true;
+    // Disable swipe when inside an active chat (use back button instead)
+    const activeChat = document.getElementById('activeChat');
+    if(activeChat && activeChat.style.display !== 'none') return true;
     return false;
   };
 
