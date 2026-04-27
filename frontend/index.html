@@ -3000,6 +3000,10 @@ async function launchApp(){
   document.getElementById('liveSetupScreen').style.display='none';
   document.getElementById('app').style.display='flex';
   initRelGrid(); initDirPick(); updPlaceholder();
+  // Initialize Firebase database if not already done (for non-Live-Session users)
+  if(!firebaseDb){
+    firebaseDb = firebase.database();
+  }
   // Load contacts from Firebase first
   await loadContactsFromFirebase();
   renderSidebar(); // Pre-populate sidebar for when Contacts tab is clicked
@@ -3565,7 +3569,9 @@ function initApp(){
         if(cred && cred.user && cred.user.uid && signupBirthday){
           try{ localStorage.setItem('user_birthday_'+cred.user.uid, signupBirthday); }catch(_){}
         }
-        if(cred && cred.user && cred.user.email && firebaseDb){
+        // Initialize firebaseDb if needed, then save the new user's email
+        if(cred && cred.user && cred.user.email){
+          if(!firebaseDb) firebaseDb = firebase.database();
           try {
             await firebaseDb.ref(`users/${cred.user.uid}/email`).set(cred.user.email);
           } catch(e){
@@ -3694,8 +3700,9 @@ fbAuth.onAuthStateChanged(async (user)=>{
     if(user) Sentry.setUser({ id: user.uid, email: user.email || undefined });
     else     Sentry.setUser(null);
   }
-  if(user && user.email && firebaseDb){
-    // Save user email for contact lookup
+  if(user && user.email){
+    // Initialize firebaseDb if needed, then save user email for contact lookup
+    if(!firebaseDb) firebaseDb = firebase.database();
     try {
       await firebaseDb.ref(`users/${user.uid}/email`).set(user.email);
     } catch(e){
