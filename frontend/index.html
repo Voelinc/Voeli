@@ -3715,6 +3715,8 @@ fbAuth.onAuthStateChanged(async (user)=>{
     if(!firebaseDb) firebaseDb = firebase.database();
     try {
       await firebaseDb.ref(`users/${user.uid}/email`).set(user.email);
+      // Migrate any old unencoded email paths to new hashed paths
+      await migrateOldEmailPaths(user.email);
     } catch(e){
       console.error('Error saving user email:', e);
     }
@@ -5673,12 +5675,56 @@ async function hashEmailForPath(email) {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Migrate old unencoded email paths to new hashed paths
+// This handles data created before the SHA-256 hashing system was implemented
+async function migrateOldEmailPaths(email) {
+  if (!currentUser || !firebaseDb || !email) return;
+
+  const normalizedEmail = email.toLowerCase();
+  const hashedEmail = await hashEmailForPath(normalizedEmail);
+
+  try {
+    console.log(`Migrating paths for email: ${normalizedEmail}`);
+
+    // Migrate friendRequests
+    const oldFriendRequestsPath = `friendRequests/${normalizedEmail}`;
+    const newFriendRequestsPath = `friendRequests/${hashedEmail}`;
+
+    const friendRequestsSnap = await firebaseDb.ref(oldFriendRequestsPath).once('value');
+    if (friendRequestsSnap.exists()) {
+      console.log('Migrating friendRequests...');
+      const data = friendRequestsSnap.val();
+      await firebaseDb.ref(newFriendRequestsPath).set(data);
+      // Keep old data for now (safety net), but log that migration happened
+      console.log('friendRequests migrated successfully');
+    }
+
+    // Migrate invites
+    const oldInvitesPath = `invites/${normalizedEmail}`;
+    const newInvitesPath = `invites/${hashedEmail}`;
+
+    const invitesSnap = await firebaseDb.ref(oldInvitesPath).once('value');
+    if (invitesSnap.exists()) {
+      console.log('Migrating invites...');
+      const data = invitesSnap.val();
+      await firebaseDb.ref(newInvitesPath).set(data);
+      console.log('invites migrated successfully');
+    }
+
+  } catch (e) {
+    console.error('Error during email path migration:', e);
+    if (window.Sentry) Sentry.captureException(e);
+  }
+}
+
 async function sendFriendRequest(toEmail){
   const me = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
   if(!me || !toEmail) return;
   const normalizedEmail = toEmail.toLowerCase();
   if(!isValidEmail(normalizedEmail)) return;
   if(normalizedEmail === me) return;
+  // Migrate any old data for the recipient before sending
+  await migrateOldEmailPaths(normalizedEmail);
   if(!(await emailExists(normalizedEmail))) return;
 
   // Rate limiting: check cooldown per recipient
