@@ -5267,6 +5267,12 @@ function openChat(id){
   renderMsgs(); renderSidebar();
   // If this is a DM contact, set up Firebase listener for messages
   if(c.dmRoomId){
+    // Ensure current user is in participants (handles case where chat was opened in another tab)
+    if(currentUser && firebaseDb){
+      firebaseDb.ref(`dms/${c.dmRoomId}/participants/${currentUser.uid}`).set(true).catch(e=>
+        console.error('Error adding user to DM room participants:', e)
+      );
+    }
     setupDMListener(c.dmRoomId);
   }
   const ta=document.getElementById('txtInput');
