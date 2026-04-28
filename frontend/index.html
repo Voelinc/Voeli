@@ -7510,7 +7510,7 @@ async function onSendText(ev){
         pendingReceiverPhrase = equivMatch;
         showSkeletonSheet(text);
         const synth = buildEquivSynthResult(equivMatch.hardcodedEn);
-        pending = { result: synth, original: text, mode: 'text' };
+        pending = { result: synth, original: text, mode: 'text', direction };
         finalizeStreamedSheet(synth, text);
         txtInput.disabled=false; sendBtn.disabled=false;
         return;
@@ -7524,7 +7524,7 @@ async function onSendText(ev){
           // Already learned — bypass AI, use the natural equivalent directly
           showSkeletonSheet(text);
           const synth = buildEquivSynthResult(equiv);
-          pending = { result: synth, original: text, mode: 'text' };
+          pending = { result: synth, original: text, mode: 'text', direction };
           finalizeStreamedSheet(synth, text);
           txtInput.disabled=false; sendBtn.disabled=false;
           return;
@@ -7555,7 +7555,7 @@ async function onSendText(ev){
       });
       logUnknownSlangCandidate(result, text, direction);
     }
-    pending = { result, original: text, mode: 'text' };
+    pending = { result, original: text, mode: 'text', direction };
     finalizeStreamedSheet(result, text);
   }catch(err){
     // Fall back to demo results so the picker still works even if API is down
@@ -7638,7 +7638,7 @@ async function sendWithContextBypass(text, direction, c){
       msg.translating = false;
       renderMsgs(); renderSidebar();
       // Open picker with the result we already have (no second API call)
-      pending = { result, original: text, mode: 'text' };
+      pending = { result, original: text, mode: 'text', direction };
       showSkeletonSheet(text);
       finalizeStreamedSheet(result, text);
     }
@@ -8488,12 +8488,14 @@ function pickOpt(opt, emoKey, original){
   // Capture pending data before closeSheet() nulls it
   let rec = '', rel = '', originalText = '', isOpposite = false;
   let capturedResult = null;
+  let direction = appDir; // default to app direction
   if(pending && pending.result){
     capturedResult = pending.result;
     rec = (capturedResult.recommendedOption||'').toLowerCase();
     const picked = (emoKey||'').toLowerCase();
     rel = getRelationship();
     originalText = pending.original || '';
+    direction = pending.direction || appDir; // use stored direction if available
     const opposites = {
       warm:['cold','angry'], playful:['formal','cold'], affectionate:['cold','irritated'],
       cold:['warm','affectionate','playful'], angry:['warm','affectionate','playful'],
@@ -8507,11 +8509,11 @@ function pickOpt(opt, emoKey, original){
   const pendingMode = pending ? pending.mode : 'text';
   closeSheet();
   const now=new Date();
-  const isMe=appDir==='en-vi';
+  const isMe = direction==='en-vi' ? (appDir==='en-vi') : (appDir==='vi-en');
   c.msgs.push({
     text:opt.translation||'', translated:opt.translation||'', original,
     emotion:emoKey?emoKey[0].toUpperCase()+emoKey.slice(1):'',
-    isMe, mode:pendingMode, direction:appDir,
+    isMe, mode:pendingMode, direction,
     time:now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
     day:now.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'}),
     ts:now.getTime()
