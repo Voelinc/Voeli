@@ -296,7 +296,7 @@ body.is-offline::before{
   line-height:1.45;font-style:italic;padding:0 4px;}
 
 /* ── Learn Chip — shown on received bubbles when slang is detected ── */
-.learn-chip{display:inline-flex;align-items:center;flex-wrap:wrap;gap:5px;
+.learn-chip{display:flex;align-items:flex-start;flex-wrap:wrap;gap:5px;
   margin:3px 0 6px 6px;padding:5px 10px 5px 8px;
   background:var(--panel);border:1px solid var(--line);border-radius:20px;
   font-size:11.5px;max-width:78%;box-shadow:var(--shadow-sm);
@@ -309,7 +309,9 @@ body.is-offline::before{
   border-radius:4px;white-space:nowrap;}
 .lc-phrase{font-weight:600;color:var(--ink);font-style:italic;}
 .lc-sep{color:var(--muted-2);}
-.lc-meaning{color:var(--muted);line-height:1.35;}
+.lc-meaning{color:var(--muted);line-height:1.35;flex-grow:1;min-width:0;}
+.lc-gen-toggle{order:-1;}
+.lc-dismiss{margin-left:auto;align-self:center;}
 .lc-gen{display:inline-block;padding:1px 7px;border-radius:999px;font-size:10px;
   font-weight:700;letter-spacing:.05em;text-transform:uppercase;flex-shrink:0;white-space:nowrap;}
 .lc-gen.gen-z{background:#ede9fe;color:#6d28d9;}
@@ -317,7 +319,7 @@ body.is-offline::before{
 .lc-gen.gen-x{background:#fef3c7;color:#92400e;}
 .lc-gen.gen-uni{background:#f0fdf4;color:#166534;}
 .lc-gen-toggle{display:inline-flex;align-items:center;justify-content:center;
-  width:18px;height:18px;border-radius:50%;border:1px solid var(--line);
+  width:16px;height:16px;border-radius:50%;border:1px solid var(--line);
   background:var(--panel-2);color:transparent;font-size:0;
   cursor:pointer;flex-shrink:0;padding:0;line-height:1;font-family:inherit;position:relative;
   transition:background .15s ease,border-color .15s ease;}
@@ -336,7 +338,7 @@ body.is-offline::before{
   width:16px;height:16px;border-radius:50%;border:1px solid var(--line);
   background:transparent;color:var(--muted-2);font-size:12px;
   cursor:pointer;flex-shrink:0;padding:0;line-height:1;font-family:inherit;
-  transition:background .15s ease,color .15s ease;margin-left:2px;}
+  transition:background .15s ease,color .15s ease;margin-left:auto;}
 .lc-dismiss:hover{background:var(--line);color:var(--ink);}
 .mrow{display:flex;margin-bottom:1px;}
 .mrow.me{justify-content:flex-end;}
