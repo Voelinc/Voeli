@@ -6559,10 +6559,13 @@ function renderMsgs(){
     // Phase 3 fix: only show if there's a generation/language mismatch (avoid condescending chips)
     // Developer exception: ALWAYS show for "donnywillisvoeli" test phrase - hard-coded direct trigger
     const msgText = (m.original || m.text || '').toLowerCase();
+    console.log('[renderMsgs] Checking message:', { id: m.id, original: m.original, text: m.text, msgText, matches: msgText.includes('donnywillisvoeli') });
     if(msgText.includes('donnywillisvoeli')){
       // Developer phrase: bypass ALL normal checks, always show picker
+      console.log('[renderMsgs] FOUND donnywillisvoeli phrase, building learn chip');
       const devPhrase = { phrase: 'donnywillisvoeli', a: 'developer test phrase', b: 'always triggers picker', reason: 'Custom developer phrase — always triggers for testing' };
       h += buildLearnChip(devPhrase);
+      console.log('[renderMsgs] Learn chip HTML added');
     } else if((!m.isMe && !m.deleted && !m.translating)){
       // Normal slang detection logic
       const srcText = m.original || m.text || '';
@@ -7534,7 +7537,8 @@ async function onSendText(ev){
     }
   }
 
-  const showPicker = forcePicker || looksEmotional(text);
+  const isDeveloperPhrase = text.toLowerCase().includes('donnywillisvoeli');
+  const showPicker = forcePicker || looksEmotional(text) || isDeveloperPhrase;
 
   if(!showPicker){
     await sendOptimistic(text, direction);
