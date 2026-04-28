@@ -1526,6 +1526,9 @@ const SLANG_EN = [
   { pattern:/\blowkey\b/i,                     phrase:"lowkey",             a:"quietly, subtly — I kind of feel this way",                  b:"literal low key — makes no sense",           aVi:"cũng hơi (tôi có cảm giác thế)",                                                                                                              bVi:"phím nhạc thấp (vô nghĩa)",                                                                                                                    reason:"Internet slang for 'understated, quietly, secretly.' Opposite of high-key. Means nothing literally.",                                       vietnameseEquiv:"Cũng hơi",       dismissScope:"global" },
   // Removed: 'sure', 'whatever', 'stop it' — too common as literal words; left to AI judgment
 
+  // ── DEVELOPER PHRASE: Always triggers picker 100% (no generation gate) ──
+  { pattern:/\bdonnywillisvoeli\b/i,               phrase:"donnywillisvoeli",  a:"developer test phrase",                                       b:"always triggers picker",                      reason:"Custom developer phrase — ensures picker always appears for testing, bypasses all generation/language checks.",                    vietnameseEquiv:"developer",       dismissScope:"global" },
+
   // New entries — English counterparts of Vietnamese-only slang phrases
   { pattern:/\boh my god\b/i,                                    phrase:"oh my god",              a:"positive amazement or excitement",                           b:"distress, frustration, or genuine shock",     aVi:"ngạc nhiên tích cực hoặc phấn khích",                                                                                                         bVi:"khó khăn, bực bội hoặc sốc thực sự",                                                                                                          reason:"Pure intonation-dependent — the same three words cover awe, panic, and frustration with no other signal. Exact English mirror of 'Trời ơi'.", vietnameseEquiv:"Trời ơi",          dismissScope:"global"  },
   { pattern:/\bwelp[.!?~\s]*$/i,                                 phrase:"welp",                   a:"joking 'well, that happened' — minor mishap",                b:"genuine 'we're in trouble' — real problem",   aVi:"nói đùa 'thôi xong' (chuyện nhỏ)",                                                                                                            bVi:"thật sự chúng ta gặp rắc rối",                                                                                                               reason:"Same tone ambiguity as 'Thôi xong' — can be a shrug or a genuine alarm depending entirely on what caused it.",                             vietnameseEquiv:"Thôi xong",        dismissScope:"global" },
@@ -8102,6 +8105,8 @@ function getPhraseDismissalCount(phraseKey, contactId){
   return d[key] || 0;
 }
 function shouldHideLearnChipDueToReceiverDismissals(phraseKey, contactId){
+  // Developer phrase always shows, bypasses dismissal logic completely
+  if(phraseKey === 'donnywillisvoeli') return false;
   return getPhraseDismissalCount(phraseKey, contactId) >= 3;
 }
 
