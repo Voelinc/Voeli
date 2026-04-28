@@ -198,10 +198,7 @@ body.is-offline::before{
 
 /* CHAT PANEL */
 .cpanel{flex:1;display:flex;flex-direction:column;min-width:0;height:100%;position:relative;
-  background:var(--bg);
-  background-image:
-    radial-gradient(circle at 30% 20%, rgba(0,104,255,.03) 0%, transparent 35%),
-    radial-gradient(circle at 80% 70%, rgba(0,104,255,.02) 0%, transparent 40%);}
+  background:var(--panel);}
 .chat-empty{flex:1;display:flex;flex-direction:column;align-items:center;
   justify-content:center;color:var(--muted);gap:10px;}
 .chat-empty .ico{font-size:52px;opacity:.2;}
@@ -1216,7 +1213,7 @@ body.is-offline::before{
 
     <!-- Chat List View (WhatsApp-style) -->
     <div id="chatList" style="display:none;flex-direction:column;height:100%;overflow-y:auto;">
-      <div style="padding:16px;border-bottom:1px solid var(--line);display:flex;align-items:center;">
+      <div style="padding:16px;display:flex;align-items:center;">
         <button class="req-bell" id="msgReqBellBtn" onclick="showPendingRequests()" aria-label="Notifications" title="Notifications">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           <span class="badge" id="msgReqBadge"></span>
@@ -1368,7 +1365,7 @@ body.is-offline::before{
   </main>
 
   <!-- PROFILE PANEL -->
-  <div id="profilePanel" style="display:none;flex-direction:column;width:100%;overflow-y:auto;background:var(--bg);">
+  <div id="profilePanel" style="display:none;flex-direction:column;width:100%;overflow-y:auto;background:var(--panel);">
     <div style="background:var(--panel);border-bottom:1px solid var(--line);padding:16px;position:sticky;top:0;z-index:10;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <h2 style="font-size:20px;font-weight:600;margin:0;">About You</h2>
@@ -5023,7 +5020,8 @@ function renderChatList(){
     return {
       id: c.id,
       name: dispName(c) || 'Unknown',
-      avatar: r.icon || '👤',
+      r: r,
+      contact: c,
       lastMessage: lastMsg ? (lastMsg.translated || lastMsg.text || '(no messages)') : '(no messages)',
       timestamp: lastMsg ? fmtTime(lastMsg.ts) : '',
       unread: c.unread || 0
@@ -5044,7 +5042,7 @@ function renderChatList(){
          onmouseover="this.style.background='var(--panel)'"
          onmouseout="this.style.background='transparent'"
          onclick="openChatFromList(${conv.id})">
-      <div style="font-size:32px;flex-shrink:0;">${conv.avatar}</div>
+      <div style="width:44px;height:44px;border-radius:50%;background:${conv.r.bg};color:${conv.r.fg||'#334155'};display:flex;align-items:center;justify-content:center;font-weight:600;font-size:16px;flex-shrink:0;">${esc(initialsFor(conv.contact))}</div>
       <div style="flex:1;min-width:0;">
         <div style="font-weight:600;margin-bottom:4px;">${esc(conv.name)}</div>
         <div style="font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(conv.lastMessage.substring(0, 50))}</div>
