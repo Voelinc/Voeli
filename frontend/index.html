@@ -7089,20 +7089,17 @@ function renderMsgs(){
   const area=document.getElementById('msgsArea');
   const isVI=appDir==='vi-en';
 
-  // Check for pending acceptance or deleted contact status
-  if(c && c.status === 'pending_acceptance'){
-    area.innerHTML=`<div class="status-banner">${isVI?'⚠️ Tin nhắn đang chờ xử lý, chờ chấp nhận':'⚠️ Messages pending, waiting for acceptance'}</div>`;
-    return;
-  }
-
+  // Check for deleted contact status
   if(c && c.status === 'deleted'){
     const sendRequestBtn = `<button class="btn-request" onclick="sendFriendRequest('${esc(c.email)}')">${isVI?'Gửi yêu cầu kết bạn':'Send Friend Request'}</button>`;
     area.innerHTML=`<div class="status-banner">${isVI?'⚠️ Liên hệ đã xóa bạn, gửi yêu cầu kết bạn để kết nối lại':'⚠️ Contact removed you, send a friend request to reconnect'}<br>${sendRequestBtn}</div>`;
     return;
   }
 
-  if(!c || !c.msgs || !c.msgs.length){
-    area.innerHTML=`<div class="nomsg" id="nomsg">${isVI?'Chưa có tin nhắn — bắt đầu bên dưới':'No messages yet — start below'}</div>`;
+  // Show messages even if pending acceptance (will include queued messages)
+  if(!c || (!c.msgs || !c.msgs.length) && (!c.queuedMsgs || !c.queuedMsgs.length)){
+    const bannerHTML = c && c.status === 'pending_acceptance' ? `<div class="status-banner">${isVI?'⚠️ Tin nhắn đang chờ xử lý, chờ chấp nhận':'⚠️ Messages pending, waiting for acceptance'}</div>` : '';
+    area.innerHTML=bannerHTML + `<div class="nomsg" id="nomsg">${isVI?'Chưa có tin nhắn — bắt đầu bên dưới':'No messages yet — start below'}</div>`;
     return;
   }
   const todayLbl=isVI?'Hôm nay':'Today';
@@ -7117,7 +7114,8 @@ function renderMsgs(){
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-left:-9px;"><polyline points="20 6 9 17 4 12"/></svg>
     </span>`;
-  area.innerHTML=c.msgs.map((m,i)=>{
+  const statusBanner = c && c.status === 'pending_acceptance' ? `<div class="status-banner">${isVI?'⚠️ Tin nhắn đang chờ xử lý, chờ chấp nhận':'⚠️ Messages pending, waiting for acceptance'}</div>` : '';
+  area.innerHTML=statusBanner + c.msgs.map((m,i)=>{
     let h='';
     const d=fmtDay(m.ts)||todayLbl;
     const prevD=i>0?fmtDay(c.msgs[i-1].ts):'';
