@@ -8245,7 +8245,7 @@ function buildEquivBanner(phraseEntry, phraseKey, scopeKey){
   banner.innerHTML =
     `<div class="eeb-headline">${headline}</div>`
     + `<div class="eeb-reason">${esc(phraseEntry.reason)}</div>`
-    + `<button class="eeb-dismiss-btn">Stop showing this explanation</button>`;
+    + `<button class="eeb-dismiss-btn">Dismiss, never show again</button>`;
 
   banner.querySelector('.eeb-dismiss-btn')?.addEventListener('click', () => {
     setEquivDismissed(phraseKey, scopeKey);
