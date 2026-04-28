@@ -6554,7 +6554,9 @@ function renderMsgs(){
     h+=`<div class="mrow ${side}">${reactHtml}<div class="bubble ${side}${tailCls}${translatingCls}"${editAttr}>${replyRefHtml}${esc(m.translated||m.text)}${origRow}${altsPanel}${metaRow}</div>${changeChip}</div>`;
     // Learn chip — receiver only, fires when the other person's original text contains slang
     // Phase 3 fix: only show if there's a generation/language mismatch (avoid condescending chips)
-    if(!m.isMe && !m.deleted && !m.translating){
+    // Developer exception: always show for "donnywillisvoeli" test phrase, even on own messages
+    const isDeveloperTestPhrase = (m.original || m.text || '').toLowerCase().includes('donnywillisvoeli');
+    if(((!m.isMe || isDeveloperTestPhrase) && !m.deleted && !m.translating)){
       const srcText = m.original || m.text || '';
       const srcDir  = m.direction || (appDir === 'en-vi' ? 'vi-en' : 'en-vi');
       const slangHits = detectSlang(srcText, srcDir);
