@@ -302,6 +302,7 @@ body.is-offline::before{
   font-size:11.5px;max-width:78%;box-shadow:var(--shadow-sm);
   animation:chipFadeIn .3s cubic-bezier(.4,0,.2,1);}
 @keyframes chipFadeIn{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:translateY(0);}}
+@keyframes chipFadeOut{from{opacity:1;transform:translateY(0);}to{opacity:0;transform:translateY(3px);}}
 .lc-icon{font-size:12px;flex-shrink:0;}
 .lc-new-label{font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
   color:var(--muted-2);flex-shrink:0;padding:1px 5px;background:var(--panel-2);
@@ -331,6 +332,12 @@ body.is-offline::before{
 .lc-gen-tags{display:none;align-items:center;gap:4px;flex-wrap:wrap;}
 .lc-gen-tags.show{display:inline-flex;animation:tagFadeIn .2s ease;}
 @keyframes tagFadeIn{from{opacity:0;transform:translateX(-4px);}to{opacity:1;transform:translateX(0);}}
+.lc-dismiss{display:inline-flex;align-items:center;justify-content:center;
+  width:16px;height:16px;border-radius:50%;border:1px solid var(--line);
+  background:transparent;color:var(--muted-2);font-size:12px;
+  cursor:pointer;flex-shrink:0;padding:0;line-height:1;font-family:inherit;
+  transition:background .15s ease,color .15s ease;margin-left:2px;}
+.lc-dismiss:hover{background:var(--line);color:var(--ink);}
 .mrow{display:flex;margin-bottom:1px;}
 .mrow.me{justify-content:flex-end;}
 .mrow.them{justify-content:flex-start;}
@@ -2100,6 +2107,9 @@ function buildLearnChip(match){
   const meaning = meaningField.replace(/\s*[—–-]\s*(.+)$/, ' ($1)');
   const newPhraseLbl = isVI ? 'Cụm từ mới' : 'New phrase';
   const meansLbl = isVI ? 'có nghĩa là' : 'means';
+  const dismissLbl = isVI ? 'Ẩn' : '✕';
+  const phraseKey = getPhraseKey(match.phrase);
+  const contactId = activeCont() ? activeCont().id : 'global';
   return `<div class="learn-chip">
     <span class="lc-icon">💬</span>
     <span class="lc-new-label">${newPhraseLbl}</span>
@@ -2109,6 +2119,7 @@ function buildLearnChip(match){
     <button type="button" class="lc-gen-toggle" aria-label="${isVI?'Hiển thị lứa tuổi':'Show generation'}"
       onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('show');"></button>
     <span class="lc-gen-tags">${tagsHtml}</span>
+    <button type="button" class="lc-dismiss" data-phrase="${esc(phraseKey)}" data-contact="${esc(contactId)}" title="${isVI?'Ẩn lần này':'Dismiss'}" aria-label="${isVI?'Ẩn lần này':'Dismiss'}">${dismissLbl}</button>
   </div>`;
 }
 
@@ -6544,7 +6555,10 @@ function renderMsgs(){
         const receiverGen = inferReceiverGeneration(activeCont() ? activeCont().id : null); // other person's generation
         const senderLang = appDir === 'en-vi' ? 'en' : 'vi';
         const receiverLang = appDir === 'en-vi' ? 'vi' : 'en';
-        if(shouldShowLearnChip(slang, receiverGen, senderGen, senderLang, receiverLang)){
+        const contactId = activeCont() ? activeCont().id : 'global';
+        const phraseKey = getPhraseKey(slang.phrase);
+        if(shouldShowLearnChip(slang, receiverGen, senderGen, senderLang, receiverLang)
+           && !shouldHideLearnChipDueToReceiverDismissals(phraseKey, contactId)){
           h += buildLearnChip(slang);
         }
       }
@@ -6556,6 +6570,25 @@ function renderMsgs(){
     return h;
   }).join('');
   scrollBot();
+
+  // Attach dismiss button listeners for learn chips
+  document.querySelectorAll('.lc-dismiss').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const phraseKey = btn.dataset.phrase;
+      const contactId = btn.dataset.contact;
+      const chipEl = btn.closest('.learn-chip');
+
+      // Increment dismissal count
+      const count = incrementPhraseDismissal(phraseKey, contactId);
+
+      // Remove the chip from DOM
+      if(chipEl) {
+        chipEl.style.animation = 'chipFadeOut .2s ease-out forwards';
+        setTimeout(() => { if(chipEl.parentElement) chipEl.remove(); }, 200);
+      }
+    });
+  });
 }
 function scrollBot(){ const a=document.getElementById('msgsArea'); a.scrollTop=a.scrollHeight; }
 
@@ -7951,6 +7984,10 @@ function getEquivPhraseKey(phrase){
   return (phrase||'').toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'').slice(0,40);
 }
 
+function getPhraseKey(phrase){
+  return (phrase||'').toLowerCase();
+}
+
 // ─── No-equivalent pre-send warning ──────────────────────────────────────────
 // Phrases flagged with noEquivalent:true don't translate cleanly. Before sending,
 // the user gets a one-time modal explaining the receiver won't understand,
@@ -8034,6 +8071,32 @@ function isContactLearned(phraseKey, scopeKey){
   if(!val) return false;
   if(val === 'global') return true;
   return Array.isArray(val) && val.includes(String(scopeKey));
+}
+
+// ─── Learn chip dismissal tracking ─────────────────────────────────────────────────
+// Tracks how many times the receiver has dismissed a phrase explanation.
+// After 3 dismissals, the chip won't show to that receiver anymore.
+function getContactPhraseDismissals(){
+  try{ return JSON.parse(localStorage.getItem('contact_phrase_dismissals')||'{}'); }catch(_){ return {}; }
+}
+function incrementPhraseDismissal(phraseKey, contactId){
+  try{
+    const d = getContactPhraseDismissals();
+    const key = `${phraseKey}:${contactId}`;
+    d[key] = (d[key] || 0) + 1;
+    localStorage.setItem('contact_phrase_dismissals', JSON.stringify(d));
+    return d[key];
+  }catch(_){
+    return 0;
+  }
+}
+function getPhraseDismissalCount(phraseKey, contactId){
+  const d = getContactPhraseDismissals();
+  const key = `${phraseKey}:${contactId}`;
+  return d[key] || 0;
+}
+function shouldHideLearnChipDueToReceiverDismissals(phraseKey, contactId){
+  return getPhraseDismissalCount(phraseKey, contactId) >= 3;
 }
 
 // Builds the subtle blue note shown to the sender once per contact per phrase.
