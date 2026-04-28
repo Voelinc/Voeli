@@ -2088,7 +2088,9 @@ function buildLearnChip(match){
   const gens = getPhraseGen(match.phrase);
   const tagsHtml = gens.map(g => `<span class="lc-gen ${g.cls}">${g.label}</span>`).join('');
   const isVI = appDir === 'vi-en';
-  const meaningField = (isVI && match.aVi) ? match.aVi : match.a;
+  const meaningField = isVI
+    ? (match.aVi !== undefined ? match.aVi : match.a)
+    : (match.aEn !== undefined ? match.aEn : match.a);
   const meaning = meaningField.replace(/\s*[—–-]\s*(.+)$/, ' ($1)');
   const newPhraseLbl = isVI ? 'Cụm từ mới' : 'New phrase';
   const meansLbl = isVI ? 'có nghĩa là' : 'means';
