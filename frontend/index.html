@@ -191,10 +191,12 @@ body.is-offline::before{
 .cprev .you{color:var(--muted-2);}
 .cmeta{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;}
 .ctime{font-size:11.5px;color:var(--muted);}
-.cedit{background:none;border:none;padding:3px 6px;border-radius:5px;
-  color:var(--muted);cursor:pointer;font-size:13px;opacity:0;transition:opacity .15s;}
+.cedit{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;
+  font-size:11px;font-weight:500;cursor:pointer;border:none;background:transparent;
+  color:var(--muted);transition:background .15s,color .15s;opacity:0;}
 .crow:hover .cedit{opacity:1;}
-.cedit:hover{background:var(--panel-2);color:var(--blue);}
+.cedit:hover{background:var(--chip);color:var(--ink);}
+.cedit svg{opacity:.6;width:11px;height:11px;}
 
 /* CHAT PANEL */
 .cpanel{flex:1;display:flex;flex-direction:column;min-width:0;height:100%;position:relative;
@@ -1222,6 +1224,7 @@ body.is-offline::before{
         </button>
       </div>
       <div style="padding:0 18px 12px;"><div class="sb-search"><input type="text" id="chatListSearch" placeholder="Search conversations…" style="flex:1;border:none;background:transparent;outline:none;font-size:14px;font-family:inherit;"></div></div>
+      <div style="padding:0 18px 12px;display:flex;gap:8px;"><button class="sb-tab active" id="tabAllMsg" onclick="setTab('all')">All</button><button class="sb-tab" id="tabUnreadMsg" onclick="setTab('unread')">Unread</button></div>
       <div id="chatListItems" style="flex:1;overflow-y:auto;"></div>
     </div>
 
@@ -1237,7 +1240,7 @@ body.is-offline::before{
           <div class="chsub">
             <span class="dot"></span>
             <span id="hdrSub"></span>
-            <button class="rel-edit-chip" onclick="openRelEditor()" title="Change relationship type" aria-label="Edit relationship">
+            <button class="rel-edit-chip" onclick="openModal(activeId)" title="Edit contact" aria-label="Edit contact">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               Edit
             </button>
@@ -1392,16 +1395,25 @@ body.is-offline::before{
       <!-- User Profile Card -->
       <div style="background:var(--panel);border-radius:16px;padding:20px;text-align:center;margin-bottom:32px;border:1px solid var(--line);">
         <div id="profileAvatar" style="width:80px;height:80px;border-radius:50%;background:var(--blue);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:40px;color:white;font-weight:600;"></div>
-        <h3 id="profileName" style="font-size:22px;font-weight:600;margin-bottom:6px;margin-top:0;">Your Name</h3>
+        <h3 id="profileName" style="font-size:22px;font-weight:600;margin-bottom:6px;margin-top:0;cursor:pointer;padding:4px 8px;border-radius:6px;transition:background 0.2s;"
+            onmouseover="this.style.background='var(--panel-2)'" onmouseout="this.style.background='transparent'"
+            onclick="editProfileName(this)">Your Name</h3>
         <p id="profileEmail" style="font-size:14px;color:var(--muted);margin:0;">email@example.com</p>
       </div>
 
-      <!-- Learning Dashboard Section -->
+      <!-- Learning Dashboard Section (Collapsible) -->
       <div style="margin-bottom:28px;">
-        <h3 style="font-size:16px;font-weight:600;margin-bottom:12px;margin-top:0;">📚 Learning Dashboard</h3>
-        <input type="text" id="dictSearchProfile" placeholder="Search phrases..." style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;box-sizing:border-box;margin-bottom:12px;background:var(--panel-2);">
-        <div id="dictContentProfile" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:12px;"></div>
-        <div id="emptyDictProfile" style="display:none;"></div>
+        <button id="dashboardToggle" style="background:none;border:none;padding:0;cursor:pointer;width:100%;text-align:left;display:flex;align-items:center;gap:8px;transition:all 0.2s;"
+                onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+          <span style="font-size:18px;">📚</span>
+          <h3 style="font-size:16px;font-weight:600;margin:0;flex:1;">Learning Dashboard</h3>
+          <span id="dashboardArrow" style="color:var(--muted);font-size:14px;font-weight:600;">▼</span>
+        </button>
+        <div id="dashboardContent" style="margin-top:12px;">
+          <input type="text" id="dictSearchProfile" placeholder="Search phrases..." style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;box-sizing:border-box;margin-bottom:12px;background:var(--panel-2);">
+          <div id="dictContentProfile" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:12px;"></div>
+          <div id="emptyDictProfile" style="display:none;"></div>
+        </div>
       </div>
 
       <!-- Privacy Section -->
@@ -2349,6 +2361,74 @@ function checkLearnedDictionary(text, direction){
   return null;
 }
 
+// Transforms learned_dictionary from storage into displayable format for Learning Dashboard.
+// Returns object with cards ready for rendering: {phrase, english, vietnamese, dateAdded}
+function getLearnedDictionary(){
+  try{
+    const raw = JSON.parse(localStorage.getItem('learned_dictionary')||'{}');
+    const transformed = {};
+
+    for(const [key, entry] of Object.entries(raw)){
+      if(!entry) continue;
+
+      if(entry.isAbbrev){
+        // Abbreviation entry: {text, isAbbrev, count, learnedAt}
+        const abbrevLower = entry.text.toLowerCase();
+        let abbrevData = null;
+
+        if(ABBREVIATIONS.en[abbrevLower]){
+          const enData = ABBREVIATIONS.en[abbrevLower];
+          const viData = ABBREVIATIONS.vi[abbrevLower] || {full: enData.full, meaning: enData.meaning};
+          abbrevData = {
+            full: enData.full,
+            meaning: enData.meaning,
+            vi_full: viData.full,
+            vi_meaning: viData.meaning
+          };
+        } else if(ABBREVIATIONS.vi[abbrevLower]){
+          const viData = ABBREVIATIONS.vi[abbrevLower];
+          const enData = ABBREVIATIONS.en[abbrevLower] || {full: viData.full, meaning: viData.meaning};
+          abbrevData = {
+            full: enData.full,
+            meaning: enData.meaning,
+            vi_full: viData.full,
+            vi_meaning: viData.meaning
+          };
+        }
+
+        if(abbrevData){
+          transformed[key] = {
+            phrase: `'${entry.text}' (abbreviation)`,
+            english: `${abbrevData.full} → ${abbrevData.meaning}`,
+            vietnamese: `${abbrevData.vi_full} → ${abbrevData.vi_meaning}`,
+            dateAdded: entry.learnedAt,
+            isAbbrev: true
+          };
+        }
+      } else {
+        // Phrase entry: {text, direction, result, learnedAt, count}
+        if(!entry.result || !Array.isArray(entry.result.options)) continue;
+
+        const options = entry.result.options;
+        // Use first option as representative translation
+        const primary = options[0] || {};
+
+        transformed[key] = {
+          phrase: entry.text,
+          english: primary.translation || '',
+          vietnamese: primary.backTranslation || '',
+          dateAdded: entry.learnedAt
+        };
+      }
+    }
+
+    return transformed;
+  } catch(e){
+    console.error('Error loading learned dictionary:', e);
+    return {};
+  }
+}
+
 // ═══════════════════════════════════════════════════════
 // COMMUNITY SLANG NETWORK LAYER
 // ═══════════════════════════════════════════════════════
@@ -3105,6 +3185,7 @@ function applyAuthLang(){
 // ═══════════════════════════════════════════════════════
 let contacts = [];
 let activeId = null;
+let currentTab = 'messages';
 let editingId = null;
 let selRelType = null;
 let nxtId = 1;
@@ -5325,19 +5406,27 @@ function loadDemoContacts(){
 
 function setTab(tab){
   activeTab = tab;
-  document.getElementById('tabAll').classList.toggle('active', tab==='all');
-  document.getElementById('tabUnread').classList.toggle('active', tab==='unread');
-  document.getElementById('tabFav').classList.toggle('active', tab==='favorites');
-  document.getElementById('tabDict').classList.toggle('active', tab==='dictionary');
+  const tabAll = document.getElementById('tabAll');
+  const tabUnread = document.getElementById('tabUnread');
+  const tabFav = document.getElementById('tabFav');
+  const tabDict = document.getElementById('tabDict');
+  const tabAllMsg = document.getElementById('tabAllMsg');
+  const tabUnreadMsg = document.getElementById('tabUnreadMsg');
+  if(tabAll) tabAll.classList.toggle('active', tab==='all');
+  if(tabUnread) tabUnread.classList.toggle('active', tab==='unread');
+  if(tabFav) tabFav.classList.toggle('active', tab==='favorites');
+  if(tabDict) tabDict.classList.toggle('active', tab==='dictionary');
+  if(tabAllMsg) tabAllMsg.classList.toggle('active', tab==='all');
+  if(tabUnreadMsg) tabUnreadMsg.classList.toggle('active', tab==='unread');
   const clist = document.getElementById('cList');
   const dict = document.getElementById('dictionaryPanel');
   if(tab === 'dictionary'){
-    clist.style.display = 'none';
-    dict.style.display = 'block';
+    if(clist) clist.style.display = 'none';
+    if(dict) dict.style.display = 'block';
     renderDictionary();
   } else {
-    clist.style.display = 'block';
-    dict.style.display = 'none';
+    if(clist) clist.style.display = 'block';
+    if(dict) dict.style.display = 'none';
     renderSidebar();
   }
 }
@@ -5355,6 +5444,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 // Bottom navigation tab switching
 function switchTab(tab){
+  currentTab = tab;
   console.log('switchTab called with:', tab);
   // Find elements by class instead of querySelector - more reliable
   const sidebar = document.querySelector('aside.sidebar');
@@ -5382,10 +5472,16 @@ function switchTab(tab){
     }
     if(cpanel) cpanel.style.setProperty('display', 'none', 'important');
     if(profilePanel) profilePanel.style.setProperty('display', 'none', 'important');
+    // Hide Unread filter on Contacts tab (messaging-specific)
+    const tabUnread = document.getElementById('tabUnread');
+    if(tabUnread) tabUnread.style.display = 'none';
     renderSidebar(); // Render contacts list
     navContacts.style.color = 'var(--primary)';
     navContacts.style.opacity = '1';
   } else if(tab === 'messages'){
+    // Show Unread filter on Messages tab
+    const tabUnread = document.getElementById('tabUnread');
+    if(tabUnread) tabUnread.style.display = 'block';
     // If activeId is set, don't render chat list - let openChat handle displaying the individual chat
     if(!activeId){
       currentMessagesView = 'list';
@@ -5481,6 +5577,38 @@ function openChatFromList(contactId){
   openChat(contactId);
 }
 
+// Edit profile name inline
+function editProfileName(el){
+  const currentName = el.textContent.trim();
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = currentName;
+  input.style.cssText = 'font-size:22px;font-weight:600;border:1px solid var(--blue);border-radius:6px;padding:6px 8px;width:100%;box-sizing:border-box;font-family:inherit;';
+
+  el.textContent = '';
+  el.appendChild(input);
+  input.focus();
+  input.select();
+
+  const saveName = () => {
+    const newName = input.value.trim() || 'Your Name';
+    el.textContent = newName;
+    el.style.background = 'transparent';
+    // Save to localStorage
+    localStorage.setItem('profile_display_name', newName);
+  };
+
+  input.addEventListener('blur', saveName);
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') {
+      saveName();
+    } else if(e.key === 'Escape') {
+      el.textContent = currentName;
+      el.style.background = 'transparent';
+    }
+  });
+}
+
 // Render dictionary in profile panel
 function renderProfileDictionary(){
   const isVI = appDir === 'vi-en';
@@ -5490,14 +5618,21 @@ function renderProfileDictionary(){
   const profileName = document.getElementById('profileName');
   const profileEmail = document.getElementById('profileEmail');
 
+  // Load saved name from localStorage first, regardless of currentUser
+  const savedName = localStorage.getItem('profile_display_name');
+
   if(currentUser){
     const email = currentUser.email || sessionStorage.getItem('mta_user_email') || 'user@example.com';
-    const displayName = currentUser.displayName || email.split('@')[0] || 'User';
+    const displayName = savedName || currentUser.displayName || email.split('@')[0] || 'User';
     const avatar = displayName.charAt(0).toUpperCase();
 
     if(profileAvatar) profileAvatar.textContent = avatar;
     if(profileName) profileName.textContent = displayName;
     if(profileEmail) profileEmail.textContent = email;
+  } else if(savedName) {
+    // In demo mode, still show saved name if it exists
+    if(profileName) profileName.textContent = savedName;
+    if(profileAvatar) profileAvatar.textContent = savedName.charAt(0).toUpperCase();
   }
 
   const learned = getLearnedDictionary();
@@ -5506,14 +5641,40 @@ function renderProfileDictionary(){
   const content = document.getElementById('dictContentProfile');
   if(!content) return;
 
-  content.innerHTML = cards.map(p => `
-    <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:12px;">
-      <div style="font-weight:600;margin-bottom:6px;">${esc(p.phrase || '')}</div>
-      ${p.english ? `<div style="color:var(--muted);">EN: ${esc(p.english)}</div>` : ''}
-      ${p.vietnamese ? `<div style="color:var(--muted);">VI: ${esc(p.vietnamese)}</div>` : ''}
-      ${p.dateAdded ? `<div style="color:var(--muted-2);font-size:11px;margin-top:6px;">Learned: ${new Date(p.dateAdded).toLocaleDateString()}</div>` : ''}
-    </div>
-  `).join('');
+  function buildCardHtml(p, idx){
+    const cardId = `dict-card-${idx}`;
+    const isExpanded = window._expandedDictCards && window._expandedDictCards[cardId];
+    return `
+      <div data-card-id="${cardId}" class="dict-card" style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:12px;cursor:pointer;transition:all 0.2s;"
+           onmouseover="this.style.background='var(--panel-2)';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)'"
+           onmouseout="this.style.background='var(--panel)';this.style.boxShadow='none'">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div style="font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.phrase || '')}</div>
+          <div style="color:var(--muted);font-size:11px;flex-shrink:0;">${isExpanded ? '▼' : '▶'}</div>
+        </div>
+        ${isExpanded ? `
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line);color:var(--muted);line-height:1.4;">
+            ${p.english ? `<div style="margin:4px 0;">EN: ${esc(p.english)}</div>` : ''}
+            ${p.vietnamese ? `<div style="margin:4px 0;">VI: ${esc(p.vietnamese)}</div>` : ''}
+            ${p.dateAdded ? `<div style="color:var(--muted-2);font-size:11px;margin-top:6px;">Learned: ${new Date(p.dateAdded).toLocaleDateString()}</div>` : ''}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  content.innerHTML = cards.map((p, idx) => buildCardHtml(p, idx)).join('');
+
+  // Attach click handlers to all cards
+  document.querySelectorAll('.dict-card').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cardId = el.getAttribute('data-card-id');
+      window._expandedDictCards = window._expandedDictCards || {};
+      window._expandedDictCards[cardId] = !window._expandedDictCards[cardId];
+      renderProfileDictionary();
+    });
+  });
 
   const search = document.getElementById('dictSearchProfile');
   if(search){
@@ -5524,15 +5685,45 @@ function renderProfileDictionary(){
         (p.english || '').toLowerCase().includes(q) ||
         (p.vietnamese || '').toLowerCase().includes(q)
       );
-      content.innerHTML = filtered.map(p => `
-        <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:12px;">
-          <div style="font-weight:600;margin-bottom:6px;">${esc(p.phrase || '')}</div>
-          ${p.english ? `<div style="color:var(--muted);">EN: ${esc(p.english)}</div>` : ''}
-          ${p.vietnamese ? `<div style="color:var(--muted);">VI: ${esc(p.vietnamese)}</div>` : ''}
-          ${p.dateAdded ? `<div style="color:var(--muted-2);font-size:11px;margin-top:6px;">Learned: ${new Date(p.dateAdded).toLocaleDateString()}</div>` : ''}
-        </div>
-      `).join('');
+      content.innerHTML = filtered.map((p, idx) => buildCardHtml(p, idx)).join('');
+
+      // Re-attach click handlers after search results update
+      document.querySelectorAll('.dict-card').forEach(el => {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const cardId = el.getAttribute('data-card-id');
+          window._expandedDictCards = window._expandedDictCards || {};
+          window._expandedDictCards[cardId] = !window._expandedDictCards[cardId];
+          renderProfileDictionary();
+        });
+      });
     };
+  }
+
+  // Setup dashboard toggle
+  const dashboardToggle = document.getElementById('dashboardToggle');
+  const dashboardContent = document.getElementById('dashboardContent');
+  const dashboardArrow = document.getElementById('dashboardArrow');
+
+  if(dashboardToggle){
+    window._dashboardExpanded = window._dashboardExpanded !== false; // default to expanded
+
+    // Set initial state
+    if(!window._dashboardExpanded){
+      dashboardContent.style.display = 'none';
+      dashboardArrow.textContent = '▶';
+    }
+
+    dashboardToggle.addEventListener('click', () => {
+      window._dashboardExpanded = !window._dashboardExpanded;
+      if(window._dashboardExpanded){
+        dashboardContent.style.display = 'block';
+        dashboardArrow.textContent = '▼';
+      } else {
+        dashboardContent.style.display = 'none';
+        dashboardArrow.textContent = '▶';
+      }
+    });
   }
 }
 
@@ -5605,15 +5796,16 @@ function renderSidebar(list){
       ? `<span style="background:var(--blue);color:#fff;border-radius:999px;font-size:11px;font-weight:700;padding:2px 7px;min-width:20px;text-align:center;display:inline-block;">${c.unread}</span>`
       : '';
     const favStar = c.favourite ? `<span style="color:var(--gold);font-size:11px;margin-left:4px;">★</span>` : '';
+    const isContactsTab = currentTab === 'contacts';
     return `<div class="crow${c.id===activeId?' active':''}" onclick="activeId=${c.id};switchTab('messages');openChat(${c.id})">
       <div class="cav" style="background:${r.bg};color:${r.fg||'#334155'};">${esc(initialsFor(c))}</div>
       <div class="cinf">
         <div class="cname" style="${c.unread>0?'font-weight:700;color:var(--ink);':''}">${esc(dispName(c))}${favStar}</div>
-        <div class="cprev" style="${c.unread>0?'font-weight:600;color:var(--ink);':''}">${youPrefix}${esc(prevText)}</div>
+        ${!isContactsTab ? `<div class="cprev" style="${c.unread>0?'font-weight:600;color:var(--ink);':''}">${youPrefix}${esc(prevText)}</div>` : ''}
       </div>
       <div class="cmeta">
-        <span class="ctime" style="${c.unread>0?'color:var(--blue);font-weight:600;':''}">${esc(timeStr)}</span>
-        ${unreadBadge || `<button class="cedit" onclick="event.stopPropagation();openModal(${c.id})" title="Edit">✏️</button>`}
+        ${!isContactsTab ? `<span class="ctime" style="${c.unread>0?'color:var(--blue);font-weight:600;':''}">${esc(timeStr)}</span>` : ''}
+        ${unreadBadge || `<button class="cedit" onclick="event.stopPropagation();openModal(${c.id})" title="Edit contact" aria-label="Edit contact"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</button>`}
       </div>
     </div>`;
   }).join('') + (hasMore ? `<div style="padding:12px;text-align:center;border-top:1px solid var(--line);"><button style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:13px;font-weight:600;" onclick="renderSidebar()">Show all (${source.length})</button></div>` : '');
