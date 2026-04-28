@@ -7293,7 +7293,7 @@ async function sendOptimistic(text, direction){
   if(!c.msgs) c.msgs = []; // Ensure msgs array exists
   if(c.blocked){ console.log(`[sendOptimistic] Contact is blocked`); alert('You have blocked this contact. Unblock them to message.'); return; }
   const now = new Date();
-  const isMe = direction==='en-vi' ? (appDir==='en-vi') : (appDir==='vi-en');
+  const isMe = true;
   const reply = _replyState ? { id: _replyState.id, text: _replyState.text } : null;
   cancelReply();
   const msg = {
@@ -7344,7 +7344,7 @@ async function sendWithLearnedTone(text, direction, learnedTone){
   if(!c.msgs) c.msgs = []; // Ensure msgs array exists
   if(c.blocked){ alert('You have blocked this contact. Unblock them to message.'); return; }
   const now = new Date();
-  const isMe = direction==='en-vi' ? (appDir==='en-vi') : (appDir==='vi-en');
+  const isMe = true;
   const reply = _replyState ? { id: _replyState.id, text: _replyState.text } : null;
   cancelReply();
   const msg = {
@@ -7600,7 +7600,7 @@ function getSessionLength(msgs){
 async function sendWithContextBypass(text, direction, c){
   if(!c.msgs) c.msgs = []; // Ensure msgs array exists
   const now = new Date();
-  const isMe = direction === 'en-vi' ? (appDir === 'en-vi') : (appDir === 'vi-en');
+  const isMe = true;
   const msgId = 'cx' + now.getTime() + Math.random().toString(36).slice(2,5);
   const reply = _replyState ? { id: _replyState.id, text: _replyState.text } : null;
   cancelReply();
