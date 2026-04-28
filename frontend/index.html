@@ -5589,12 +5589,20 @@ function editProfileName(el){
   input.focus();
   input.select();
 
-  const saveName = () => {
+  const saveName = async () => {
     const newName = input.value.trim() || 'Your Name';
     el.textContent = newName;
     el.style.background = 'transparent';
     // Save to localStorage
     localStorage.setItem('profile_display_name', newName);
+    // Save to Firebase if user is authenticated
+    if(currentUser) {
+      try {
+        await fbAuth.currentUser.updateProfile({ displayName: newName });
+      } catch(err) {
+        console.error('Failed to update profile:', err);
+      }
+    }
   };
 
   input.addEventListener('blur', saveName);
