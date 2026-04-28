@@ -327,6 +327,10 @@ body.is-offline::before{
   width:10px;height:1.5px;background:var(--muted);border-radius:1px;
   transform:translate(-50%,-50%) rotate(0deg);
   transition:transform .2s cubic-bezier(.4,0,.2,1),background .15s ease;}
+.lc-gen-toggle::after{content:"";position:absolute;top:50%;left:50%;
+  width:1.5px;height:10px;background:var(--muted);border-radius:1px;
+  transform:translate(-50%,-50%);
+  transition:background .15s ease;}
 .lc-gen-toggle:hover{background:var(--panel);}
 .lc-gen-toggle:hover::before{background:var(--ink);}
 .lc-gen-toggle.open{background:var(--ink);border-color:var(--ink);}
