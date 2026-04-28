@@ -1219,7 +1219,7 @@ body.is-offline::before{
           <span class="badge" id="msgReqBadge"></span>
         </button>
       </div>
-      <div style="padding:0 18px 12px;"><input type="text" id="chatListSearch" placeholder="Search conversations…" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;box-sizing:border-box;background:var(--panel-2);"></div>
+      <div style="padding:0 18px 12px;"><div class="sb-search"><input type="text" id="chatListSearch" placeholder="Search conversations…" style="flex:1;border:none;background:transparent;outline:none;font-size:14px;font-family:inherit;"></div></div>
       <div id="chatListItems" style="flex:1;overflow-y:auto;"></div>
     </div>
 
@@ -1384,7 +1384,7 @@ body.is-offline::before{
       </div>
     </div>
     <div style="padding:16px 18px 12px;padding-top:calc(16px + env(safe-area-inset-top));background:var(--panel);">
-      <input type="text" id="profileSearch" placeholder="Search..." style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;outline:none;font-family:inherit;background:var(--panel-2);" oninput="filterProfileContent(this.value)">
+      <div class="sb-search"><input type="text" id="profileSearch" placeholder="Search..." style="flex:1;border:none;background:transparent;outline:none;font-size:14px;font-family:inherit;" oninput="filterProfileContent(this.value)"></div>
     </div>
     <div id="profileContent" style="padding:24px;flex:1;overflow-y:auto;">
       <!-- User Profile Card -->
