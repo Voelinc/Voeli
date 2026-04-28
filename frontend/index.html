@@ -2088,9 +2088,15 @@ function buildLearnChip(match){
   const gens = getPhraseGen(match.phrase);
   const tagsHtml = gens.map(g => `<span class="lc-gen ${g.cls}">${g.label}</span>`).join('');
   const isVI = appDir === 'vi-en';
-  const meaningField = isVI
-    ? (match.aVi !== undefined ? match.aVi : match.a)
-    : (match.aEn !== undefined ? match.aEn : match.a);
+  // Select meaning based on receiver's interface language
+  // SLANG_EN entries have aVi (Vietnamese translations)
+  // SLANG_VI entries have aEn (English equivalents)
+  let meaningField = match.a; // Default fallback
+  if (isVI && match.aVi) {
+    meaningField = match.aVi; // VI interface receiving EN slang: show Vietnamese
+  } else if (!isVI && match.aEn) {
+    meaningField = match.aEn; // EN interface receiving VI slang: show English equivalent
+  }
   const meaning = meaningField.replace(/\s*[—–-]\s*(.+)$/, ' ($1)');
   const newPhraseLbl = isVI ? 'Cụm từ mới' : 'New phrase';
   const meansLbl = isVI ? 'có nghĩa là' : 'means';
