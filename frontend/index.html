@@ -2087,7 +2087,7 @@ function userBelongsToTier(userGen, phraseTier){
 function buildLearnChip(match){
   const gens = getPhraseGen(match.phrase);
   const tagsHtml = gens.map(g => `<span class="lc-gen ${g.cls}">${g.label}</span>`).join('');
-  const isVI = uiLang === 'vi';
+  const isVI = appDir === 'vi-en';
   const meaningField = (isVI && match.aVi) ? match.aVi : match.a;
   const meaning = meaningField.replace(/\s*[—–-]\s*(.+)$/, ' ($1)');
   const newPhraseLbl = isVI ? 'Cụm từ mới' : 'New phrase';
@@ -2801,6 +2801,7 @@ function setAppDir(dir){
   applyAuthLang();
   applyAppLang();
   if(activeId) refreshHeader();
+  if(activeId) renderMsgs();
 }
 
 // Localize the sign-in / create-account screen so the EN/VI toggle
