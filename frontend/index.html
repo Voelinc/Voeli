@@ -347,12 +347,12 @@ body.is-offline::before{
 .bubble{max-width:62%;padding:8px 12px 6px;border-radius:18px;font-size:14.5px;line-height:1.4;
   word-wrap:break-word;position:relative;box-shadow:var(--shadow-sm);}
 .bubble.me{background:var(--blue-bubble);color:#fff;border-bottom-right-radius:6px;}
-.bubble.them{background:var(--panel);color:var(--ink);border-bottom-left-radius:6px;}
+.bubble.them{background:#f2f2f7;color:var(--ink)}
 /* Tail on the last-in-streak bubble */
 .bubble.me.tail::after{content:"";position:absolute;right:-6px;bottom:0;width:12px;height:14px;
   background:var(--blue-bubble);clip-path:polygon(0 0, 100% 100%, 0 100%);}
 .bubble.them.tail::after{content:"";position:absolute;left:-6px;bottom:0;width:12px;height:14px;
-  background:var(--panel);clip-path:polygon(100% 0, 100% 100%, 0 100%);}
+  background:#f2f2f7;clip-path:polygon(100% 0, 100% 100%, 0 100%);}
 /* Bubble meta (time + ticks) lives inside bottom-right */
 .b-meta{display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:2px;
   font-size:10.5px;opacity:.78;}
@@ -485,7 +485,9 @@ body.is-offline::before{
 .ctx-react-btn:hover{transform:scale(1.25);background:var(--panel-2);}
 .ctx-react-btn.active{transform:scale(1.15);}
 /* ── Reaction bubble badge ── */
-.msg-reactions{position:absolute;top:-12px;left:6px;display:flex;gap:2px;z-index:2;}
+.msg-reactions{position:absolute;top:-12px;display:flex;gap:2px;z-index:2;}
+.mrow.their .msg-reactions{left:6px;}
+.mrow.me .msg-reactions{right:6px;}
 .react-badge{background:var(--panel);border:1px solid var(--line);border-radius:999px;
   padding:1px 5px;font-size:13px;line-height:1.5;box-shadow:0 1px 4px rgba(0,0,0,.1);
   cursor:pointer;transition:transform .1s;}
@@ -6511,8 +6513,8 @@ function renderMsgs(){
 
     // Reactions badge (top-left of bubble row)
     const reactions = m.reactions || {};
-    const reactHtml = Object.keys(reactions).length
-      ? `<div class="msg-reactions">${Object.entries(reactions).map(([emoji,count])=>
+    const reactHtml = Object.keys(reactions).filter(e => e !== '__me').length
+      ? `<div class="msg-reactions">${Object.entries(reactions).filter(([emoji])=> emoji !== '__me').map(([emoji,count])=>
           `<span class="react-badge" data-msgid="${esc(m.id||'')}" data-emoji="${esc(emoji)}">${emoji}${count>1?` ${count}`:''}</span>`
         ).join('')}</div>`
       : '';
@@ -6708,18 +6710,14 @@ function toggleReaction(msgId, emoji){
   if(!msg) return;
   if(!msg.reactions) msg.reactions = {};
   const prev = msg.reactions.__me;
-  // Remove previous reaction count
-  if(prev && msg.reactions[prev]){
+  // If clicking a different emoji, remove the previous one
+  if(prev && prev !== emoji && msg.reactions[prev]){
     msg.reactions[prev]--;
     if(msg.reactions[prev] <= 0) delete msg.reactions[prev];
   }
-  // Toggle: if same emoji, just remove; otherwise apply new
-  if(prev === emoji){
-    delete msg.reactions.__me;
-  } else {
-    msg.reactions[emoji] = (msg.reactions[emoji]||0) + 1;
-    msg.reactions.__me = emoji;
-  }
+  // Always add the new emoji reaction
+  msg.reactions[emoji] = (msg.reactions[emoji]||0) + 1;
+  msg.reactions.__me = emoji;
   renderMsgs();
   syncToFirebase(msg);
 }
@@ -6859,6 +6857,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
   area.addEventListener('click', e=>{
     const ref = e.target.closest('.reply-ref[data-jumpid]');
     if(ref && ref.dataset.jumpid) jumpToMsg(ref.dataset.jumpid);
+  });
+
+  // Click on reaction badge to add/increase reaction
+  area.addEventListener('click', e=>{
+    const badge = e.target.closest('.react-badge[data-msgid][data-emoji]');
+    if(badge) {
+      e.stopPropagation();
+      toggleReaction(badge.dataset.msgid, badge.dataset.emoji);
+    }
   });
 });
 
