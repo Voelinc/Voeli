@@ -2102,10 +2102,46 @@ function userBelongsToTier(userGen, phraseTier){
   return tiers.some(t => accessible.includes(t)) || tiers.includes('gen-uni');
 }
 
-function buildLearnChip(match){
+function buildLearnChip(match, phraseLanguage){
   const gens = getPhraseGen(match.phrase);
   const tagsHtml = gens.map(g => `<span class="lc-gen ${g.cls}">${g.label}</span>`).join('');
   const isVI = appDir === 'vi-en';
+
+  // NATIVE SPEAKER PROTECTION: Hide learn chips for native speakers
+  // If user's interface language matches the phrase language, they're native to it
+  // appDir === 'en-vi' means English interface (English native)
+  // appDir === 'vi-en' means Vietnamese interface (Vietnamese native)
+  // phraseLanguage === 'en' means phrase is in English
+  // phraseLanguage === 'vi' means phrase is in Vietnamese
+  if(phraseLanguage){
+    const userNativeIsEn = appDir === 'en-vi';
+    const phraseIsEn = phraseLanguage === 'en';
+    if(userNativeIsEn === phraseIsEn){
+      // User is native to this language, don't show learn chip
+      return '';
+    }
+  }
+
+  // Handle abbreviations specially
+  if(match.isAbbrev){
+    const newPhraseLbl = isVI ? 'Cụm từ mới' : 'New phrase';
+    const dismissLbl = isVI ? 'Ẩn' : '✕';
+    const phraseKey = getPhraseKey(match.phrase);
+    const contactId = activeCont() ? activeCont().id : 'global';
+
+    const abbrevLabel = isVI ? '(viết tắt)' : '(abbreviation)';
+    const meaning = `${abbrevLabel} = ${match.full} → ${match.meaning}`;
+
+    return `<div class="learn-chip">
+      <span class="lc-icon">💬</span>
+      <span class="lc-new-label">${newPhraseLbl}</span>
+      <span class="lc-phrase">"${esc(match.phrase)}"</span>
+      <span class="lc-sep"></span>
+      <span class="lc-meaning">${esc(meaning)}</span>
+      <button type="button" class="lc-dismiss" data-phrase="${esc(phraseKey)}" data-contact="${esc(contactId)}" title="${isVI?'Ẩn lần này':'Dismiss'}" aria-label="${isVI?'Ẩn lần này':'Dismiss'}">${dismissLbl}</button>
+    </div>`;
+  }
+
   // Select meaning based on receiver's interface language
   // SLANG_EN entries have aVi (Vietnamese translations)
   // SLANG_VI entries have aEn (English equivalents)
@@ -3101,6 +3137,385 @@ function setMicIcon(icon){ const el=document.getElementById('micIcon'); if(el) e
 function activeCont(){ return contacts.find(c=>c.id===activeId)||null; }
 function dispName(c){ return c.name||relLabel(getRel(c.type)); }
 
+// ─── Phrase memory tracking (for smart repetition handling) ──
+function ensurePhraseMemory(contact){
+  if(!contact.phraseMemory) contact.phraseMemory = {};
+  return contact.phraseMemory;
+}
+
+function recordPhraseTone(contact, originalText, emotion, speaker, direction){
+  if(!contact || !originalText) return;
+  const memory = ensurePhraseMemory(contact);
+  const slangHits = detectSlang(originalText, direction);
+
+  slangHits.forEach(hit => {
+    const phraseKey = (hit.phrase || '').toLowerCase();
+    if(!phraseKey) return;
+
+    // Initialize pattern entry if new
+    if(!memory[phraseKey]) {
+      memory[phraseKey] = {
+        toneHistory: [],
+        primaryPattern: null,
+        isAmbiguous: false,
+        firstPickerTime: Date.now(),
+        lastUsed: Date.now(),
+        speaker: speaker
+      };
+    }
+
+    // Record tone in history
+    const tone = emotion || 'neutral';
+    memory[phraseKey].toneHistory.push(tone);
+    memory[phraseKey].lastUsed = Date.now();
+
+    // Keep only last 20 uses
+    if(memory[phraseKey].toneHistory.length > 20) {
+      memory[phraseKey].toneHistory.shift();
+    }
+
+    // Recalculate pattern: find most common tone
+    const toneCounts = {};
+    memory[phraseKey].toneHistory.forEach(t => {
+      toneCounts[t] = (toneCounts[t] || 0) + 1;
+    });
+
+    const sorted = Object.entries(toneCounts).sort((a,b) => b[1] - a[1]);
+    memory[phraseKey].primaryPattern = sorted[0] ? sorted[0][0] : tone;
+
+    // Mark as ambiguous if multiple different tones used
+    memory[phraseKey].isAmbiguous = Object.keys(toneCounts).length > 1;
+
+    console.log(`[Phrase Tracker] "${phraseKey}" → tone: "${tone}", pattern: "${memory[phraseKey].primaryPattern}", ambiguous: ${memory[phraseKey].isAmbiguous}`);
+  });
+}
+
+function getPhraseLearningStatus(contact, phrase, speaker){
+  if(!contact || !contact.phraseMemory || !phrase) return null;
+  const phraseKey = (phrase || '').toLowerCase();
+  const pattern = contact.phraseMemory[phraseKey];
+
+  if(!pattern || pattern.speaker !== speaker) return null;
+
+  return {
+    phraseKey: phraseKey,
+    primaryTone: pattern.primaryPattern,
+    isAmbiguous: pattern.isAmbiguous,
+    toneCount: pattern.toneHistory.length,
+    firstLearned: pattern.firstPickerTime,
+    lastUsed: pattern.lastUsed,
+    allTones: [...new Set(pattern.toneHistory)]
+  };
+}
+
+function shouldSkipPickerForPhrase(contact, originalText, direction){
+  if(!contact || !contact.phraseMemory || !originalText) return null;
+
+  const slangHits = detectSlang(originalText, direction);
+  if(slangHits.length === 0) return null;
+
+  const hit = slangHits[0];
+  const phraseKey = (hit.phrase || '').toLowerCase();
+  const status = getPhraseLearningStatus(contact, phraseKey, true);
+
+  if(!status) return null;
+
+  // RULE 1: Single-meaning phrase (not ambiguous) → Skip picker, use primary tone
+  if(!status.isAmbiguous && status.toneCount >= 1){
+    console.log(`[Smart Picker] SKIP "${phraseKey}" (single-meaning, learned as "${status.primaryTone}")`);
+    return status.primaryTone;
+  }
+
+  // RULE 2: Multi-meaning phrase with CLEAR pattern (primary tone used threshold%+ of time)
+  if(status.isAmbiguous && status.toneCount >= 2){
+    const primaryCount = status.toneHistory.filter(t => t === status.primaryTone).length;
+    const primaryPercent = (primaryCount / status.toneCount) * 100;
+    const threshold = getPickerThresholdForContact(contact);
+    const connectionLevel = analyzeEmotionalConnection(contact);
+    const relType = contact.type || 'inferred';
+
+    if(primaryPercent >= threshold){
+      console.log(`[Smart Picker] SKIP "${phraseKey}" (clear pattern: "${status.primaryTone}" used ${primaryPercent.toFixed(0)}%, threshold: ${threshold}%, connection: ${connectionLevel}, relationship: ${relType})`);
+      return status.primaryTone;
+    }
+  }
+
+  // RULE 3: Not learned enough OR mixed usage → Show picker
+  console.log(`[Smart Picker] SHOW picker for "${phraseKey}" (${status.isAmbiguous ? 'ambiguous' : 'learned'}, count: ${status.toneCount})`);
+  return null;
+}
+
+function cleanOldPhrases(contact, maxAgeMs = 24 * 60 * 60 * 1000){
+  if(!contact || !contact.phraseMemory) return;
+  const now = Date.now();
+  Object.keys(contact.phraseMemory).forEach(phrase => {
+    const pattern = contact.phraseMemory[phrase];
+    if(pattern.lastUsed && now - pattern.lastUsed > maxAgeMs){
+      delete contact.phraseMemory[phrase];
+    }
+  });
+}
+
+function detectConflictInPhrase(contact, phraseKey){
+  if(!contact || !contact.phraseMemory) return false;
+  const pattern = contact.phraseMemory[phraseKey];
+  if(!pattern) return false;
+
+  // Conflict only exists if phrase has been used multiple times (3+)
+  if(pattern.toneHistory.length < 3) return false;
+
+  // Calculate tone distribution
+  const toneCounts = {};
+  pattern.toneHistory.forEach(t => {
+    toneCounts[t] = (toneCounts[t] || 0) + 1;
+  });
+
+  const distinctTones = Object.keys(toneCounts).length;
+
+  // No conflict if only one tone used
+  if(distinctTones === 1) return false;
+
+  // Calculate primary tone percentage
+  const primaryCount = toneCounts[pattern.primaryPattern] || 0;
+  const primaryPercent = (primaryCount / pattern.toneHistory.length) * 100;
+
+  // CONFLICT RULE: Multiple tones used (2+) AND primary is below 80%
+  // This means the phrase truly has conflicting usage patterns
+  if(distinctTones >= 2 && primaryPercent < 80){
+    console.log(`[Conflict Detected] "${phraseKey}": ${distinctTones} tones, primary "${pattern.primaryPattern}" only ${primaryPercent.toFixed(0)}%`);
+    return true;
+  }
+
+  return false;
+}
+
+// ═══════════════════════════════════════════════════════
+// ABBREVIATION DICTIONARIES & DETECTION
+// ═══════════════════════════════════════════════════════
+const ABBREVIATIONS = {
+  en: {
+    'lol': { full: 'Laugh Out Loud', meaning: 'laughing really hard' },
+    'omg': { full: 'Oh My God', meaning: 'expressing surprise or shock' },
+    'idk': { full: "I Don't Know", meaning: 'uncertain or unsure' },
+    'brb': { full: 'Be Right Back', meaning: 'will return shortly' },
+    'btw': { full: 'By The Way', meaning: 'additional information' },
+    'ttyl': { full: 'Talk To You Later', meaning: 'goodbye for now' },
+    'imo': { full: 'In My Opinion', meaning: 'personal viewpoint' },
+    'tbh': { full: 'To Be Honest', meaning: 'being truthful or frank' },
+    'nvm': { full: 'Never Mind', meaning: 'disregard what I said' },
+    'smh': { full: 'Shaking My Head', meaning: 'expressing disapproval' },
+    'fyi': { full: 'For Your Information', meaning: 'informative notice' },
+    'asap': { full: 'As Soon As Possible', meaning: 'urgently or immediately' },
+    'lmk': { full: 'Let Me Know', meaning: 'inform me later' },
+    'ofc': { full: 'Of Course', meaning: 'obviously or certainly' },
+    'ngl': { full: 'Not Gonna Lie', meaning: 'being honest or truthful' },
+    'fr': { full: 'For Real', meaning: 'being serious or truthful' },
+    'np': { full: 'No Problem', meaning: 'it is okay or acceptable' }
+  },
+  vi: {
+    'k': { full: 'không', meaning: 'no/not' },
+    'ko': { full: 'không', meaning: 'no/not' },
+    'dc': { full: 'được', meaning: 'can/okay' },
+    'r': { full: 'rồi', meaning: 'already/finished' },
+    'vs': { full: 'với', meaning: 'with' },
+    'j': { full: 'gì', meaning: 'what' },
+    'z': { full: 'gì', meaning: 'what' },
+    'ntn': { full: 'như thế nào', meaning: 'how' },
+    'bt': { full: 'biết', meaning: 'know' },
+    'cx': { full: 'cũng', meaning: 'also' },
+    'trc': { full: 'trước', meaning: 'before' },
+    'ns': { full: 'nói', meaning: 'say' },
+    'ck': { full: 'chồng', meaning: 'husband' },
+    'vk': { full: 'vợ', meaning: 'wife' },
+    'a': { full: 'anh', meaning: 'older brother/male' },
+    'e': { full: 'em', meaning: 'younger sibling/female' },
+    'c': { full: 'chị', meaning: 'older sister' },
+    'iu': { full: 'yêu', meaning: 'love' },
+    'ny': { full: 'người yêu', meaning: 'boyfriend/girlfriend' },
+    'h': { full: 'giờ', meaning: 'hour/now' },
+    'bh': { full: 'bây giờ', meaning: 'now' },
+    'hn': { full: 'hôm nay', meaning: 'today' },
+    'nt': { full: 'nhắn tin', meaning: 'text message' },
+    'mn': { full: 'mọi người', meaning: 'everyone' },
+    'ib': { full: 'inbox', meaning: 'direct message' },
+    'cmt': { full: 'comment', meaning: 'comment' }
+  }
+};
+
+function isMessageOnlyAbbreviations(text, direction){
+  if(!text || !text.trim()) return false;
+
+  // Determine which abbreviation dict to use
+  const dict = direction === 'en-vi' ? ABBREVIATIONS.en : ABBREVIATIONS.vi;
+
+  // Split text into words and remove punctuation/emojis
+  const words = text.trim().toLowerCase().split(/\s+/);
+
+  // Check if all words are abbreviations
+  return words.every(word => {
+    // Remove trailing punctuation
+    const cleaned = word.replace(/[!?.,;:\-—–]/g, '');
+    return cleaned === '' || dict[cleaned];
+  });
+}
+
+function getAbbreviationExplanation(abbrev, targetDirection){
+  // Determine source language from abbreviation
+  const abbrevLower = abbrev.toLowerCase();
+  let sourceDict, targetDict;
+
+  if(ABBREVIATIONS.en[abbrevLower]){
+    sourceDict = ABBREVIATIONS.en;
+    targetDict = ABBREVIATIONS.vi;
+  } else if(ABBREVIATIONS.vi[abbrevLower]){
+    sourceDict = ABBREVIATIONS.vi;
+    targetDict = ABBREVIATIONS.en;
+  } else {
+    return null;
+  }
+
+  const data = sourceDict[abbrevLower];
+  if(!data) return null;
+
+  return {
+    abbreviation: abbrev,
+    full: data.full,
+    meaning: data.meaning,
+    isAbbrev: true
+  };
+}
+
+function recordAbbreviationLearned(abbrev){
+  const abbrevLower = abbrev.toLowerCase().trim();
+  if(!abbrevLower) return;
+
+  const learned = JSON.parse(localStorage.getItem('learned_dictionary')||'{}');
+  const key = `abbrev_${abbrevLower}`;
+
+  if(!learned[key]){
+    learned[key] = {
+      text: abbrev,
+      isAbbrev: true,
+      count: 1,
+      learnedAt: Date.now()
+    };
+  } else {
+    learned[key].count = (learned[key].count || 1) + 1;
+  }
+
+  localStorage.setItem('learned_dictionary', JSON.stringify(learned));
+}
+
+function analyzeEmotionalConnection(contact){
+  if(!contact || !contact.msgs) return 'medium';
+
+  const msgs = contact.msgs || [];
+  if(msgs.length === 0) return 'low';
+
+  let vulnerabilityCount = 0;
+  let casualSlangCount = 0;
+  let totalMessages = 0;
+
+  // Vulnerability markers that signal emotional openness
+  const vulnerabilityMarkers = ['scared', 'afraid', 'ashamed', 'embarrassed', 'hurt', 'lonely', 'broken', 'tired', 'overwhelmed', 'struggling', 'messed up', 'failing', 'worried', 'anxious'];
+
+  // Casual/slang indicators
+  const casualIndicators = ['no cap', 'fr', 'lowkey', 'highkey', 'fr fr', 'ngl', 'lol', 'haha', 'lmao', 'deadass', 'literally', 'like'];
+
+  msgs.forEach(m => {
+    if(m.isMe || m.deleted) return;
+    totalMessages++;
+    const text = (m.text || '').toLowerCase();
+
+    // Check for vulnerability
+    vulnerabilityMarkers.forEach(marker => {
+      if(text.includes(marker)) vulnerabilityCount++;
+    });
+
+    // Check for casual language
+    casualIndicators.forEach(indicator => {
+      if(text.includes(indicator)) casualSlangCount++;
+    });
+  });
+
+  // Calculate connection strength
+  const vulnerabilityRatio = vulnerabilityCount / Math.max(totalMessages, 1);
+  const casualRatio = casualSlangCount / Math.max(totalMessages, 1);
+  const totalSignals = vulnerabilityRatio + casualRatio;
+
+  // High: lots of vulnerability sharing OR heavy casual language use
+  if(totalSignals > 0.5 || vulnerabilityCount > 5){
+    return 'high';
+  }
+  // Low: minimal casual language and no vulnerability
+  if(casualRatio < 0.1 && vulnerabilityCount === 0){
+    return 'low';
+  }
+  // Medium: moderate signals
+  return 'medium';
+}
+
+function getPickerThresholdForContact(contact){
+  // If relationship type is explicitly set, use it
+  if(contact && contact.type){
+    const type = contact.type;
+    if(type === 'romantic') return 65;
+    if(type === 'family') return 75;
+    if(type === 'friend') return 70;
+    if(type === 'coworker') return 90;
+    if(type === 'acquaintance') return 95;
+  }
+
+  // Otherwise, infer from conversation analysis
+  const connectionLevel = analyzeEmotionalConnection(contact);
+  if(connectionLevel === 'high') return 70;
+  if(connectionLevel === 'low') return 95;
+  return 75;
+}
+
+function shouldSkipPickerForPhrase(contact, originalText, direction){
+  if(!contact || !contact.phraseMemory || !originalText) return null;
+
+  const slangHits = detectSlang(originalText, direction);
+  if(slangHits.length === 0) return null;
+
+  const hit = slangHits[0];
+  const phraseKey = (hit.phrase || '').toLowerCase();
+  const status = getPhraseLearningStatus(contact, phraseKey, true);
+
+  if(!status) return null;
+
+  // CONFLICT CHECK: Always show picker if there's true conflict in usage
+  if(detectConflictInPhrase(contact, phraseKey)){
+    console.log(`[Smart Picker] SHOW picker for "${phraseKey}" (conflict detected)`);
+    return null;
+  }
+
+  // RULE 1: Single-meaning phrase (not ambiguous) → Skip picker, use primary tone
+  if(!status.isAmbiguous && status.toneCount >= 1){
+    console.log(`[Smart Picker] SKIP "${phraseKey}" (single-meaning, learned as "${status.primaryTone}")`);
+    return status.primaryTone;
+  }
+
+  // RULE 2: Multi-meaning phrase with CLEAR pattern (primary tone used threshold%+ of time)
+  if(status.isAmbiguous && status.toneCount >= 2){
+    const primaryCount = status.toneHistory.filter(t => t === status.primaryTone).length;
+    const primaryPercent = (primaryCount / status.toneCount) * 100;
+    const threshold = getPickerThresholdForContact(contact);
+    const connectionLevel = analyzeEmotionalConnection(contact);
+    const relType = contact.type || 'inferred';
+
+    if(primaryPercent >= threshold){
+      console.log(`[Smart Picker] SKIP "${phraseKey}" (clear pattern: "${status.primaryTone}" used ${primaryPercent.toFixed(0)}%, threshold: ${threshold}%, connection: ${connectionLevel}, relationship: ${relType})`);
+      return status.primaryTone;
+    }
+  }
+
+  // RULE 3: Not learned enough OR mixed usage → Show picker
+  console.log(`[Smart Picker] SHOW picker for "${phraseKey}" (${status.isAmbiguous ? 'ambiguous' : 'learned'}, count: ${status.toneCount})`);
+  return null;
+}
+
 // ═══════════════════════════════════════════════════════
 // STREAMING SUPPORT
 //   - streamSSELines: async generator yielding content deltas from an SSE response
@@ -3230,6 +3645,10 @@ async function launchApp(){
   fetchDictionaryUpdates();
   // Sync profile toggles
   syncProfileToggles();
+  // Periodically clean old phrase memories (every 10 minutes)
+  setInterval(() => {
+    contacts.forEach(c => cleanOldPhrases(c, 30 * 60 * 1000));
+  }, 10 * 60 * 1000);
 }
 
 function syncProfileToggles(){
@@ -3280,6 +3699,7 @@ async function loadContactsFromFirebase(){
     if(snap.exists()){
       const contactsData = snap.val();
       contacts = Object.values(contactsData);
+      contacts.forEach(c => ensurePhraseMemory(c));
       // Update nxtId to be higher than any existing contact id
       const maxId = Math.max(...contacts.map(c => c.id || 0), 0);
       nxtId = maxId + 1;
@@ -3297,6 +3717,7 @@ async function loadContactsFromFirebase(){
       contactsRef.on('child_added', (snap) => {
         const contact = snap.val();
         if(contact && !contacts.find(c => c.id === contact.id)){
+          ensurePhraseMemory(contact);
           contacts.unshift(contact);
           renderSidebar();
         }
@@ -6564,12 +6985,28 @@ function renderMsgs(){
       // Developer phrase: bypass ALL normal checks, always show picker
       console.log('[renderMsgs] FOUND donnywillisvoeli phrase, building learn chip');
       const devPhrase = { phrase: 'donnywillisvoeli', a: 'developer test phrase', b: 'always triggers picker', reason: 'Custom developer phrase — always triggers for testing' };
-      h += buildLearnChip(devPhrase);
+      h += buildLearnChip(devPhrase, 'en');
       console.log('[renderMsgs] Learn chip HTML added');
     } else if((!m.isMe && !m.deleted && !m.translating)){
-      // Normal slang detection logic
+      // Check for abbreviations first
       const srcText = m.original || m.text || '';
       const srcDir  = m.direction || (appDir === 'en-vi' ? 'vi-en' : 'en-vi');
+
+      // Detect if message is ONLY abbreviations
+      if(isMessageOnlyAbbreviations(srcText, srcDir)){
+        // Extract the abbreviation (first word)
+        const abbrevMatch = srcText.toLowerCase().trim().match(/^[a-z0-9]+/);
+        if(abbrevMatch){
+          const abbrev = srcText.trim().split(/[\s!?.,:;-]/)[0];
+          const abbrevData = getAbbreviationExplanation(abbrev, appDir);
+          if(abbrevData){
+            const abbrevChip = buildLearnChip(abbrevData, srcDir === 'en-vi' ? 'en' : 'vi');
+            h += abbrevChip;
+          }
+        }
+      }
+
+      // Normal slang detection logic
       const slangHits = detectSlang(srcText, srcDir);
       if(slangHits.length){
         const slang = slangHits[0];
@@ -6579,9 +7016,11 @@ function renderMsgs(){
         const receiverLang = appDir === 'en-vi' ? 'vi' : 'en';
         const contactId = activeCont() ? activeCont().id : 'global';
         const phraseKey = getPhraseKey(slang.phrase);
+        // Determine phrase language from srcDir
+        const phraseLanguage = srcDir === 'en-vi' ? 'en' : 'vi';
         if(shouldShowLearnChip(slang, receiverGen, senderGen, senderLang, receiverLang)
            && !shouldHideLearnChipDueToReceiverDismissals(phraseKey, contactId)){
-          h += buildLearnChip(slang);
+          h += buildLearnChip(slang, phraseLanguage);
         }
       }
     }
@@ -6600,6 +7039,12 @@ function renderMsgs(){
       const phraseKey = btn.dataset.phrase;
       const contactId = btn.dataset.contact;
       const chipEl = btn.closest('.learn-chip');
+
+      // Check if this is an abbreviation and record it
+      const abbrevLower = phraseKey.toLowerCase();
+      if(ABBREVIATIONS.en[abbrevLower] || ABBREVIATIONS.vi[abbrevLower]){
+        recordAbbreviationLearned(phraseKey);
+      }
 
       // Increment dismissal count
       const count = incrementPhraseDismissal(phraseKey, contactId);
@@ -7284,6 +7729,11 @@ function looksEmotional(text){
   const t = String(text).trim();
   const low = t.toLowerCase();
 
+  // Strip all emoji to check if there's any actual text content
+  const stripAllEmoji = s => (s||'').replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}]/gu,'').trim();
+  const textWithoutEmoji = stripAllEmoji(t);
+  if(!textWithoutEmoji) return false; // Emoji-only message → don't trigger picker
+
   // — TIER 1: Emotional emoji — faces, hearts, reaction symbols — triggers alone —
   // (decorative emoji like 📷🎵⏰ are Tier 4 weak signals, not triggers by themselves)
   const emotionalEmojiRe = /[\u{1F600}-\u{1F64F}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}\u{2764}\u{2665}\u{2763}\u{2661}]/u;
@@ -7542,6 +7992,21 @@ async function onSendText(ev){
         return;
       }
     }
+  }
+
+  // ─── ABBREVIATION-ONLY CHECK: Skip picker for abbreviation messages ──
+  if(!forcePicker && isMessageOnlyAbbreviations(text, direction)){
+    console.log(`[onSendText] Message is abbreviation-only, skipping picker`);
+    await sendOptimistic(text, direction);
+    return;
+  }
+
+  // ─── SMART PICKER LOGIC: Check if we should skip picker based on pattern ──
+  const skippedTone = !forcePicker ? shouldSkipPickerForPhrase(c, text, direction) : null;
+  if(!forcePicker && skippedTone){
+    // Pattern is clear enough → skip picker, use predicted tone
+    await sendWithLearnedTone(text, direction, skippedTone);
+    return;
   }
 
   const showPicker = forcePicker || looksEmotional(text);
@@ -8676,6 +9141,7 @@ function pickOpt(opt, emoKey, original){
     isOpposite = rec && picked && rec !== picked &&
       ((opposites[rec]||[]).includes(picked) || (opposites[picked]||[]).includes(rec));
     recordPickPreference(rec, picked, rel, appDir);
+    recordPhraseTone(c, originalText, emoKey, true, direction);
   }
   const pendingMode = pending ? pending.mode : 'text';
   closeSheet();
@@ -9709,14 +10175,33 @@ function renderStylePanel(){
       : '';
     // Auto-learned phrases (graduated from candidates after LEARN_THRESHOLD uses)
     const learnedDict = JSON.parse(localStorage.getItem('learned_dictionary')||'{}');
-    const learnedEntries = Object.values(learnedDict).sort((a,b)=>b.count-a.count).slice(0,8);
-    const learnedNote = learnedEntries.length
-      ? `<div class="style-note" style="margin-top:10px;border-left:3px solid var(--green,#34c759);padding-left:8px;">
-           <strong>Learned phrases (${learnedEntries.length})</strong><br>
-           The app now answers these without calling the AI:<br>
-           ${learnedEntries.map(e=>`<code style="font-size:11px;background:var(--chip);padding:1px 5px;border-radius:4px;">${esc(e.text.slice(0,50))}</code> ×${e.count}`).join('<br>')}
+
+    // Separate abbreviations from regular phrases
+    const abbrevEntries = Object.values(learnedDict)
+      .filter(e => e.isAbbrev)
+      .sort((a,b)=>b.count-a.count)
+      .slice(0,10);
+    const regularEntries = Object.values(learnedDict)
+      .filter(e => !e.isAbbrev)
+      .sort((a,b)=>b.count-a.count)
+      .slice(0,8);
+
+    const abbrevNote = abbrevEntries.length
+      ? `<div class="style-note" style="margin-top:10px;border-left:3px solid var(--blue,#007AFF);padding-left:8px;">
+           <strong>Abbreviations (${abbrevEntries.length})</strong><br>
+           Text shortcuts you've learned:<br>
+           ${abbrevEntries.map(e=>`<code style="font-size:11px;background:var(--chip);padding:1px 5px;border-radius:4px;">${esc(e.text)}</code>`).join(' ')}
          </div>`
       : '';
+
+    const learnedNote = regularEntries.length
+      ? `<div class="style-note" style="margin-top:10px;border-left:3px solid var(--green,#34c759);padding-left:8px;">
+           <strong>Learned phrases (${regularEntries.length})</strong><br>
+           The app now answers these without calling the AI:<br>
+           ${regularEntries.map(e=>`<code style="font-size:11px;background:var(--chip);padding:1px 5px;border-radius:4px;">${esc(e.text.slice(0,50))}</code> ×${e.count}`).join('<br>')}
+         </div>`
+      : '';
+
     // Candidates still working toward the threshold
     const unknownLog = JSON.parse(localStorage.getItem('unknown_slang_log')||'[]');
     const hotCandidates = unknownLog.filter(e => e.count >= 2).sort((a,b)=>b.count-a.count).slice(0,5);
@@ -9727,7 +10212,7 @@ function renderStylePanel(){
            ${hotCandidates.map(e=>`<code style="font-size:11px;background:var(--chip);padding:1px 5px;border-radius:4px;">${esc(e.text.slice(0,50))}</code> ×${e.count}/${LEARN_THRESHOLD}`).join('<br>')}
          </div>`
       : '';
-    el.innerHTML = rows + errNote + learnedNote + unknownNote;
+    el.innerHTML = rows + errNote + abbrevNote + learnedNote + unknownNote;
   }catch(_){
     el.innerHTML = '<div class="style-empty">Nothing recorded yet.</div>';
   }
