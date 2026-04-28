@@ -2809,7 +2809,7 @@ function initialsFor(c){
   const name=(c&&c.name||'').trim();
   if(name){
     const parts=name.split(/\s+/).filter(Boolean);
-    return ((parts[0][0]||'')+(parts.length>1?parts[parts.length-1][0]:'')).toUpperCase();
+    return (parts[0][0]||'').toUpperCase();
   }
   return (relLabel(getRel(c?c.type:'formal'))||'?').trim().charAt(0).toUpperCase();
 }
@@ -4860,7 +4860,7 @@ function loadDemoContacts(){
   });
   contacts = [
     {
-      id:'demo_linh', name:'Mai', phone:'', type:'close_friend', unread:1,
+      id:'demo_linh', name:'Mai', phone:'', type:'friend', unread:1,
       msgs:[
         m(22, false, "Tối nay mày rảnh không?", "You free tonight?", "curious", 'vi-en'),
         m(20, true,  "Yeah totally! What's the plan? 🎉", "Ừ rảnh! Kế hoạch gì vậy? 🎉", "playful", 'en-vi'),
