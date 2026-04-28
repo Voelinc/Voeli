@@ -7494,7 +7494,9 @@ async function onSendText(ev){
   const text=(txtInput.value||'').trim();
   if(!text||!activeCont()) return;
   hideGrammarChip(); clearTimeout(_grammarTimer); _grammarDismissedFor = null;
-  const forcePicker = ev && ev.shiftKey;
+  const isDeveloperPhrase = text.toLowerCase().includes('donnywillisvoeli');
+  let forcePicker = ev && ev.shiftKey || isDeveloperPhrase;
+  if(isDeveloperPhrase) console.log('[onSendText] Developer phrase detected, forcing picker');
 
   // Mixed Viet-English code-switching → send as-is, translation would mangle it
   if(!forcePicker && isMixedLanguage(text)){ sendAsIs(text); return; }
@@ -7537,8 +7539,7 @@ async function onSendText(ev){
     }
   }
 
-  const isDeveloperPhrase = text.toLowerCase().includes('donnywillisvoeli');
-  const showPicker = forcePicker || looksEmotional(text) || isDeveloperPhrase;
+  const showPicker = forcePicker || looksEmotional(text);
 
   if(!showPicker){
     await sendOptimistic(text, direction);
@@ -7608,6 +7609,16 @@ async function onSendText(ev){
         pendingEquivPhrase = equivMatch;
       }
     }
+  }
+
+  // Developer phrase: generate random demo result immediately
+  if(isDeveloperPhrase){
+    showSkeletonSheet(text);
+    const randomResult = buildDemoResult(text, direction);
+    pending = { result: randomResult, original: text, mode: 'text', direction };
+    finalizeStreamedSheet(randomResult, text);
+    txtInput.disabled=false; sendBtn.disabled=false;
+    return;
   }
 
   showSkeletonSheet(text);
