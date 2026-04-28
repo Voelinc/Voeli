@@ -15,18 +15,12 @@ const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 // Mirrors RELATIONSHIP_HINTS from the original HTML. Kept here on the server
 // so the prompt is consistent regardless of which client version connects.
 const RELATIONSHIP_HINTS: Record<string, string> = {
-  formal:
-    'Stranger, formal setting, or unknown person. Use tôi for self and a neutral address (anh/chị/cô/chú based on age) for the other. Respect markers (ạ) common in service or first meetings; warmth particles rare.',
-  elder:
-    "The listener is an elder — the user's or their partner's parent, grandparent, or someone roughly parent-age or older. Use con for self, bác (older than parents) or cô/chú (similar to or slightly younger than parents) for them. ALWAYS include dạ as opener and ạ at the end. Softeners (xin, được không) for any request. Never use tôi. Never use direct imperatives.",
-  senior:
-    'The listener is older than the speaker but peer-ish — an older coworker, an older-sibling figure, a senior on a team. Use em for self, anh (male) or chị (female) for them. Particle ạ when respectful, nha/nhé when warm. Use giúp to frame requests as favors.',
-  friend:
-    "Close same-age friend. Informal and warm. Use tớ/cậu (softer) or tao/mày (very close — be careful: also used in anger). Mình can work as a gentle 'us'. No respect markers needed. Particles nha/nhé/đi for warmth, thôi for softening.",
-  partner:
-    "Romantic partner or spouse. Use anh (if the male is older, which is typical) and em (if the female is younger), or mình for warm intimate 'us'. Particles nha/nhé heavy. Affectionate pet-names possible (ơi after their name).",
-  junior:
-    'The listener is younger or a junior — student, young employee, younger sibling. The speaker uses anh (if male) or chị (if female) for self, and em for the listener. Can be warm with nha/nhé or authoritative but not harsh.',
+  formal: 'Stranger/formal: tôi for self, neutral anh/chị/cô/chú for other. Use ạ; rare warmth.',
+  elder: 'Elder (parent/grandparent): con for self, bác/cô/chú for other. Use dạ+ạ. Softeners: xin, được không. No tôi, no imperatives.',
+  senior: 'Older peer: em for self, anh/chị for other. Use ạ or nha/nhé. Frame requests with giúp.',
+  friend: "Same-age friend: tớ/cậu or tao/mày (very close). Use nha/nhé/đi for warmth, thôi to soften.",
+  partner: "Romantic: anh/em or mình. Particles nha/nhé. Pet-names with ơi.",
+  junior: 'Younger/junior: anh/chị for self, em for other. Use nha/nhé (warm) or be direct.',
 };
 
 function relHint(relKey: string): string {
@@ -70,9 +64,9 @@ function buildPickerSystemPrompt(
     '',
     '# KINSHIP AMBIGUITY: VN kinship terms (chị, anh, em, cô, chú, bác) also address non-relatives respectfully. VI→EN: "chị Lan" defaults to "Lan" (respected older woman), NOT "my sister Lan", unless blood cue ("chị gái tôi"). EN→VI: "my sister" defaults to blood reading but flag kinship warning. Always flag ambiguous cases.',
     '',
-    `# FACE-THREATENING phrases: "you're lying", "you're crazy", "you're stupid", "shut up", "I hate you" (affectionate), sarcasm — these land as REAL accusations/insults in VN if translated literally. If tone is playful/warm/teasing, rewrite with softeners (nha, nhé, đấy), hedges ("chắc là", "có khi"), or lighter verbs. ALWAYS flag as type "face_threat".`,
+    `# FACE-THREATENING: "you're lying/crazy/stupid", "shut up", "I hate you" (when playful), sarcasm — land as REAL insults in VN. If tone is warm/teasing, rewrite with softeners (nha, nhé) or hedges. ALWAYS flag as "face_threat".`,
     '',
-    `# IDIOMS to always flag as "idiom": "I'm dying", "I'm dead", "you're killing me", "break a leg", "that's sick/fire", "no cap", "I can't even", "spill the tea", "blow my mind", "kill it", "hit me up", "I'm shook". For each culturalWarning: "literalMeaning" = what a word-for-word translation would sound like; "likelyMeaning" = speaker's actual intent; "suggestion" = natural non-idiomatic rewrite in listener's language.`,
+    `# IDIOMS: Always flag. Examples: "I'm dying", "break a leg", "spill the tea", "kill it", "hit me up". Provide literalMeaning, likelyMeaning, and natural rewrite.`,
     '',
     '# STEPS',
     isText
@@ -133,19 +127,11 @@ function buildPickerSystemPrompt(
     '  "contextConfidence": <integer 0–100>',
     '}',
     '',
-    'HARD RULES:',
-    '- 2–4 options, all with distinct "emotion" values.',
-    '- recommendedOption equals detectedEmotion and equals one of the option emotions.',
-    '- Natural phrasing > literal accuracy. Rewrite to sound human.',
-    tgtIsVietnamese
-      ? '- Every Vietnamese option has literalFlow (string) and breakdown (object).'
-      : '- For English-output options: literalFlow=null, breakdown=null.',
-    srcIsVietnamese
-      ? '- sourceDecoding must be populated.'
-      : '- sourceDecoding must be null.',
-    '- culturalWarnings is ALWAYS an array. Empty array if nothing risky.',
-    '- Output STRICTLY a JSON object. No markdown, no code fences, no commentary.',
-    `- All "<en>" / "<vi>" reasoning fields must be written in their respective natural languages, regardless of source/target. UI language for highlighting: ${reasoningLang}.`,
+    'MUST:',
+    `- Return VALID JSON only. No markdown, no commentary.`,
+    `- ${tgtIsVietnamese ? 'Vietnamese: literalFlow + breakdown for each option.' : 'English: literalFlow=null, breakdown=null.'}`,
+    `- ${srcIsVietnamese ? 'Populate sourceDecoding.' : 'sourceDecoding=null.'}`,
+    `- culturalWarnings = array (empty if none).`,
   ];
 
   let prompt = lines.join('\n');

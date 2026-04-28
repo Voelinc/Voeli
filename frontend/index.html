@@ -7695,7 +7695,42 @@ async function sendWithContextBypass(text, direction, c){
 
   try{
     const _learnedBypass = checkLearnedDictionary(text, direction);
-    const result = _learnedBypass || await callOpenAI({ kind: 'text', text, direction });
+    let result = _learnedBypass;
+    let showPickerLoading = false;
+
+    // If not in learned dictionary, we'll call OpenAI — show skeleton immediately
+    if(!result) {
+      showPickerLoading = true;
+      c.msgs.splice(c.msgs.indexOf(msg), 1);
+      msg.translating = false;
+      renderMsgs(); renderSidebar();
+      showSkeletonSheet(text);
+
+      let renderedCount = 0;
+      result = await callOpenAI({
+        kind: 'text',
+        text,
+        direction,
+        onProgress: (fullJson) => {
+          try {
+            const parsed = parseAIJson(fullJson);
+            if(!parsed || !Array.isArray(parsed.options)) return;
+            // Render all complete options, skip incomplete ones
+            for(let i = 0; i < parsed.options.length; i++) {
+              const opt = parsed.options[i];
+              // Only render if not already rendered (i >= renderedCount) and has translation
+              if(i >= renderedCount && opt && opt.translation !== null && opt.translation !== undefined && opt.translation !== '') {
+                replaceSkeletonAt(i, opt, text);
+                renderedCount = i + 1;
+              }
+            }
+          } catch(_) {
+            // Ignore parsing errors during streaming — we'll retry when complete
+          }
+        }
+      });
+    }
+
     if(!_learnedBypass) logUnknownSlangCandidate(result, text, direction);
     const rawConfidence = typeof result.contextConfidence === 'number' ? result.contextConfidence : 0;
     const conflictPenalty = detectToneConflict(c.id, c.msgs.slice(-4));
@@ -7705,6 +7740,16 @@ async function sendWithContextBypass(text, direction, c){
 
     if(confidence >= CONTEXT_CONFIDENCE_THRESHOLD && recOpt){
       // High confidence — apply silently, mark as auto-sent so "Change" chip shows
+      if(showPickerLoading) {
+        // Picker was shown for loading, but now we're auto-sending — hide it
+        const sheet = document.querySelector('.picker-sheet');
+        if(sheet) sheet.style.display = 'none';
+      }
+      // Only re-add message if it was removed (showPickerLoading=true)
+      if(showPickerLoading) {
+        c.msgs.push(msg);
+        updateContactProfile(c.id, c.msgs);
+      }
       msg.text = msg.translated = recOpt.translation || text;
       msg.emotion = recOpt.emotion || '';
       msg.translating = false;
@@ -7719,13 +7764,16 @@ async function sendWithContextBypass(text, direction, c){
       renderMsgs(); renderSidebar();
       syncContextBypassMsg(msg);
     } else {
-      // Confidence too low — remove optimistic bubble and open picker normally
-      c.msgs.splice(c.msgs.indexOf(msg), 1);
-      msg.translating = false;
-      renderMsgs(); renderSidebar();
+      // Confidence too low — keep picker open and finalize with result
+      if(!showPickerLoading) {
+        // Learned dictionary result didn't trigger picker, show it now
+        c.msgs.splice(c.msgs.indexOf(msg), 1);
+        msg.translating = false;
+        renderMsgs(); renderSidebar();
+        showSkeletonSheet(text);
+      }
       // Open picker with the result we already have (no second API call)
       pending = { result, original: text, mode: 'text', direction };
-      showSkeletonSheet(text);
       finalizeStreamedSheet(result, text);
     }
   }catch(err){
@@ -8724,6 +8772,28 @@ function parseAIJson(text){
 // because it also drives the Learn chip and Cultural Bridge cards.
 // ═══════════════════════════════════════════════════════
 async function callOpenAI(payload) {
+  // Check message cache before API call
+  if(payload && payload.text && payload.direction && !payload.skipCache) {
+    const c = activeCont();
+    if(c && c.id) {
+      // Use simple string hash of conversation ID to avoid collisions
+      let contextHash = 0;
+      for(let i = 0; i < c.id.length; i++) {
+        contextHash = ((contextHash << 5) - contextHash) + c.id.charCodeAt(i);
+        contextHash |= 0; // Convert to 32-bit integer
+      }
+      const cacheKey = 'cache_' + payload.text.slice(0, 80) + '_' + payload.direction + '_' + Math.abs(contextHash);
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if(cached) {
+          const result = JSON.parse(cached);
+          if(payload.onProgress) payload.onProgress(JSON.stringify(result));
+          return result;
+        }
+      } catch(_) {}
+    }
+  }
+
   if(demoMode){
     const direction = (payload && payload.direction) || getDirection();
     const text = payload.text || '(voice message)';
@@ -8783,14 +8853,42 @@ async function callOpenAI(payload) {
         full += chunk;
         try { payload.onProgress(full); } catch(_){}
       }
-      return parseAIJson(full);
+      const result = parseAIJson(full);
+      // Cache the result for future identical messages
+      if(payload.text && payload.direction && !payload.skipCache) {
+        const c = activeCont();
+        if(c && c.id) {
+          let contextHash = 0;
+          for(let i = 0; i < c.id.length; i++) {
+            contextHash = ((contextHash << 5) - contextHash) + c.id.charCodeAt(i);
+            contextHash |= 0;
+          }
+          const cacheKey = 'cache_' + payload.text.slice(0, 80) + '_' + payload.direction + '_' + Math.abs(contextHash);
+          try { localStorage.setItem(cacheKey, JSON.stringify(result)); } catch(_) {}
+        }
+      }
+      return result;
     }
 
     const data = await res.json();
     const content = data && data.choices && data.choices[0] && data.choices[0].message
       ? data.choices[0].message.content : '';
     if(!content) throw new Error('Empty response from server.');
-    return parseAIJson(content);
+    const result = parseAIJson(content);
+    // Cache the result for future identical messages
+    if(payload.text && payload.direction && !payload.skipCache) {
+      const c = activeCont();
+      if(c && c.id) {
+        let contextHash = 0;
+        for(let i = 0; i < c.id.length; i++) {
+          contextHash = ((contextHash << 5) - contextHash) + c.id.charCodeAt(i);
+          contextHash |= 0;
+        }
+        const cacheKey = 'cache_' + payload.text.slice(0, 80) + '_' + payload.direction + '_' + Math.abs(contextHash);
+        try { localStorage.setItem(cacheKey, JSON.stringify(result)); } catch(_) {}
+      }
+    }
+    return result;
   }
 
   // Voice path — base64 WAV in, picker JSON out.
