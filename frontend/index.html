@@ -7556,7 +7556,7 @@ function deleteMessage(msgId){
 
 function toggleReaction(msgId, emoji){
   const c = activeCont();
-  if(!c) return;
+  if(!c || !c.dmRoomId) return;
   const msg = c.msgs.find(m=>m.id===msgId);
   if(!msg) return;
   if(!msg.reactions) msg.reactions = {};
@@ -7570,7 +7570,11 @@ function toggleReaction(msgId, emoji){
   msg.reactions[emoji] = (msg.reactions[emoji]||0) + 1;
   msg.reactions.__me = emoji;
   renderMsgs();
-  syncToFirebase(msg);
+
+  // Update reactions in Firebase directly (don't create a new message)
+  if(firebaseDb && currentUser && msg.id){
+    firebaseDb.ref(`dms/${c.dmRoomId}/messages/${msg.id}/reactions`).set(msg.reactions);
+  }
 }
 
 // ── Reply ──────────────────────────────────────────────
