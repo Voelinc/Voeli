@@ -999,7 +999,7 @@ body.is-offline::before{
 <div id="setupScreen">
   <div class="setup-box">
     <div class="lang-tog" id="langTogAuth">
-      <button data-dir="en-vi" onclick="setAppDir('en-vi')" class="active">EN</button>
+      <button data-dir="en-vi" onclick="setAppDir('en-vi')">EN</button>
       <button data-dir="vi-en" onclick="setAppDir('vi-en')">VI</button>
     </div>
     <h1 id="setupTitle">Voeli</h1>
@@ -1375,7 +1375,7 @@ body.is-offline::before{
         <h2 style="font-size:20px;font-weight:600;margin:0;">About You</h2>
         <div style="display:flex;align-items:center;gap:8px;">
           <div class="lang-tog" id="langTogProfile">
-            <button data-dir="en-vi" onclick="setAppDir('en-vi')" class="active">EN</button>
+            <button data-dir="en-vi" onclick="setAppDir('en-vi')">EN</button>
             <button data-dir="vi-en" onclick="setAppDir('vi-en')">VI</button>
           </div>
           <button class="gear-btn" onclick="openSettings()" aria-label="Settings" title="Settings">
@@ -2950,6 +2950,10 @@ function setAppDir(dir){
   if(activeId) renderMsgs();
 }
 
+function updateButtonStates(){
+  document.querySelectorAll('#langTog button, #langTogAuth button, #langTogProfile button').forEach(b=>b.classList.toggle('active', b.dataset.dir===appDir));
+}
+
 // Localize the sign-in / create-account screen so the EN/VI toggle
 // actually translates the words a Vietnamese user would otherwise have to read in English.
 const AUTH_STRINGS = {
@@ -4268,9 +4272,10 @@ function setAuthLoading(on){
 function initApp(){
   const savedAppDir = localStorage.getItem('appDir');
   if(savedAppDir && (savedAppDir === 'en-vi' || savedAppDir === 'vi-en')) {
-    setAppDir(savedAppDir);
+    appDir = savedAppDir;
   }
   showOnboarding();
+  updateButtonStates();
   initSignOutBtn();
   const tabSignIn = document.getElementById('tabSignIn');
   const tabSignUp = document.getElementById('tabSignUp');
