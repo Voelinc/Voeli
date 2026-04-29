@@ -6509,6 +6509,21 @@ function setupDMListener(dmRoomId){
     if(activeId === c.id) renderMsgs();
     renderSidebar();
   });
+
+  // Listen for updates to existing messages (reactions, etc.)
+  msgRef.on('child_changed', snap=>{
+    console.log(`[setupDMListener] Message updated in ${dmRoomId}`);
+    const m = snap.val();
+    if(!m) return;
+    const c = contacts.find(contact => contact.dmRoomId === dmRoomId);
+    if(!c || !c.msgs) return;
+    const msgId = snap.key;
+    const existing = c.msgs.find(msg => msg.id === msgId);
+    if(existing){
+      existing.reactions = m.reactions || {};
+      if(activeId === c.id) renderMsgs();
+    }
+  });
 }
 
 function openChat(id){
