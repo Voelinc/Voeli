@@ -3868,7 +3868,10 @@ async function loadFriendRequests(){
       const requestsData = snap.val();
       console.log('Existing friend requests found:', Object.keys(requestsData).length);
       Object.values(requestsData).forEach(req => {
-        if(req && req.type === 'friend_request'){
+        // Skip requests that already carry a status field — they've been
+        // accepted/denied on a previous session and are awaiting cleanup by
+        // the sender. Re-rendering them would show a stale card.
+        if(req && req.type === 'friend_request' && !req.status){
           pendingFriendRequests.push(req);
           initiallyLoadedRequestIds.add(req.id); // Track this ID to avoid duplicate rendering
         }
@@ -3894,6 +3897,12 @@ async function loadFriendRequests(){
           // Skip if this was already loaded in the initial .once() call
           if(initiallyLoadedRequestIds.has(req.id)){
             console.log('Skipping already-loaded request:', req.id);
+            return;
+          }
+          // Skip already-resolved requests (status === 'accepted'/'denied')
+          // — these are stale entries waiting for the sender to clean up.
+          if(req.status){
+            console.log('Skipping already-resolved request:', req.id, req.status);
             return;
           }
           // This is a genuinely new request
@@ -4135,6 +4144,7 @@ let currentUser = null;
 let activeTab = 'all'; // Sidebar tab filter: 'all' | 'unread' | 'favorites'
 let activeDMRoomId = null; // Track currently-listened DM to avoid duplicate listeners
 let currentDMListenerRef = null; // Reference to the current active DM message listener
+let currentBlockListenerRef = null; // Reference to the active blockedSenders listener (one per open chat)
 let isOnline = navigator.onLine; // Track online/offline state
 let offlineMessageQueue = []; // Queue for messages sent while offline
 let friendRequestTimestamps = {}; // Track when friend requests were sent: email -> timestamp
@@ -6225,6 +6235,17 @@ async function saveContact(){
             console.log(`[saveContact] Setting dmRoomId on contact and saving`);
             savedContact.dmRoomId = dmRoomId;
             await saveContactToFirebase(savedContact);
+            // If we previously deleted this contact, we may have left a
+            // blockedSenders entry for them on the shared DM. Clear it so
+            // they can message us again once the friend request is accepted.
+            try {
+              const otherUid = await getOtherParticipantUid(dmRoomId);
+              if(otherUid){
+                await firebaseDb.ref(`dms/${dmRoomId}/blockedSenders/${otherUid}`).remove();
+              }
+            } catch(unblockErr){
+              console.error('[saveContact] Failed to clear blockedSenders on re-add:', unblockErr);
+            }
             // Set up listener to receive messages from this DM room
             setupDMListener(dmRoomId);
           }
@@ -6240,6 +6261,25 @@ async function saveContact(){
     }
   }
 }
+// Read DM room participants and return the OTHER user's UID (i.e. not me).
+// Used to mark the other party as blocked-from-sending when we delete them as
+// a contact, and to clear that mark when we re-add them.
+async function getOtherParticipantUid(dmRoomId){
+  if(!firebaseDb || !currentUser || !dmRoomId) return null;
+  try {
+    const snap = await firebaseDb.ref(`dms/${dmRoomId}/participants`).once('value');
+    if(!snap.exists()) return null;
+    const participants = snap.val() || {};
+    for(const uid in participants){
+      if(uid !== currentUser.uid && participants[uid] === true) return uid;
+    }
+    return null;
+  } catch(e){
+    console.error('[getOtherParticipantUid] Error:', e);
+    return null;
+  }
+}
+
 async function deleteContact(id){
   const contact = contacts.find(c=>c.id===id);
   const isPending = contact && contact.status === 'pending_acceptance';
@@ -6257,12 +6297,60 @@ async function deleteContact(id){
     document.getElementById('chatEmpty').style.display='flex';
   }
   renderSidebar();
+  // Messages-tab chat list is rendered separately — refresh it too so the
+  // deleted contact disappears immediately, not just after a tab switch.
+  if(currentMessagesView === 'list'){
+    try { renderChatList(); } catch(_){}
+  }
 
   // Delete from Firebase
   if(currentUser && firebaseDb && contact){
     try {
+      // Block the other party from sending into this DM. We do this BEFORE
+      // removing the contact entry so a flaky network can't leave the DM open.
+      // Without this, the other side has no signal that we removed them — their
+      // messages would silently land in our DM forever.
+      if(contact.dmRoomId && !isPending){
+        try {
+          const otherUid = await getOtherParticipantUid(contact.dmRoomId);
+          if(otherUid){
+            await firebaseDb.ref(`dms/${contact.dmRoomId}/blockedSenders/${otherUid}`).set(true);
+          }
+        } catch(blockErr){
+          console.error('[deleteContact] Failed to mark other party as blocked:', blockErr);
+          if(window.Sentry) Sentry.captureException(blockErr);
+        }
+      }
+
       // Always delete the contact itself
       await firebaseDb.ref(`users/${currentUser.uid}/contacts/${id}`).remove();
+
+      // Tear down the auto-recreate path. initDMRoomListener walks
+      // invites/{my-hash} on every page load and re-creates a contact for
+      // any room it finds based on the room's metadata.emails. Without these
+      // cleanups, the contact we just deleted comes right back on the next
+      // refresh (or on the next room metadata update mid-session).
+      if(contact.dmRoomId && currentUser.email){
+        try {
+          const myHashedEmail = await hashEmailForPath(currentUser.email);
+          await firebaseDb.ref(`invites/${myHashedEmail}/${contact.dmRoomId}`).remove();
+        } catch(invErr){
+          console.error('[deleteContact] Failed to remove own invite:', invErr);
+        }
+        // Detach any active value listener on this room so the same-session
+        // auto-create can't fire either.
+        try {
+          firebaseDb.ref(`dms/${contact.dmRoomId}`).off('value');
+          if(typeof activeDMRoomListeners !== 'undefined' && activeDMRoomListeners.delete){
+            activeDMRoomListeners.delete(contact.dmRoomId);
+          }
+          if(typeof processedInvites !== 'undefined' && processedInvites.delete){
+            processedInvites.delete(contact.dmRoomId);
+          }
+        } catch(listenerErr){
+          console.error('[deleteContact] Failed to detach room listener:', listenerErr);
+        }
+      }
 
       // If this was a pending request we sent, also cancel the friend request
       if(isPending && contact.email){
@@ -6352,11 +6440,47 @@ function setupDMListener(dmRoomId){
   if(currentDMListenerRef){
     currentDMListenerRef.off('child_added');
   }
+  if(currentBlockListenerRef){
+    currentBlockListenerRef.off('value');
+    currentBlockListenerRef = null;
+  }
 
   activeDMRoomId = dmRoomId;
   const msgRef = firebaseDb.ref(`dms/${dmRoomId}/messages`);
   currentDMListenerRef = msgRef;
   console.log(`[setupDMListener] Setting up listener for DM room: ${dmRoomId}`);
+
+  // Watch whether the OTHER party has marked us as blocked-from-sending
+  // (i.e. they removed us as a contact). When they do, flip the local
+  // contact's status to 'deleted' so the existing "Contact removed you"
+  // banner appears and the send path can refuse the message instead of
+  // silently writing into a one-way DM.
+  const blockRef = firebaseDb.ref(`dms/${dmRoomId}/blockedSenders/${currentUser.uid}`);
+  currentBlockListenerRef = blockRef;
+  blockRef.on('value', snap => {
+    const blocked = snap.val() === true;
+    const c = contacts.find(contact => contact.dmRoomId === dmRoomId);
+    if(!c) return;
+    // Pending takes priority over the blocked signal. If we have an outgoing
+    // friend request in flight, show "Friend request pending" — not "Contact
+    // removed you" — even if the other party's prior block flag is still
+    // sitting in Firebase. The friend-request flow will clear blockedSenders
+    // when the recipient accepts.
+    if(c.status === 'pending_acceptance') return;
+    if(blocked && c.status !== 'deleted'){
+      c.status = 'deleted';
+      if(activeId === c.id){ renderMsgs(); updBtns(); }
+      renderSidebar();
+    } else if(!blocked && c.status === 'deleted'){
+      // Other party re-added us — restore so messages flow again.
+      c.status = 'accepted';
+      if(activeId === c.id){ renderMsgs(); updBtns(); }
+      renderSidebar();
+    }
+  }, err => {
+    // Read can fail if we're no longer a participant; nothing to do but log.
+    console.warn('[setupDMListener] blockedSenders read failed:', err);
+  });
 
   // Listen for incoming messages in this DM room
   msgRef.on('child_added', snap=>{
@@ -6373,9 +6497,17 @@ function setupDMListener(dmRoomId){
     }
     if(!c.msgs) c.msgs = []; // Ensure msgs array exists
 
+    // Dedupe by Firebase push key. `child_added` fires once per existing
+    // message at attach time, and `loadHistoricalMessages` runs in parallel —
+    // without this guard the other party's messages would be inserted twice
+    // every time the chat reopens (especially after re-friending, which is
+    // the trigger that surfaced the bug).
+    const newId = snap.key || ('fb' + Date.now() + Math.random().toString(36).slice(2,5));
+    if(c.msgs.some(existing => existing.id === newId)) return;
+
     const d = new Date(m.ts);
     c.msgs.push({
-      id: snap.key || ('fb' + Date.now() + Math.random().toString(36).slice(2,5)),
+      id: newId,
       text: m.text, translated: m.text, original: m.original||m.text,
       emotion:'', isMe:false, mode:'text', direction: m.direction||'en-vi',
       ts: m.ts,
@@ -6648,6 +6780,24 @@ async function sendFriendRequest(toEmail){
       friendRequestHourlyCount++;
       // Confirm to user that request was sent
       _showToast(`Friend request sent to ${normalizedEmail}`);
+
+      // If we already had a contact for this person in 'deleted' state
+      // (the recipient previously removed us), flip it to 'pending_acceptance'
+      // now that we've sent a fresh request — otherwise the "Contact removed
+      // you" banner would linger after we click Send Friend Request.
+      const existing = contacts.find(c => c.email === normalizedEmail);
+      if(existing && existing.status === 'deleted'){
+        existing.status = 'pending_acceptance';
+        renderSidebar();
+        if(activeId === existing.id){
+          renderMsgs();
+          if(typeof updBtns === 'function') updBtns();
+        }
+        if(currentUser){
+          try { await saveContactToFirebase(existing); }
+          catch(saveErr){ console.error('[sendFriendRequest] Failed to persist deleted→pending flip:', saveErr); }
+        }
+      }
     } catch(e){
       console.error('Error saving friend request to Firebase:', e);
       _showToast('Failed to send friend request. Try again.');
@@ -6666,44 +6816,69 @@ async function setupSentRequestListener(toEmail, requestId){
   const ref = firebaseDb.ref(path);
   console.log(`[setupSentRequestListener] Setting up listener for ${toEmail} at path: ${path}`);
 
-  // Listen for when the request is deleted (accepted or denied by recipient)
+  // Watch for the recipient to write status='accepted' or status='denied' on
+  // the request. We deliberately do NOT auto-flip the contact when the request
+  // simply disappears — that was a bug where a rule-induced cache rollback or
+  // any other deletion was misread as acceptance, silently faking acceptance
+  // toasts and accepting requests no one ever clicked on.
   ref.on('value', async (snap) => {
-    console.log(`[setupSentRequestListener] Listener fired for ${toEmail}. Exists: ${snap.exists()}`);
+    console.log(`[setupSentRequestListener] fired for ${toEmail} | exists=${snap.exists()} | val=`, snap.val());
     if(!snap.exists()){
-      console.log(`[setupSentRequestListener] Request deleted for ${toEmail}, finding contact...`);
-      // Request was deleted, meaning it was either accepted or denied
-      const contact = contacts.find(c => c.email === toEmail);
-      console.log(`[setupSentRequestListener] Contact found: ${contact ? 'yes' : 'no'}, status: ${contact?.status}`);
-      if(contact && contact.status === 'pending_acceptance'){
-        console.log(`[setupSentRequestListener] Updating status to 'accepted' for ${toEmail}`);
-        // Mark contact as accepted since the request was deleted
+      // Request gone with no status signal — could be cleanup, denial-then-
+      // delete on an old client, or a network glitch. Take no action.
+      console.log(`[setupSentRequestListener] Request at ${path} disappeared with no status; ignoring (no auto-accept).`);
+      ref.off();
+      activeListenerPaths.delete(path);
+      return;
+    }
+    const data = snap.val();
+    if(!data || !data.status){
+      console.log(`[setupSentRequestListener] ${toEmail}: no status yet, keep listening`);
+      return; // initial write has no status — keep listening
+    }
+
+    const contact = contacts.find(c => c.email === toEmail);
+    console.log(`[setupSentRequestListener] ${toEmail}: status=${data.status} | local contact:`, contact ? `id=${contact.id} status=${contact.status}` : '(not in local contacts)');
+
+    if(data.status === 'accepted'){
+      // Always toast — this is the explicit signal that the recipient
+      // accepted, and we want the sender to know regardless of any local
+      // status weirdness (e.g. status was already flipped by another
+      // listener path, or the contact entry got rebuilt).
+      const displayName = (contact && contact.name) || toEmail;
+      _showToast(`${displayName} accepted your friend request!`);
+
+      if(contact && contact.status !== 'accepted'){
         contact.status = 'accepted';
+        if(contact.msgs) contact.msgs.forEach(m => m.queued = false);
         renderSidebar();
-        // If this contact is currently active, update the messages view to remove the pending banner
-        console.log(`[setupSentRequestListener] activeId=${activeId}, contact.id=${contact.id}, match=${activeId === contact.id}`);
-        if(activeId === contact.id){
-          console.log(`[setupSentRequestListener] Calling renderMsgs() for active contact`);
-          renderMsgs();
-        }
-        // Persist the status update to Firebase so it survives page refreshes
+        if(activeId === contact.id){ renderMsgs(); if(typeof updBtns === 'function') updBtns(); }
         if(currentUser && firebaseDb){
-          try {
-            console.log(`[setupSentRequestListener] Saving contact to Firebase`);
-            await saveContactToFirebase(contact);
-            console.log(`[setupSentRequestListener] Contact saved successfully`);
-          } catch(e){
-            console.error('Error saving accepted contact to Firebase:', e);
+          try { await saveContactToFirebase(contact); }
+          catch(e){ console.error('Error saving accepted contact to Firebase:', e); }
+        }
+        // Flush any messages that were queued while the contact was pending.
+        if(contact.queuedMsgs && contact.queuedMsgs.length > 0 && contact.dmRoomId){
+          const queuedMsgs = contact.queuedMsgs;
+          contact.queuedMsgs = [];
+          for(const msgData of queuedMsgs){
+            try { await firebaseDb.ref(`dms/${contact.dmRoomId}/messages`).push(msgData); }
+            catch(e){ console.error('Error flushing queued message:', e); }
           }
         }
-        _showToast(`${contact.name || toEmail} accepted your friend request!`);
-        console.log(`Friend request to ${toEmail} was accepted`);
-      } else {
-        console.log(`[setupSentRequestListener] Contact not found or status is not pending_acceptance. Skipping update.`);
       }
-      // Clean up this listener
-      console.log(`[setupSentRequestListener] Removing listener for ${toEmail}`);
-      ref.off();
+    } else if(data.status === 'denied'){
+      const displayName = (contact && contact.name) || toEmail;
+      _showToast(`${displayName} declined your friend request.`);
+    } else {
+      // Unknown status — leave it alone for forward-compatibility.
+      return;
     }
+
+    // We've handled the signal; clean up the request and the listener.
+    try { await ref.remove(); } catch(_){}
+    ref.off();
+    activeListenerPaths.delete(path);
   });
 
   // Track this listener path for cleanup
@@ -6795,6 +6970,20 @@ async function acceptFriendRequest(id, fromEmail, fromName){
     }
   }
 
+  // If we previously deleted this person, the DM still carries our
+  // blockedSenders entry for them. Accepting their friend request restores
+  // the relationship — clear that entry so their messages can come through.
+  if(acceptedContact.dmRoomId && currentUser && firebaseDb){
+    try {
+      const otherUid = await getOtherParticipantUid(acceptedContact.dmRoomId);
+      if(otherUid){
+        await firebaseDb.ref(`dms/${acceptedContact.dmRoomId}/blockedSenders/${otherUid}`).remove();
+      }
+    } catch(unblockErr){
+      console.error('[acceptFriendRequest] Failed to clear blockedSenders:', unblockErr);
+    }
+  }
+
   // Save to Firebase
   if(currentUser && firebaseDb){
     try {
@@ -6812,13 +7001,21 @@ async function acceptFriendRequest(id, fromEmail, fromName){
     }
   }
 
-  // Remove friend request from Firebase
+  // Mark the friend request as accepted instead of removing it. The sender's
+  // setupSentRequestListener watches this path for an explicit status change
+  // and only flips their contact to 'accepted' when it sees status='accepted'.
+  // Mere disappearance no longer counts as acceptance — that was the bug
+  // where a rule-induced rollback or any other delete looked like an accept.
+  // The sender removes the request from Firebase once they've processed it.
   if(currentUser && firebaseDb){
     try {
       const hashedEmail = await hashEmailForPath(currentUser.email);
-      await firebaseDb.ref(`friendRequests/${hashedEmail}/${id}`).remove();
+      await firebaseDb.ref(`friendRequests/${hashedEmail}/${id}`).update({
+        status: 'accepted',
+        acceptedAt: Date.now()
+      });
     } catch(e){
-      console.error('Error removing friend request from Firebase:', e);
+      console.error('Error marking friend request as accepted in Firebase:', e);
     }
   }
   // Update badge
@@ -6831,13 +7028,18 @@ async function denyFriendRequest(id){
   _dismissFreqCard(id);
   // Remove from pending array
   pendingFriendRequests = pendingFriendRequests.filter(r => r.id !== id);
-  // Remove friend request from Firebase
+  // Mark as denied so the sender's listener can show a real "declined" toast
+  // instead of guessing from disappearance. The sender removes the request
+  // once they've processed it.
   if(currentUser && firebaseDb){
     try {
       const hashedEmail = await hashEmailForPath(currentUser.email);
-      await firebaseDb.ref(`friendRequests/${hashedEmail}/${id}`).remove();
+      await firebaseDb.ref(`friendRequests/${hashedEmail}/${id}`).update({
+        status: 'denied',
+        deniedAt: Date.now()
+      });
     } catch(e){
-      console.error('Error removing friend request from Firebase:', e);
+      console.error('Error marking friend request as denied in Firebase:', e);
     }
   }
   // Update badge
@@ -7096,10 +7298,16 @@ function renderMsgs(){
     return;
   }
 
-  // Show messages even if pending acceptance (will include queued messages)
+  // While a friend request is pending, hide ALL messages (both historical
+  // and queued). Showing the prior conversation before the other side has
+  // accepted is misleading — the relationship hasn't been re-established.
+  if(c && c.status === 'pending_acceptance'){
+    area.innerHTML=`<div class="status-banner">${isVI?'⚠️ Yêu cầu kết bạn đang chờ — chờ phản hồi':'⚠️ Friend request pending — waiting for acceptance'}</div>`;
+    return;
+  }
+
   if(!c || (!c.msgs || !c.msgs.length) && (!c.queuedMsgs || !c.queuedMsgs.length)){
-    const bannerHTML = c && c.status === 'pending_acceptance' ? `<div class="status-banner">${isVI?'⚠️ Tin nhắn đang chờ xử lý, chờ chấp nhận':'⚠️ Messages pending, waiting for acceptance'}</div>` : '';
-    area.innerHTML=bannerHTML + `<div class="nomsg" id="nomsg">${isVI?'Chưa có tin nhắn — bắt đầu bên dưới':'No messages yet — start below'}</div>`;
+    area.innerHTML=`<div class="nomsg" id="nomsg">${isVI?'Chưa có tin nhắn — bắt đầu bên dưới':'No messages yet — start below'}</div>`;
     return;
   }
   const todayLbl=isVI?'Hôm nay':'Today';
@@ -7734,6 +7942,7 @@ function sendGif(gifUrl){
   const c = activeCont();
   if(!c || !gifUrl) return;
   if(!c.msgs) c.msgs = []; // Ensure msgs array exists
+  if(c.status === 'deleted'){ _explainContactRemoved(c); return; }
   const isVI = appDir==='vi-en';
   const now = Date.now();
   const msg = {
@@ -7818,11 +8027,31 @@ function setupComposerListeners(){
 function updBtns(){
   // Ensure DOM elements are cached before use
   if(!txtInput) txtInput=document.getElementById('txtInput');
+  if(!sendBtn) sendBtn=document.getElementById('sendBtn');
   if(!sendCol) sendCol=document.getElementById('sendCol');
   if(!micCol) micCol=document.getElementById('micCol');
   if(!txtInput || !sendCol || !micCol) { console.log('updBtns: missing elements', {txtInput: !!txtInput, sendCol: !!sendCol, micCol: !!micCol}); return; }
 
   const isVI = appDir==='vi-en';
+
+  // If the other party removed us as a contact, lock the composer entirely.
+  // The "Contact removed you" banner above the messages already explains why;
+  // this just stops anyone typing into a one-way DM.
+  const _c = activeCont();
+  if(_c && _c.status === 'deleted'){
+    txtInput.disabled = true;
+    if(sendBtn) sendBtn.disabled = true;
+    txtInput.placeholder = isVI ? 'Chờ họ thêm bạn lại…' : 'Waiting for them to add you back…';
+    if(sendCol) sendCol.style.display = 'none';
+    if(micCol) micCol.style.display = 'none';
+    return;
+  }
+  // Normal state — make sure the composer is unlocked again (in case we just
+  // came back from a 'deleted' state via the blockedSenders listener).
+  if(txtInput.disabled) txtInput.disabled = false;
+  if(sendBtn && sendBtn.disabled) sendBtn.disabled = false;
+  txtInput.placeholder = isVI ? 'Nhập tin nhắn…' : 'Type a message…';
+
   // During recording, keep only the mic (stop) button visible to prevent
   // accidental text sends firing a second API call.
   if(isRecording){
@@ -7979,11 +8208,23 @@ function looksEmotional(text){
 // feels instant — no noticeable lag between Enter/click and bubble appearing.
 // Send a message exactly as typed — no translation, no API call.
 // Used when the person writes in the other person's language, or code-switches.
+// Show the "they removed you" explanation. Centralised so the toast wording
+// stays consistent across the eager UI gate and the late PERMISSION_DENIED
+// fallback in syncToFirebase.
+function _explainContactRemoved(c){
+  const isVI = appDir === 'vi-en';
+  const who = (c && (c.name || c.email)) || (isVI ? 'liên hệ này' : 'this contact');
+  _showToast(isVI
+    ? `Không thể gửi — chờ ${who} thêm bạn lại.`
+    : `Can't send — wait for ${who} to add you back as a contact.`);
+}
+
 function sendAsIs(text){
   const c = activeCont();
   if(!c) return;
   if(!c.msgs) c.msgs = []; // Ensure msgs array exists
   if(c.blocked){ alert('You have blocked this contact. Unblock them to message.'); return; }
+  if(c.status === 'deleted'){ _explainContactRemoved(c); return; }
   const now = new Date();
   const reply = _replyState ? { id: _replyState.id, text: _replyState.text } : null;
   cancelReply();
@@ -8009,6 +8250,7 @@ async function sendOptimistic(text, direction){
   if(!c) { console.log(`[sendOptimistic] No active contact!`); return; }
   if(!c.msgs) c.msgs = []; // Ensure msgs array exists
   if(c.blocked){ console.log(`[sendOptimistic] Contact is blocked`); alert('You have blocked this contact. Unblock them to message.'); return; }
+  if(c.status === 'deleted'){ _explainContactRemoved(c); return; }
   const now = new Date();
   const isMe = true;
   const reply = _replyState ? { id: _replyState.id, text: _replyState.text } : null;
@@ -8060,6 +8302,7 @@ async function sendWithLearnedTone(text, direction, learnedTone){
   if(!c) return;
   if(!c.msgs) c.msgs = []; // Ensure msgs array exists
   if(c.blocked){ alert('You have blocked this contact. Unblock them to message.'); return; }
+  if(c.status === 'deleted'){ _explainContactRemoved(c); return; }
   const now = new Date();
   const isMe = true;
   const reply = _replyState ? { id: _replyState.id, text: _replyState.text } : null;
@@ -9793,6 +10036,20 @@ function syncToFirebase(msg){
   const c = activeCont();
   if(c && c.dmRoomId){
     console.log(`[syncToFirebase] Saving message to DM room: ${c.dmRoomId}, status: ${c.status}`);
+    // If the other party removed us as a contact, refuse the send rather than
+    // letting the message disappear into a one-way DM. The eager checks in
+    // the send entry points should have caught this already; this is the
+    // last-line defence (e.g. status flipped between optimistic-render and
+    // syncToFirebase).
+    if(c.status === 'deleted'){
+      console.log(`[syncToFirebase] Contact status is 'deleted', refusing send`);
+      // Drop the optimistic bubble and surface the explanation.
+      const idx = c.msgs ? c.msgs.indexOf(msg) : -1;
+      if(idx !== -1) c.msgs.splice(idx, 1);
+      _explainContactRemoved(c);
+      if(activeId === c.id) renderMsgs();
+      return;
+    }
     // If contact is pending acceptance, queue the message locally instead of sending
     if(c.status === 'pending_acceptance'){
       console.log(`[syncToFirebase] Contact status is pending_acceptance, queueing message`);
@@ -9817,8 +10074,20 @@ function syncToFirebase(msg){
         msg.id = fbId;
         msg.delivered = true;
         if(activeId === c.id) renderMsgs();
-      }).catch(() => {
-        // If send fails, queue for retry
+      }).catch((err) => {
+        // The blockedSenders rule rejects writes from a sender the recipient
+        // has removed. Surface the explanation instead of silently retrying.
+        const code = err && (err.code || err.message || '');
+        if(typeof code === 'string' && code.toUpperCase().includes('PERMISSION_DENIED')){
+          c.status = 'deleted';
+          const idx = c.msgs ? c.msgs.indexOf(msg) : -1;
+          if(idx !== -1) c.msgs.splice(idx, 1);
+          _explainContactRemoved(c);
+          if(activeId === c.id) renderMsgs();
+          renderSidebar();
+          return;
+        }
+        // Otherwise (network blip etc.), queue for retry
         if(!isOnline || offlineMessageQueue.findIndex(m => m.msgData.ts === msgData.ts) === -1){
           offlineMessageQueue.push({ contactId: c.id, msgData });
         }
