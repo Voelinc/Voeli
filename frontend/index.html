@@ -4273,6 +4273,9 @@ function initApp(){
   const savedAppDir = localStorage.getItem('appDir');
   if(savedAppDir && (savedAppDir === 'en-vi' || savedAppDir === 'vi-en')) {
     appDir = savedAppDir;
+    updPlaceholder();
+    applyAuthLang();
+    applyAppLang();
   }
   showOnboarding();
   updateButtonStates();
