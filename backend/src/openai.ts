@@ -70,6 +70,18 @@ function buildPickerSystemPrompt(
     '- phải = **obligation/truth**: "phải đi" → "have to go" or "must go" (NOT just "go")',
     '- Timing is NOT about adding words—it\'s about choosing the RIGHT English form. "Ăn" alone is ambiguous; particles remove ambiguity. Every translation MUST render the aspect correctly.',
     '',
+    '# ENGLISH TENSE → VIETNAMESE PARTICLES (when EN→VI): MAP ENGLISH TENSES TO VIETNAMESE ASPECT PARTICLES',
+    '- is/am/are + -ing (present continuous) → **đang**: "I am eating" → "Tôi đang ăn"',
+    '- have/has + -ed (present perfect) → **đã...rồi**: "I have eaten" → "Tôi đã ăn rồi"',
+    '- am/is/are about to / am going to (near future) → **sắp**: "I am about to go" → "Tôi sắp đi"',
+    '- just + -ed (recent completion) → **vừa...xong**: "I just ate" → "Tôi vừa ăn xong"',
+    '- usually/often/always + verb (habitual) → **thường**: "I usually eat" → "Tôi thường ăn"',
+    '- can/may/might (possibility) → **có thể**: "I can eat" → "Tôi có thể ăn"',
+    '- must/have to/should (obligation) → **phải**: "I must go" → "Tôi phải đi"',
+    '- will + verb (simple future) → **sẽ** or context-dependent particles: "I will go" → "Tôi sẽ đi" or "Tôi đi" (if certain/imminent)',
+    '- Base verb alone (simple present/habitual/statement of fact) → **no particle** unless context suggests otherwise: "I eat" → "Tôi ăn"',
+    '- NOTE: English tenses can be ambiguous (e.g., "I go to work" = habitual OR imminent). Use context/punctuation/tone to choose the right Vietnamese particle.',
+    '',
     '# THIRD-PARTY RULE: speaker↔listener pronoun pair STAYS LOCKED. Third parties get their own kinship/name terms (my older sister=chị gái, my mom=mẹ, my boss=sếp+name). Never let a third-party mention change the main pair.',
     '',
     '# KINSHIP AMBIGUITY: VN kinship terms (chị, anh, em, cô, chú, bác) also address non-relatives respectfully. VI→EN: "chị Lan" defaults to "Lan" (respected older woman), NOT "my sister Lan", unless blood cue ("chị gái tôi"). EN→VI: "my sister" defaults to blood reading but flag kinship warning. Always flag ambiguous cases.',
@@ -144,6 +156,7 @@ function buildPickerSystemPrompt(
     `- culturalWarnings = array (empty if none).`,
     `- Every translation MUST be grammatically complete. All prepositions, articles, and function words required for natural speech must be present. Double-check each option before returning.`,
     `- ${srcIsVietnamese ? 'ASPECT PARTICLES: If source contains đang/rồi/sắp/xong/thường/có thể/phải, ensure target English uses correct tense/continuous form (present continuous, past perfect, near future, etc.). Do NOT lose aspect information in translation.' : ''}`,
+    `- ${srcIsVietnamese ? '' : 'TENSE MAPPING: If source contains present continuous (is/am/are -ing), perfect (have/has -ed), or future forms (will/about to), map to correct Vietnamese particles (đang, đã...rồi, sắp, vừa...xong, etc.). Do NOT lose temporal information in translation.'}`,
   ];
 
   let prompt = lines.join('\n');
@@ -384,6 +397,100 @@ function fixAspectParticles(result: Record<string, unknown>, vietnameseText: str
   };
 }
 
+// Check English source for tense forms and verify Vietnamese handles them correctly
+function detectEnglishTenses(englishText: string): { tenses: string[]; tenseType?: string; expectedParticles?: string[] } {
+  const en = englishText.toLowerCase();
+  const tenses: string[] = [];
+
+  // Check for tense patterns
+  if (/(is|am|are)\s+\w+ing\b/.test(en)) {
+    tenses.push('present_continuous');
+  }
+  if (/(have|has)\s+\w+ed\b|have\s+\w+n\b/.test(en)) {
+    tenses.push('present_perfect');
+  }
+  if (/about\s+to\b|am\s+going\s+to\b|is\s+going\s+to\b|are\s+going\s+to\b/.test(en)) {
+    tenses.push('near_future');
+  }
+  if (/just\s+\w+ed\b|just\s+\w+n\b/.test(en)) {
+    tenses.push('just_completed');
+  }
+  if (/\b(usually|often|always|regularly|seldom|rarely)\b/.test(en)) {
+    tenses.push('habitual');
+  }
+  if (/\b(can|may|might|could)\b/.test(en)) {
+    tenses.push('possibility');
+  }
+  if (/\b(must|have\s+to|should|ought\s+to)\b/.test(en)) {
+    tenses.push('obligation');
+  }
+  if (/\bwill\s+\w+\b/.test(en)) {
+    tenses.push('simple_future');
+  }
+
+  // Determine expected Vietnamese particles
+  let tenseType: string | undefined;
+  let expectedParticles: string[] | undefined;
+
+  if (tenses.includes('present_continuous')) {
+    tenseType = 'present_continuous';
+    expectedParticles = ['đang'];
+  } else if (tenses.includes('present_perfect')) {
+    tenseType = 'present_perfect';
+    expectedParticles = ['đã', 'rồi'];
+  } else if (tenses.includes('near_future')) {
+    tenseType = 'near_future';
+    expectedParticles = ['sắp'];
+  } else if (tenses.includes('just_completed')) {
+    tenseType = 'just_completed';
+    expectedParticles = ['vừa', 'xong'];
+  } else if (tenses.includes('habitual')) {
+    tenseType = 'habitual';
+    expectedParticles = ['thường', 'hay'];
+  }
+
+  return { tenses, tenseType, expectedParticles };
+}
+
+// Verify English tenses are properly translated to Vietnamese particles
+function fixEnglishTenses(result: Record<string, unknown>, englishText: string): Record<string, unknown> {
+  const tenseInfo = detectEnglishTenses(englishText);
+  if (tenseInfo.tenses.length === 0) return result; // No special tenses to check
+
+  const options = result.options as Array<Record<string, unknown>>;
+  if (!Array.isArray(options)) return result;
+
+  return {
+    ...result,
+    options: options.map((option) => {
+      const translation = option.translation as string;
+      if (!translation) return option;
+
+      const vn = translation.toLowerCase();
+      let issues: string[] = [];
+
+      // Check if expected particles are present
+      if (tenseInfo.expectedParticles && tenseInfo.expectedParticles.length > 0) {
+        const hasExpectedParticle = tenseInfo.expectedParticles.some((particle) => vn.includes(particle));
+
+        if (!hasExpectedParticle) {
+          issues.push(`Missing Vietnamese particle for English ${tenseInfo.tenseType} (expected: ${tenseInfo.expectedParticles.join('/')})`);
+        }
+      }
+
+      // Flag if we detected issues
+      if (issues.length > 0) {
+        return {
+          ...option,
+          _tenseWarning: issues.join('; '),
+        };
+      }
+
+      return option;
+    }),
+  };
+}
+
 // PICKER PATH — full 4-option translation with optional streaming.
 export async function handleTranslate(
   payload: TranslatePayload,
@@ -425,15 +532,22 @@ export async function handleTranslate(
 
   const json = await upstream.json();
 
-  // Post-process to fix missing prepositions and verify aspect particles (Vietnamese → English only)
-  const [src] = langPair(payload.direction);
+  // Post-process for both directions
+  const [src, tgt] = langPair(payload.direction);
+  let result = json;
+
+  // Vietnamese → English: fix prepositions and aspect particles
   if (src === 'Vietnamese') {
-    let fixed = fixMissingPrepositions(json, payload.text);
-    fixed = fixAspectParticles(fixed, payload.text);
-    return Response.json(fixed);
+    result = fixMissingPrepositions(result, payload.text);
+    result = fixAspectParticles(result, payload.text);
   }
 
-  return Response.json(json);
+  // English → Vietnamese: verify tense mapping to particles
+  if (src === 'English' && tgt === 'Vietnamese') {
+    result = fixEnglishTenses(result, payload.text);
+  }
+
+  return Response.json(result);
 }
 
 // QUICK PATH — single translation, no picker.
@@ -494,15 +608,22 @@ export async function handleVoice(
   if (!upstream.ok) return forwardError(upstream);
   const json = await upstream.json();
 
-  // Post-process to fix missing prepositions and verify aspect particles (Vietnamese → English only)
-  const [src] = langPair(payload.direction);
+  // Post-process for both directions
+  const [src, tgt] = langPair(payload.direction);
+  let result = json;
+
+  // Vietnamese → English: fix prepositions and aspect particles
   if (src === 'Vietnamese' && json.transcript) {
-    let fixed = fixMissingPrepositions(json, json.transcript);
-    fixed = fixAspectParticles(fixed, json.transcript);
-    return Response.json(fixed);
+    result = fixMissingPrepositions(result, json.transcript);
+    result = fixAspectParticles(result, json.transcript);
   }
 
-  return Response.json(json);
+  // English → Vietnamese: verify tense mapping to particles
+  if (src === 'English' && tgt === 'Vietnamese' && json.transcript) {
+    result = fixEnglishTenses(result, json.transcript);
+  }
+
+  return Response.json(result);
 }
 
 // GRAMMAR PATH — typo / grammar corrector.
