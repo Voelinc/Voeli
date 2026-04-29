@@ -195,6 +195,79 @@ async function callOpenAI(
   return res;
 }
 
+// Check Vietnamese source for patterns that need prepositions in English translations
+function needsPrepositionCheck(vietnameseText: string, englishTranslation: string): { needs: boolean; suggestedPreposition?: string; context?: string } {
+  const vn = vietnameseText.toLowerCase().trim();
+  const en = englishTranslation.toLowerCase().trim();
+
+  // Pattern: "điều chỉnh [someone]" should be "adjust TO [someone]"
+  if ((vn.includes('điều chỉnh') || vn.includes('adjust')) && /\badjust\s+\w+\b/.test(en)) {
+    if (!en.includes('adjust to') && !en.includes('adjust for')) {
+      return { needs: true, suggestedPreposition: 'to', context: 'adjust' };
+    }
+  }
+
+  // Pattern: "nói với" / "talk to/with"
+  if (vn.includes('nói với') && /\btalk\s+(?!to|with)\w+/.test(en)) {
+    if (!en.includes('talk to') && !en.includes('talk with')) {
+      return { needs: true, suggestedPreposition: 'to', context: 'talk' };
+    }
+  }
+
+  // Pattern: "nghe [object]" should be "listen to [object]"
+  if ((vn.includes('nghe') || vn.includes('listen')) && /\blisten\s+(?!to)\w+/.test(en)) {
+    if (!en.includes('listen to')) {
+      return { needs: true, suggestedPreposition: 'to', context: 'listen' };
+    }
+  }
+
+  // Pattern: "nhìn [object]" should be "look at [object]"
+  if ((vn.includes('nhìn') || vn.includes('look')) && /\blook\s+(?!at)\w+/.test(en)) {
+    if (!en.includes('look at')) {
+      return { needs: true, suggestedPreposition: 'at', context: 'look' };
+    }
+  }
+
+  return { needs: false };
+}
+
+// Apply preposition fixes to translation options if needed
+function fixMissingPrepositions(result: Record<string, unknown>, vietnameseText: string): Record<string, unknown> {
+  const options = result.options as Array<Record<string, unknown>>;
+  if (!Array.isArray(options)) return result;
+
+  return {
+    ...result,
+    options: options.map((option) => {
+      const translation = option.translation as string;
+      if (!translation) return option;
+
+      const check = needsPrepositionCheck(vietnameseText, translation);
+      if (!check.needs || !check.suggestedPreposition) return option;
+
+      // Attempt to add the preposition in the right place
+      let fixed = translation;
+      const patterns: Record<string, RegExp> = {
+        adjust: /\b(adjust)\s+(\w+)/i,
+        talk: /\b(talk)\s+(\w+)/i,
+        listen: /\b(listen)\s+(\w+)/i,
+        look: /\b(look)\s+(\w+)/i,
+      };
+
+      const pattern = patterns[check.context || ''];
+      if (pattern) {
+        fixed = translation.replace(pattern, `$1 ${check.suggestedPreposition} $2`);
+      }
+
+      return {
+        ...option,
+        translation: fixed,
+        _prepositionFixed: true, // internal flag to track that we fixed this
+      };
+    }),
+  };
+}
+
 // PICKER PATH — full 4-option translation with optional streaming.
 export async function handleTranslate(
   payload: TranslatePayload,
@@ -235,6 +308,14 @@ export async function handleTranslate(
   }
 
   const json = await upstream.json();
+
+  // Post-process to fix missing prepositions (Vietnamese → English only)
+  const [src] = langPair(payload.direction);
+  if (src === 'Vietnamese') {
+    const fixed = fixMissingPrepositions(json, payload.text);
+    return Response.json(fixed);
+  }
+
   return Response.json(json);
 }
 
@@ -295,6 +376,14 @@ export async function handleVoice(
   const upstream = await callOpenAI(body, env.OPENAI_API_KEY);
   if (!upstream.ok) return forwardError(upstream);
   const json = await upstream.json();
+
+  // Post-process to fix missing prepositions (Vietnamese → English only)
+  const [src] = langPair(payload.direction);
+  if (src === 'Vietnamese' && json.transcript) {
+    const fixed = fixMissingPrepositions(json, json.transcript);
+    return Response.json(fixed);
+  }
+
   return Response.json(json);
 }
 
