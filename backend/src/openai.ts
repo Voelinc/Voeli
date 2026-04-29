@@ -60,6 +60,16 @@ function buildPickerSystemPrompt(
     '3) FINAL PARTICLES: ạ=respect, nha/nhé=warm/friendly, đi=gentle push, vậy=casual, thôi="just"/soften, hả=incredulous, ơi=calling.',
     `"Dạ" opener = respect. Prefer cultural REFRAMING over literal (e.g., "I don't like this food" to an elder who cooked → "món này hơi lạ miệng con một chút" [unfamiliar palate], not "con không thích").`,
     '',
+    '# ASPECT PARTICLES (when VI→EN): CRITICAL FOR TENSE/TIMING ACCURACY',
+    '- đang = **present continuous**: "đang ăn" → "is eating" (NOT "eating")',
+    '- đã...rồi / ...rồi = **past perfect**: "ăn rồi" → "already ate" or "have eaten" (NOT "ate already")',
+    '- sắp = **near future**: "sắp đi" → "about to go" or "am going to go" (NOT "will go")',
+    '- vừa...xong / ...xong = **just completed**: "vừa ăn xong" → "just finished eating" (NOT "just ate")',
+    '- thường / hay = **habitual**: "thường ăn" → "usually eat" (preserve frequency, NOT just "eat")',
+    '- có thể = **possibility/permission**: "có thể ăn được không?" → "can I eat?" or "is it okay to eat?" (NOT just "eat?")',
+    '- phải = **obligation/truth**: "phải đi" → "have to go" or "must go" (NOT just "go")',
+    '- Timing is NOT about adding words—it\'s about choosing the RIGHT English form. "Ăn" alone is ambiguous; particles remove ambiguity. Every translation MUST render the aspect correctly.',
+    '',
     '# THIRD-PARTY RULE: speaker↔listener pronoun pair STAYS LOCKED. Third parties get their own kinship/name terms (my older sister=chị gái, my mom=mẹ, my boss=sếp+name). Never let a third-party mention change the main pair.',
     '',
     '# KINSHIP AMBIGUITY: VN kinship terms (chị, anh, em, cô, chú, bác) also address non-relatives respectfully. VI→EN: "chị Lan" defaults to "Lan" (respected older woman), NOT "my sister Lan", unless blood cue ("chị gái tôi"). EN→VI: "my sister" defaults to blood reading but flag kinship warning. Always flag ambiguous cases.',
@@ -133,6 +143,7 @@ function buildPickerSystemPrompt(
     `- ${srcIsVietnamese ? 'Populate sourceDecoding.' : 'sourceDecoding=null.'}`,
     `- culturalWarnings = array (empty if none).`,
     `- Every translation MUST be grammatically complete. All prepositions, articles, and function words required for natural speech must be present. Double-check each option before returning.`,
+    `- ${srcIsVietnamese ? 'ASPECT PARTICLES: If source contains đang/rồi/sắp/xong/thường/có thể/phải, ensure target English uses correct tense/continuous form (present continuous, past perfect, near future, etc.). Do NOT lose aspect information in translation.' : ''}`,
   ];
 
   let prompt = lines.join('\n');
@@ -268,6 +279,111 @@ function fixMissingPrepositions(result: Record<string, unknown>, vietnameseText:
   };
 }
 
+// Check Vietnamese source for aspect particles and verify English handles them correctly
+function detectAspectParticles(vietnameseText: string): { particles: string[]; aspectType?: string; expectedForm?: string } {
+  const vn = vietnameseText.toLowerCase();
+  const particles: string[] = [];
+
+  // Check for aspect particles
+  if (/\bđang\b/.test(vn)) {
+    particles.push('đang');
+  }
+  if (/\b(đã|rồi)\b/.test(vn) || /rồi\b/.test(vn)) {
+    particles.push('rồi/đã');
+  }
+  if (/\bsắp\b/.test(vn)) {
+    particles.push('sắp');
+  }
+  if (/\b(vừa|xong)\b/.test(vn) || /xong\b/.test(vn)) {
+    particles.push('xong/vừa');
+  }
+  if (/\b(thường|hay)\b/.test(vn)) {
+    particles.push('thường');
+  }
+  if (/\bcó thể\b/.test(vn)) {
+    particles.push('có thể');
+  }
+  if (/\bphải\b/.test(vn)) {
+    particles.push('phải');
+  }
+
+  // Determine expected tense form
+  let aspectType: string | undefined;
+  let expectedForm: string | undefined;
+
+  if (particles.includes('đang')) {
+    aspectType = 'present_continuous';
+    expectedForm = 'is/am/are + -ing';
+  } else if (particles.includes('rồi/đã')) {
+    aspectType = 'past_perfect';
+    expectedForm = 'have/has + -ed or already + past';
+  } else if (particles.includes('sắp')) {
+    aspectType = 'near_future';
+    expectedForm = 'about to / am going to';
+  } else if (particles.includes('xong/vừa')) {
+    aspectType = 'just_completed';
+    expectedForm = 'just + past participle';
+  } else if (particles.includes('thường')) {
+    aspectType = 'habitual';
+    expectedForm = 'usually + present';
+  }
+
+  return { particles, aspectType, expectedForm };
+}
+
+// Verify aspect particles are properly translated
+function fixAspectParticles(result: Record<string, unknown>, vietnameseText: string): Record<string, unknown> {
+  const aspectInfo = detectAspectParticles(vietnameseText);
+  if (aspectInfo.particles.length === 0) return result; // No aspect particles to check
+
+  const options = result.options as Array<Record<string, unknown>>;
+  if (!Array.isArray(options)) return result;
+
+  return {
+    ...result,
+    options: options.map((option) => {
+      const translation = option.translation as string;
+      if (!translation) return option;
+
+      const en = translation.toLowerCase();
+      let issues: string[] = [];
+
+      // Check if expected aspect is present
+      if (aspectInfo.aspectType === 'present_continuous') {
+        if (!/(is|am|are)\s+\w+ing\b/.test(en)) {
+          issues.push('Missing "is/am/are + -ing" for đang (ongoing action)');
+        }
+      } else if (aspectInfo.aspectType === 'past_perfect') {
+        if (!/(have|has|already)\b/.test(en) && !/ed\b/.test(en)) {
+          issues.push('Missing past perfect form for rồi (already happened)');
+        }
+      } else if (aspectInfo.aspectType === 'near_future') {
+        if (!/about to|going to|about to|will/.test(en)) {
+          issues.push('Missing future form for sắp (about to happen)');
+        }
+      } else if (aspectInfo.aspectType === 'just_completed') {
+        if (!/just\b/.test(en)) {
+          issues.push('Missing "just" for xong (just finished)');
+        }
+      } else if (aspectInfo.aspectType === 'habitual') {
+        if (!/usually|often|regularly/.test(en)) {
+          issues.push('Missing frequency marker for thường (habitual)');
+        }
+      }
+
+      // Flag if we detected issues (but don't auto-fix complex aspect issues)
+      if (issues.length > 0) {
+        return {
+          ...option,
+          _aspectWarning: issues.join('; '),
+        };
+      }
+
+      return option;
+    }),
+  };
+}
+
 // PICKER PATH — full 4-option translation with optional streaming.
 export async function handleTranslate(
   payload: TranslatePayload,
@@ -309,10 +425,11 @@ export async function handleTranslate(
 
   const json = await upstream.json();
 
-  // Post-process to fix missing prepositions (Vietnamese → English only)
+  // Post-process to fix missing prepositions and verify aspect particles (Vietnamese → English only)
   const [src] = langPair(payload.direction);
   if (src === 'Vietnamese') {
-    const fixed = fixMissingPrepositions(json, payload.text);
+    let fixed = fixMissingPrepositions(json, payload.text);
+    fixed = fixAspectParticles(fixed, payload.text);
     return Response.json(fixed);
   }
 
@@ -377,10 +494,11 @@ export async function handleVoice(
   if (!upstream.ok) return forwardError(upstream);
   const json = await upstream.json();
 
-  // Post-process to fix missing prepositions (Vietnamese → English only)
+  // Post-process to fix missing prepositions and verify aspect particles (Vietnamese → English only)
   const [src] = langPair(payload.direction);
   if (src === 'Vietnamese' && json.transcript) {
-    const fixed = fixMissingPrepositions(json, json.transcript);
+    let fixed = fixMissingPrepositions(json, json.transcript);
+    fixed = fixAspectParticles(fixed, json.transcript);
     return Response.json(fixed);
   }
 
