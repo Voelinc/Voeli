@@ -8830,7 +8830,9 @@ function buildOptionCard(opt, index, isBest, original){
        <div class="oc-details">${lands}${chips}</div>`
     : '';
   card.innerHTML = `${recBadge}<div class="oc-emo">${esc(el)}</div><div class="oc-trans">${esc(opt.translation||'')}</div>${back}${detailsBlock}`;
-  card.addEventListener('click', () => pickOpt(opt, ek, original));
+  card.addEventListener('click', () => {
+    if(!_pickOptInProgress) pickOpt(opt, ek, original);
+  });
   // Details toggle — expand/collapse without triggering pickOpt
   const toggle = card.querySelector('.oc-details-toggle');
   if(toggle){
@@ -9612,7 +9614,11 @@ function showSheet(result, original){
   document.getElementById('optOverlay').style.display='flex';
 }
 
+let _pickOptInProgress = false;
 function pickOpt(opt, emoKey, original){
+  if(_pickOptInProgress) return; // prevent duplicate calls from double-clicks
+  _pickOptInProgress = true;
+
   let c=activeCont();
   console.log('[pickOpt] DEBUG: activeId =', activeId, 'contacts.length =', contacts.length);
   if(!c) {
@@ -9733,6 +9739,7 @@ function pickOpt(opt, emoKey, original){
       tutorialManager.advance();
     }, 800);
   }
+  _pickOptInProgress = false;
 }
 function closeSheet(){ document.getElementById('optOverlay').style.display='none'; pending=null; }
 
