@@ -3682,10 +3682,10 @@ function detectLang(text){
 // When true, the app leaves the message untouched — translation would mangle it.
 function isMixedLanguage(text){
   if(!text || text.trim().length < 6) return false;
-  const hasVI = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ]/.test(text);
+  const hasVI = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ]/.test(text);
   if(!hasVI) return false;
   // English markers that never appear in standard Vietnamese text
-  const hasEN = /\b(i'm|i'll|i've|i'd|you're|you've|you'll|it's|that's|there's|what's|don't|doesn't|can't|won't|isn't|i |the |and |but |for |this |that |with |from |have |just |okay|what|how|when|where|why)\b/i.test(text);
+  const hasEN = /\b(i'm|i'll|i've|i'd|you're|you've|you'll|it's|that's|there's|what's|don't|doesn't|can't|won't|isn't|okay|what|how|when|where|why)\b/i.test(text);
   return hasEN;
 }
 
