@@ -1,7 +1,14 @@
 {
   "rules": {
     "users": {
+      ".read": "auth != null",
       "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid",
+        "email": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.uid === $uid"
+        },
         "contacts": {
           ".read": "auth != null && auth.uid === $uid",
           ".write": "auth != null && auth.uid === $uid",
@@ -12,11 +19,13 @@
       }
     },
     "friendRequests": {
-      "$email": {
-        ".read": "auth != null && auth.token.email === $email",
+      "$emailHash": {
+        ".read": "auth != null",
         ".write": "auth != null",
         "$requestId": {
-          ".validate": "newData.hasChildren(['type', 'from', 'to', 'ts'])"
+          ".read": "auth != null",
+          ".write": "auth != null && (!data.exists() || data.child('to').val() === auth.token.email || data.child('from').val() === auth.token.email)",
+          ".validate": "newData.hasChildren(['type', 'from', 'to', 'ts']) && (newData.child('from').val() === auth.token.email || newData.child('to').val() === auth.token.email)"
         }
       }
     },
@@ -49,26 +58,39 @@
       "$roomId": {
         "messages": {
           ".read":  "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
-          ".write": "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
+          ".write": "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true && root.child('dms').child($roomId).child('blockedSenders').child(auth.uid).val() !== true",
           "$msgId": {
             ".validate": "newData.hasChildren(['ts'])"
           }
         },
         "participants": {
           ".read":  "auth != null",
-          ".write": "auth != null",
           "$uid": {
             ".write":    "auth != null && auth.uid === $uid",
             ".validate": "newData.val() === true"
           }
         },
-        "invitedEmails": {
-          ".read": false,
-          ".write": false
+        "blockedSenders": {
+          ".read": "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
+          "$blockedUid": {
+            ".write": "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true && auth.uid !== $blockedUid",
+            ".validate": "newData.isBoolean() || !newData.exists()"
+          }
+        },
+        "metadata": {
+          ".read":  "auth != null",
+          ".write": "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true"
+        },
+        "typing": {
+          ".read":  "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
+          "$uid": {
+            ".write":    "auth != null && auth.uid === $uid",
+            ".validate": "newData.isBoolean()"
+          }
         },
         "emails": {
-          ".read": "auth != null",
-          ".write": "auth != null"
+          ".read":  "auth != null",
+          ".write": "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true"
         }
       }
     },
