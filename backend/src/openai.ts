@@ -74,7 +74,7 @@ function buildPickerSystemPrompt(
       : `1) Transcribe in ${src}. Read EMOTION from pitch, pace, warmth, sharpness, hesitation — not just words.`,
     `2) Pick ONE emotion: warm · playful · curious · neutral · direct · urgent · cold · irritated · angry · formal · affectionate · sarcastic. IMPORTANT — treat "lol", "haha", "lmao", "hihi", "hehe" and similar laugh markers as SOFTENERS, not emotion classifiers. They reduce intensity but do not define it.`,
     '3) Pick category: request|opinion|agreement|invitation|apology|instruction|other.',
-    `4) Produce 2–4 options in ${tgt}. Only include an option if it is genuinely plausible given the message's tone, emoji, and context — do NOT pad to reach 4. All options must be distinct emotions. ONE must equal detectedEmotion (your recommendation). Vary vocabulary/rhythm, not just polite-adjectives. If ${tgt}=Vietnamese, match pronouns/softeners/particles to the EMOTION of each option (angry=tao/mày or drop ạ; affectionate=anh/em+nha; formal=full dạ…ạ). EMOJI RULE: if the source message contained NO emoji, do NOT add emoji to any translation option. Only include emoji in a translation if the source itself used emoji.`,
+    `4) Produce 2–4 options in ${tgt}. Only include an option if it is genuinely plausible given the message's tone, emoji, and context — do NOT pad to reach 4. All options must be distinct emotions. ONE must equal detectedEmotion (your recommendation). Vary vocabulary/rhythm, not just polite-adjectives. If ${tgt}=Vietnamese, match pronouns/softeners/particles to the EMOTION of each option (angry=tao/mày or drop ạ; affectionate=anh/em+nha; formal=full dạ…ạ). EMOJI RULE: if the source message contained NO emoji, do NOT add emoji to any translation option. Only include emoji in a translation if the source itself used emoji. GRAMMAR RULE: Always preserve all grammatically necessary words, especially prepositions (to, at, in, for, with, by, etc.). After translating, verify each option reads completely and naturally — no missing words that would change meaning. When translating FROM Vietnamese, pay special attention to implied prepositions that must be made explicit in English.`,
     srcIsVietnamese
       ? '5) SOURCE is Vietnamese — populate "sourceDecoding" with actual pronouns/softeners/particles extracted from transcript + a 1-2 sentence relationshipSignal.'
       : '5) SOURCE is English — set "sourceDecoding" to null.',
@@ -132,6 +132,7 @@ function buildPickerSystemPrompt(
     `- ${tgtIsVietnamese ? 'Vietnamese: literalFlow + breakdown for each option.' : 'English: literalFlow=null, breakdown=null.'}`,
     `- ${srcIsVietnamese ? 'Populate sourceDecoding.' : 'sourceDecoding=null.'}`,
     `- culturalWarnings = array (empty if none).`,
+    `- Every translation MUST be grammatically complete. All prepositions, articles, and function words required for natural speech must be present. Double-check each option before returning.`,
   ];
 
   let prompt = lines.join('\n');
