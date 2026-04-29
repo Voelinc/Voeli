@@ -3737,16 +3737,9 @@ async function launchApp(){
     contacts.forEach(c => cleanOldPhrases(c, 30 * 60 * 1000));
   }, 10 * 60 * 1000);
 
-  // Start tutorial for new users (after they sign in)
-  if (!tutorialManager.isComplete()) {
-    setTimeout(() => {
-      // Switch to Contacts tab first so tutorial step 0 elements are visible
-      switchTab('contacts');
-      initSpotlightOverlay();
-      tutorialManager.initialize(TUTORIAL_STEPS);
-      tutorialManager.start();
-    }, 500);
-  }
+  // Tutorial is now optional - users can start it from Settings
+  // Initialize spotlightOverlay in case user wants to start tutorial
+  initSpotlightOverlay();
 }
 
 function syncProfileToggles(){
@@ -4329,20 +4322,8 @@ function initApp(){
       if(authMode==='signIn'){
         cred = await fbAuth.signInWithEmailAndPassword(email, pwd);
       } else {
-        // Mark as new user signup — when onAuthStateChanged fires, it will call launchApp()
-        // with demoMode already set, ensuring demo contacts load instead of Firebase
-        demoMode = true;
-        apiKey = 'demo';
-        localStorage.setItem('tutorial_new_user', 'true');
-        localStorage.removeItem('tutorial_completed'); // Clear any previous completion flag
-        localStorage.removeItem('tutorial_step'); // Start from step 0, not a saved step
-        if (tutorialManager) {
-          tutorialManager.completed = false; // Reset manager's in-memory flag so tutorial starts
-          tutorialManager.isActive = false; // Reset active state to allow restart
-          tutorialManager.currentStep = 0; // Start from first step
-          tutorialManager.savedStep = 0; // Also reset the saved step so initialize() doesn't restore old step
-        }
-        loadDemoContacts();
+        // New user signup — fresh account with no contacts
+        // Users can start the tutorial from Settings if they want, which will load demo contacts
 
         cred = await fbAuth.createUserWithEmailAndPassword(email, pwd);
         if(cred && cred.user && cred.user.uid && signupBirthday){
@@ -9632,12 +9613,25 @@ function showSheet(result, original){
 }
 
 function pickOpt(opt, emoKey, original){
-  const c=activeCont();
+  let c=activeCont();
+  console.log('[pickOpt] DEBUG: activeId =', activeId, 'contacts.length =', contacts.length);
   if(!c) {
-    console.warn('[pickOpt] No active contact - message will not be saved');
-    return;
+    console.error('[pickOpt] CRITICAL: No active contact! activeId:', activeId, 'contacts:', contacts.map(x => x.id));
+    // Force ensure we have the right contact for tutorial
+    if(contacts.length > 0) {
+      const demoContact = contacts.find(x => x.id === 'demo_linh' || x.id === 'demo_ba');
+      if(demoContact) {
+        console.log('[pickOpt] RECOVERY: Found demo contact', demoContact.id, 'forcing as active');
+        activeId = demoContact.id;
+        c = activeCont(); // RE-FETCH THE CONTACT AFTER UPDATING activeId
+      }
+    }
+    if(!c) {
+      console.error('[pickOpt] FATAL: Still no contact after recovery attempt');
+      return;
+    }
   }
-  console.log('[pickOpt] Active contact:', c.id, c.name);
+  console.log('[pickOpt] Active contact:', c.id, c.name, 'has', c.msgs?.length || 0, 'messages before add');
   // Capture pending data before closeSheet() nulls it
   let rec = '', rel = '', originalText = '', isOpposite = false;
   let capturedResult = null;
@@ -9675,13 +9669,32 @@ function pickOpt(opt, emoKey, original){
   };
   console.log('[pickOpt] Adding message:', newMsg);
   c.msgs.push(newMsg);
+  console.log('[pickOpt] After push - contact now has', c.msgs.length, 'messages');
   const ta=document.getElementById('txtInput');
   ta.value=''; ta.style.height='auto'; updBtns();
+
+  // Ensure messages area is visible and ready
+  const msgsArea = document.getElementById('msgsArea');
+  if(msgsArea) {
+    msgsArea.style.display = 'block';
+    msgsArea.style.visibility = 'visible';
+  }
+
   console.log('[pickOpt] Before renderMsgs - contact has', c.msgs.length, 'messages');
   renderMsgs();
   console.log('[pickOpt] After renderMsgs - checking DOM for message bubbles');
   const bubbles = document.querySelectorAll('[data-tutorial="message-bubble"]');
   console.log('[pickOpt] Found', bubbles.length, 'message bubbles in DOM');
+
+  // Explicitly scroll to show the new message
+  setTimeout(() => {
+    const msgsArea = document.getElementById('msgsArea');
+    if(msgsArea) {
+      msgsArea.scrollTop = msgsArea.scrollHeight;
+      console.log('[pickOpt] Scrolled to bottom, scrollTop:', msgsArea.scrollTop, 'scrollHeight:', msgsArea.scrollHeight);
+    }
+  }, 50);
+
   renderSidebar(); ta.focus();
   // Show learned toast on non-opposite override
   if(rec && (emoKey||'').toLowerCase() !== rec && !isOpposite){
@@ -10668,27 +10681,46 @@ function openSettings(){
 
   // Localize all static text
   document.getElementById('settingsTitle').textContent = isVI ? 'Cài đặt' : 'Settings';
-  document.querySelector('#settingsBody .sett-section-label').textContent = isVI ? 'Quyền riêng tư' : 'Privacy';
-  document.querySelector('.sett-row-title').textContent = isVI ? 'Phong cách giao tiếp của tôi' : 'My communication style';
-  document.querySelector('.sett-row-sub').textContent = isVI
+  const sectionLabels = document.querySelectorAll('#settingsBody .sett-section-label');
+  sectionLabels.forEach((label, idx) => {
+    const text = label.textContent.trim();
+    if (text === 'Privacy') label.textContent = isVI ? 'Quyền riêng tư' : 'Privacy';
+    else if (text === 'Help & Learning') label.textContent = isVI ? 'Trợ giúp & Học tập' : 'Help & Learning';
+    else if (text === 'Account') label.textContent = isVI ? 'Tài khoản' : 'Account';
+  });
+
+  const sett_row_title = document.querySelector('.sett-row-title');
+  if(sett_row_title) sett_row_title.textContent = isVI ? 'Phong cách giao tiếp của tôi' : 'My communication style';
+  const sett_row_sub = document.querySelector('.sett-row-sub');
+  if(sett_row_sub) sett_row_sub.textContent = isVI
     ? 'Hiển thị phân tích cá nhân về cách bạn thường giao tiếp. Hoàn toàn tùy chọn, mặc định tắt.'
     : 'Shows a personal breakdown of how you tend to communicate. Completely optional, off by default.';
-  document.querySelector('.sett-privacy-toggle-title').textContent = isVI ? 'Dữ liệu & Quyền riêng tư' : 'Data & Privacy';
-  document.querySelector('.sett-privacy-body').textContent = isVI
+  const privacy_toggle_title = document.querySelector('.sett-privacy-toggle-title');
+  if(privacy_toggle_title) privacy_toggle_title.textContent = isVI ? 'Dữ liệu & Quyền riêng tư' : 'Data & Privacy';
+  const privacy_body = document.querySelector('.sett-privacy-body');
+  if(privacy_body) privacy_body.textContent = isVI
     ? 'Ứng dụng này không thu thập, lưu trữ hoặc truyền tải nội dung tin nhắn của bạn. Dữ liệu phong cách giao tiếp, chỉ bao gồm các chỉ số giọng điệu cảm xúc tổng hợp, được lưu trữ cục bộ trên thiết bị của bạn và không được chia sẻ với bên thứ ba. Mỗi tin nhắn bạn gửi được xử lý bởi công cụ dịch thuật bên thứ ba chỉ cho mục đích dịch thuật. Không có dữ liệu tin nhắn lịch sử nào được truyền đi. Tất cả dữ liệu tùy chọn được lưu trữ cục bộ vẫn nằm trên thiết bị của bạn và có thể xóa bất kỳ lúc nào bằng cách xóa bộ nhớ trình duyệt hoặc ứng dụng.'
     : 'This application does not collect, store, or transmit your message content. Communication style data, consisting solely of aggregated emotional tone indicators, is stored locally on your device and is not shared with any third party. Each message you send is processed by a third-party translation engine solely for the purpose of translation. No historical message data is transmitted at any time. All locally stored preference data remains on your device and can be cleared at any time by clearing your browser or app storage.';
+
   const styleSectionLabel = document.querySelector('#stylePanel .sett-section-label');
   if(styleSectionLabel) styleSectionLabel.textContent = isVI ? 'Phong cách của bạn' : 'Your style insights';
 
   // Localize and populate Privacy Policy + Terms sections
-  document.getElementById('settPrivacyPolicyTitle').textContent = isVI ? 'Chính sách Bảo mật' : 'Privacy Policy';
-  document.getElementById('settTermsTitle').textContent         = isVI ? 'Điều khoản Dịch vụ'  : 'Terms of Service';
-  document.getElementById('settPrivacyPolicyBody').innerHTML    = POLICY_CONTENT.privacy[isVI ? 'vi' : 'en'];
-  document.getElementById('settTermsBody').innerHTML            = POLICY_CONTENT.terms[isVI ? 'vi' : 'en'];
+  const policyTitle = document.getElementById('settPrivacyPolicyTitle');
+  if(policyTitle) policyTitle.textContent = isVI ? 'Chính sách Bảo mật' : 'Privacy Policy';
+  const termsTitle = document.getElementById('settTermsTitle');
+  if(termsTitle) termsTitle.textContent = isVI ? 'Điều khoản Dịch vụ'  : 'Terms of Service';
+  const policyBody = document.getElementById('settPrivacyPolicyBody');
+  if(policyBody) policyBody.innerHTML = POLICY_CONTENT.privacy[isVI ? 'vi' : 'en'];
+  const termsBody = document.getElementById('settTermsBody');
+  if(termsBody) termsBody.innerHTML = POLICY_CONTENT.terms[isVI ? 'vi' : 'en'];
 
-  // Account section
-  document.getElementById('settAccountLabel').textContent = isVI ? 'Tài khoản' : 'Account';
-  document.getElementById('settSignOutBtn').textContent   = isVI ? 'Đăng xuất' : 'Sign out';
+  // Tutorial button
+  const tutorialBtn = document.getElementById('settStartTutorial');
+  if (tutorialBtn) {
+    tutorialBtn.textContent = isVI ? 'Bắt đầu Hướng dẫn' : 'Start Tutorial';
+    tutorialBtn.onclick = startTutorialFromSettings;
+  }
 
   // Restore toggle state from Profile tab
   const grammarOn = isGrammarCheckOn();
@@ -10868,6 +10900,33 @@ function showOnboarding(){
   renderLangPicker();
 }
 
+// Start tutorial from Settings
+function startTutorialFromSettings() {
+  // Close settings modal
+  closeSettings();
+
+  // Load demo contacts and enable demo mode for tutorial
+  demoMode = true;
+  apiKey = 'demo';
+  loadDemoContacts();
+  renderSidebar();
+  renderChatList();
+
+  // Reset tutorial flags to start fresh
+  localStorage.removeItem('tutorial_completed');
+  localStorage.removeItem('tutorial_step');
+
+  // Initialize tutorial manager fresh
+  tutorialManager = new TutorialManager();
+
+  // Switch to Contacts tab so tutorial step 0 elements are visible
+  switchTab('contacts');
+
+  // Initialize and start tutorial
+  tutorialManager.initialize(TUTORIAL_STEPS);
+  tutorialManager.start();
+}
+
 // Tutorial system - interactive guide for new users
 class TutorialManager {
   constructor() {
@@ -10897,7 +10956,7 @@ class TutorialManager {
     return this.steps[this.currentStep] || null;
   }
 
-  advance() {
+  async advance() {
     // Handle tab switches for specific steps before advancing
     const currentStepData = this.getCurrentStep();
     if (currentStepData?.id === 'messages_tab') {
@@ -10906,24 +10965,23 @@ class TutorialManager {
       currentMessagesView = 'list';
       switchTab('messages');
       // Wait for tab to switch and DOM to update before showing next step
-      setTimeout(() => {
-        // Force render chat list to show demo contacts
-        const chatList = document.getElementById('chatList');
-        const chatEmpty = document.getElementById('chatEmpty');
-        const activeChat = document.getElementById('activeChat');
-        if (chatList) chatList.style.display = 'flex';
-        if (chatEmpty) chatEmpty.style.display = 'none';
-        if (activeChat) activeChat.style.display = 'none';
-        // Render chat list with demo contacts
-        renderChatList();
-        if (this.currentStep < this.steps.length - 1) {
-          this.currentStep++;
-          this.saveState();
-          this.showCurrentStep();
-        } else {
-          this.complete();
-        }
-      }, 500);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      // Force render chat list to show demo contacts
+      const chatList = document.getElementById('chatList');
+      const chatEmpty = document.getElementById('chatEmpty');
+      const activeChat = document.getElementById('activeChat');
+      if (chatList) chatList.style.display = 'flex';
+      if (chatEmpty) chatEmpty.style.display = 'none';
+      if (activeChat) activeChat.style.display = 'none';
+      // Render chat list with demo contacts
+      renderChatList();
+      if (this.currentStep < this.steps.length - 1) {
+        this.currentStep++;
+        this.saveState();
+        this.showCurrentStep();
+      } else {
+        await this.complete();
+      }
       return;
     }
 
@@ -10932,7 +10990,7 @@ class TutorialManager {
       this.saveState();
       this.showCurrentStep();
     } else {
-      this.complete();
+      await this.complete();
     }
   }
 
@@ -10943,25 +11001,23 @@ class TutorialManager {
     }
   }
 
-  complete() {
+  async complete() {
     this.isActive = false;
     this.completed = true;
     localStorage.setItem('tutorial_completed', 'true');
     localStorage.removeItem('tutorial_step');
     hideSpotlight();
 
-    // If this was a new user in demo mode, transition to real mode
-    if (localStorage.getItem('tutorial_new_user') === 'true') {
-      localStorage.removeItem('tutorial_new_user');
-      demoMode = false;
-      apiKey = '';
-      // Clear demo data and reload real user's contacts
-      document.getElementById('chatListItems').innerHTML = '';
-      document.getElementById('sidebarItems').innerHTML = '';
-      renderSidebar();
-      renderChatList();
-      showSt(appDir === 'vi-en' ? 'Chào mừng! Bạn đã sẵn sàng.' : 'Welcome! You\'re all set. Start chatting!');
-    }
+    // Exit demo mode and clear demo contacts
+    demoMode = false;
+    apiKey = '';
+    contacts = [];
+    document.getElementById('chatListItems').innerHTML = '';
+    document.getElementById('sidebarItems').innerHTML = '';
+    renderSidebar();
+    renderChatList();
+
+    showSt(appDir === 'vi-en' ? 'Chúc mừng! Bạn đã hoàn thành hướng dẫn.' : 'Great! You\'ve completed the tutorial.');
   }
 
   skip() {
@@ -11179,6 +11235,9 @@ const TUTORIAL_STEPS = [
         <div class="sett-section-label">Your style insights</div>
         <div id="stylePanelContent"></div>
       </div>
+      <div class="sett-divider"></div>
+      <div class="sett-section-label">Help &amp; Learning</div>
+      <button id="settStartTutorial" type="button" style="width:100%;padding:14px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:inherit;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px;-webkit-appearance:none;touch-action:manipulation;position:relative;z-index:1;">Start Tutorial</button>
       <div class="sett-divider"></div>
       <div class="sett-section-label" id="settAccountLabel">Account</div>
       <button id="settSignOutBtn" type="button" style="width:100%;padding:14px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--red,#d93025);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px;-webkit-appearance:none;touch-action:manipulation;position:relative;z-index:1;">Sign out</button>
