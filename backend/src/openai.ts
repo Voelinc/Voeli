@@ -90,6 +90,14 @@ function buildPickerSystemPrompt(
     '',
     `# IDIOMS: Always flag. Examples: "I'm dying", "break a leg", "spill the tea", "kill it", "hit me up". Provide literalMeaning, likelyMeaning, and natural rewrite.`,
     '',
+    srcIsVietnamese
+      ? `# AMBIGUOUS VIETNAMESE VERBS (context determines meaning):
+  - "được": (1) permission/ability "được không?" = "can I?", (2) obtained "được bạn giúp" = "got help from friend", (3) suitable "cái này được" = "this is nice". Choose based on: is it a question? is there an object? is it evaluative?
+  - "để": (1) let/allow "để tôi làm" = "let me do it", (2) put/place "để ở đâu?" = "where to put?", (3) defer "để sau" = "leave for later". Choose based on: is there an imperative? does it reference location? does it reference time?
+  - "tới": (1) arrive "tôi tới nhà" = "I arrive home", (2) reach/amount "tiền tới 1M" = "money reaches 1M", (3) by/until "tới lúc này" = "by this time". Choose based on: is it about movement? numbers? time?
+  Use context, previous message topic, and sentence structure to disambiguate. When in doubt, pick the meaning that fits the conversation flow.`
+      : '',
+    '',
     '# STEPS',
     isText
       ? `1) Echo the input verbatim as "transcript". Read for EMOTION using punctuation, caps, elongation, emoji, repetition, hedges. Most messages are neutral — don't over-read signals, but don't miss clear ones.`
