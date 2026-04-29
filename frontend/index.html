@@ -2941,6 +2941,7 @@ function getDirection(){ return appDir; }
 function getRelationship(){ return activeCont()?activeCont().type:'formal'; }
 function setAppDir(dir){
   appDir=dir;
+  localStorage.setItem('appDir', dir);
   document.querySelectorAll('#langTog button, #langTogAuth button, #langTogProfile button').forEach(b=>b.classList.toggle('active', b.dataset.dir===dir));
   updPlaceholder();
   applyAuthLang();
@@ -4265,6 +4266,10 @@ function setAuthLoading(on){
 }
 
 function initApp(){
+  const savedAppDir = localStorage.getItem('appDir');
+  if(savedAppDir && (savedAppDir === 'en-vi' || savedAppDir === 'vi-en')) {
+    setAppDir(savedAppDir);
+  }
   showOnboarding();
   initSignOutBtn();
   const tabSignIn = document.getElementById('tabSignIn');
