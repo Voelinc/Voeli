@@ -3982,50 +3982,41 @@ async function initDMRoomListener(){
           // Add current user as participant to this room
           await firebaseDb.ref(`dms/${roomId}/participants/${currentUser.uid}`).set(true);
 
-          // Set up real-time listener for this room (only if not already listening)
+          // Set up real-time listener for this room (only if not already listening).
+          // We listen at /metadata rather than the room root because under the
+          // tightened rules the room root has no .read grant — metadata.read
+          // is the open-to-any-auth-user surface designed for exactly this
+          // bootstrap use case (the listener may fire before we're a
+          // participant, e.g. when discovering a fresh invite).
           if(!activeDMRoomListeners.has(roomId)){
             activeDMRoomListeners.add(roomId);
-            const roomPath = `dms/${roomId}`;
-            activeListenerPaths.add(roomPath);
-            // Listen to this specific room for real-time changes
-            firebaseDb.ref(roomPath).on('value', async (snap)=>{
+            const metaPath = `dms/${roomId}/metadata`;
+            activeListenerPaths.add(metaPath);
+            firebaseDb.ref(metaPath).on('value', async (snap)=>{
               if(snap.exists()){
-                const data = snap.val();
-                // Find the other person's email from room metadata
+                const meta = snap.val();
                 let contactEmail = null;
-                if(data.metadata && data.metadata.emails && Array.isArray(data.metadata.emails)){
-                  // Get the email that's not the current user (compare lowercase)
-                  contactEmail = data.metadata.emails.find(e => e.toLowerCase() !== currentUser.email.toLowerCase());
+                if(meta && meta.emails && Array.isArray(meta.emails)){
+                  contactEmail = meta.emails.find(e => e.toLowerCase() !== currentUser.email.toLowerCase());
                 }
                 if(contactEmail){
-                  // Check if contact already exists (by email)
                   let c = contacts.find(x => x.email === contactEmail);
                   if(!c){
-                    // Auto-create contact if they added you
                     const newId = generateUniqueContactId();
                     c = {id:newId, name:contactEmail.split('@')[0], phone:'', email:contactEmail,
                       type:'formal', direction:'en-vi', msgs:[], favourite:false,
                       emergency:false, blocked:false, status:'accepted', queuedMsgs:[], dmRoomId:roomId};
                     contacts.unshift(c);
                     renderSidebar();
-                    // Save the auto-created contact to Firebase
                     if(currentUser && firebaseDb){
-                      try {
-                        await saveContactToFirebase(c);
-                      } catch(e){
-                        console.error('Error saving auto-created contact to Firebase:', e);
-                      }
+                      try { await saveContactToFirebase(c); }
+                      catch(e){ console.error('Error saving auto-created contact to Firebase:', e); }
                     }
                   } else {
-                    // Store the room ID on the contact
                     c.dmRoomId = roomId;
-                    // Save the updated contact to Firebase
                     if(currentUser && firebaseDb){
-                      try {
-                        await saveContactToFirebase(c);
-                      } catch(e){
-                        console.error('Error updating contact with dmRoomId:', e);
-                      }
+                      try { await saveContactToFirebase(c); }
+                      catch(e){ console.error('Error updating contact with dmRoomId:', e); }
                     }
                   }
                 }
@@ -4057,22 +4048,22 @@ async function initDMRoomListener(){
           // Add current user as participant to this new room
           await firebaseDb.ref(`dms/${roomId}/participants/${currentUser.uid}`).set(true);
 
-          // Set up real-time listener for this room
+          // Same metadata-only listener as the load path above. See the
+          // comment at the first occurrence for the rule rationale.
           if(!activeDMRoomListeners.has(roomId)){
             activeDMRoomListeners.add(roomId);
-            const roomPath = `dms/${roomId}`;
-            activeListenerPaths.add(roomPath);
-            firebaseDb.ref(roomPath).on('value', async (roomSnap)=>{
+            const metaPath = `dms/${roomId}/metadata`;
+            activeListenerPaths.add(metaPath);
+            firebaseDb.ref(metaPath).on('value', async (roomSnap)=>{
               if(roomSnap.exists()){
-                const data = roomSnap.val();
+                const meta = roomSnap.val();
                 let contactEmail = null;
-                if(data.metadata && data.metadata.emails && Array.isArray(data.metadata.emails)){
-                  contactEmail = data.metadata.emails.find(e => e.toLowerCase() !== currentUser.email.toLowerCase());
+                if(meta && meta.emails && Array.isArray(meta.emails)){
+                  contactEmail = meta.emails.find(e => e.toLowerCase() !== currentUser.email.toLowerCase());
                 }
                 if(contactEmail){
                   let c = contacts.find(x => x.email === contactEmail);
                   if(!c){
-                    // Auto-create contact for new room invite
                     const newId = generateUniqueContactId();
                     c = {id:newId, name:contactEmail.split('@')[0], phone:'', email:contactEmail,
                       type:'formal', direction:'en-vi', msgs:[], favourite:false,
@@ -4080,20 +4071,14 @@ async function initDMRoomListener(){
                     contacts.unshift(c);
                     renderSidebar();
                     if(currentUser && firebaseDb){
-                      try {
-                        await saveContactToFirebase(c);
-                      } catch(e){
-                        console.error('Error saving auto-created contact from new invite:', e);
-                      }
+                      try { await saveContactToFirebase(c); }
+                      catch(e){ console.error('Error saving auto-created contact from new invite:', e); }
                     }
                   } else {
                     c.dmRoomId = roomId;
                     if(currentUser && firebaseDb){
-                      try {
-                        await saveContactToFirebase(c);
-                      } catch(e){
-                        console.error('Error updating contact with dmRoomId from new invite:', e);
-                      }
+                      try { await saveContactToFirebase(c); }
+                      catch(e){ console.error('Error updating contact with dmRoomId from new invite:', e); }
                     }
                   }
                 }
@@ -6085,44 +6070,33 @@ async function createOrJoinDMRoom(contactEmail){
     return null;
   }
   try {
-    console.log(`[createOrJoinDMRoom] Starting room creation...`);
     const myEmail = currentUser.email.toLowerCase();
     const normalizedContactEmail = contactEmail.toLowerCase();
-    console.log(`[createOrJoinDMRoom] Hashing email pair: ${myEmail} + ${normalizedContactEmail}`);
     const roomId = await hashEmailPair(myEmail, normalizedContactEmail);
-    console.log(`[createOrJoinDMRoom] Hash result: ${roomId}`);
-    const roomRef = firebaseDb.ref(`dms/${roomId}`);
-
-    // Hash both emails for use as Firebase keys (no dots allowed)
-    const hashedMyEmail = await hashEmailForPath(myEmail);
     const hashedContactEmail = await hashEmailForPath(normalizedContactEmail);
+    console.log(`[createOrJoinDMRoom] roomId=${roomId}`);
 
-    // Use a transaction to atomically initialize the room and add participants
-    // This prevents race conditions when two users create the room simultaneously
-    await roomRef.transaction(current => {
-      if(current === null) {
-        // Room doesn't exist, initialize it with only participants
-        // Emails are not stored in the room (they're discovered via the invites/{hashedEmail} path)
-        return {
-          participants: { [currentUser.uid]: true }
-        };
-      } else {
-        // Room exists, just add current user as participant if not already there
-        if(!current.participants) current.participants = {};
-        current.participants[currentUser.uid] = true;
-        return current;
-      }
-    });
+    // Add ourselves as a participant. Firebase auto-creates the room and the
+    // /participants object if they don't exist, and the leaf-level rule
+    // (".write": "auth.uid === $uid") makes this safe without a wider parent
+    // grant. This replaces a transaction at the dms/$roomId level which
+    // required the dangerous ".write": "auth != null" cascade and was the
+    // root cause of the cross-room write vulnerability.
+    await firebaseDb.ref(`dms/${roomId}/participants/${currentUser.uid}`).set(true);
 
-    // Write to /invites/{hashedEmail}/{roomId} so they can discover this room (hashed for Firebase safety)
+    // Drop a breadcrumb so the contact's app can discover this room.
+    // /invites/$hashedEmail is intentionally readable so the listener can
+    // pick it up before they're a participant.
     await firebaseDb.ref(`invites/${hashedContactEmail}/${roomId}`).set(true);
 
-    // Store contact emails at a metadata path (not as object keys) so initDMRoomListener can find them
+    // Store the email pair as room metadata so the auto-create flow on the
+    // other side knows who's in the room. We're now a participant, so the
+    // metadata.write rule (participant-only) accepts this write.
     await firebaseDb.ref(`dms/${roomId}/metadata`).set({
       emails: [myEmail, normalizedContactEmail]
     }).catch(e => console.warn('[createOrJoinDMRoom] Warning: Could not store metadata:', e));
 
-    console.log(`[createOrJoinDMRoom] Room created successfully: ${roomId}`);
+    console.log(`[createOrJoinDMRoom] Room ready: ${roomId}`);
     return roomId;
   } catch(e){
     console.error(`[createOrJoinDMRoom] FAILED with error:`, e);
@@ -6337,18 +6311,22 @@ async function deleteContact(id){
         } catch(invErr){
           console.error('[deleteContact] Failed to remove own invite:', invErr);
         }
-        // Detach any active value listener on this room so the same-session
-        // auto-create can't fire either.
+        // Detach any active metadata listener on this room so the same-session
+        // auto-create can't fire either. We listen at /metadata (not the room
+        // root) under the tightened rules — match that path here.
         try {
-          firebaseDb.ref(`dms/${contact.dmRoomId}`).off('value');
+          firebaseDb.ref(`dms/${contact.dmRoomId}/metadata`).off('value');
           if(typeof activeDMRoomListeners !== 'undefined' && activeDMRoomListeners.delete){
             activeDMRoomListeners.delete(contact.dmRoomId);
           }
           if(typeof processedInvites !== 'undefined' && processedInvites.delete){
             processedInvites.delete(contact.dmRoomId);
           }
+          if(typeof activeListenerPaths !== 'undefined' && activeListenerPaths.delete){
+            activeListenerPaths.delete(`dms/${contact.dmRoomId}/metadata`);
+          }
         } catch(listenerErr){
-          console.error('[deleteContact] Failed to detach room listener:', listenerErr);
+          console.error('[deleteContact] Failed to detach metadata listener:', listenerErr);
         }
       }
 
@@ -6532,17 +6510,27 @@ function openChat(id){
   // Hide any previous drift banner before checking for a new one
   dismissDriftBanner();
   renderMsgs(); renderSidebar();
-  // If this is a DM contact, load historical messages then set up real-time listener
+  // If this is a DM contact, ensure participation FIRST so the loads and
+  // listeners below have read permission under the tightened rules
+  // (messages.read and blockedSenders.read are participant-only). The
+  // .set(true) is idempotent — if we were already a participant from a
+  // previous session, this is a no-op. We chain the loaders + listener
+  // setup off the write so they don't race ahead.
   if(c.dmRoomId){
-    // Ensure current user is in participants (handles case where chat was opened in another tab)
     if(currentUser && firebaseDb){
-      firebaseDb.ref(`dms/${c.dmRoomId}/participants/${currentUser.uid}`).set(true).catch(e=>
-        console.error('Error adding user to DM room participants:', e)
-      );
-      // Load historical messages before setting up real-time listener
-      loadHistoricalMessages(c);
+      const participantWrite = firebaseDb
+        .ref(`dms/${c.dmRoomId}/participants/${currentUser.uid}`)
+        .set(true)
+        .catch(e => console.error('Error adding user to DM room participants:', e));
+      participantWrite.then(() => {
+        loadHistoricalMessages(c);
+        setupDMListener(c.dmRoomId);
+      });
+    } else {
+      // Local/demo mode: no Firebase, fall through to the listener (which
+      // will short-circuit on missing firebaseDb).
+      setupDMListener(c.dmRoomId);
     }
-    setupDMListener(c.dmRoomId);
   }
   const ta=document.getElementById('txtInput');
   ta.value=''; ta.style.height='auto'; updBtns();

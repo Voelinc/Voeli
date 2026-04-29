@@ -1,7 +1,14 @@
 {
   "rules": {
     "users": {
+      ".read": "auth != null",
       "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid",
+        "email": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.uid === $uid"
+        },
         "contacts": {
           ".read": "auth != null && auth.uid === $uid",
           ".write": "auth != null && auth.uid === $uid",
@@ -58,7 +65,6 @@
         },
         "participants": {
           ".read":  "auth != null",
-          ".write": "auth != null",
           "$uid": {
             ".write":    "auth != null && auth.uid === $uid",
             ".validate": "newData.val() === true"
@@ -71,13 +77,20 @@
             ".validate": "newData.isBoolean() || !newData.exists()"
           }
         },
-        "invitedEmails": {
-          ".read": false,
-          ".write": false
+        "metadata": {
+          ".read":  "auth != null",
+          ".write": "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true"
+        },
+        "typing": {
+          ".read":  "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
+          "$uid": {
+            ".write":    "auth != null && auth.uid === $uid",
+            ".validate": "newData.isBoolean()"
+          }
         },
         "emails": {
-          ".read": "auth != null",
-          ".write": "auth != null"
+          ".read":  "auth != null",
+          ".write": "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true"
         }
       }
     },
