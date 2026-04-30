@@ -6611,6 +6611,10 @@ function openChat(id){
   refreshHeader(); closeSheet(); hideSt();
   // Hide any previous drift banner before checking for a new one
   dismissDriftBanner();
+  // For DM contacts, clear messages before refresh so we don't show stale cached messages
+  if(c.dmRoomId){
+    c.msgs = [];
+  }
   renderMsgs(); renderSidebar();
   // If this is a DM contact, ensure participation FIRST so the loads and
   // listeners below have read permission under the tightened rules
