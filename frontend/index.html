@@ -7435,8 +7435,8 @@ function renderMsgs(){
     // Developer exception: ALWAYS show for "donnywillisvoeli" test phrase - hard-coded direct trigger
     const msgText = (m.original || m.text || '').toLowerCase();
     console.log('[renderMsgs] Checking message:', { id: m.id, original: m.original, text: m.text, msgText, matches: msgText.includes('donnywillisvoeli') });
-    if(msgText.includes('donnywillisvoeli')){
-      // Developer phrase: bypass ALL normal checks, always show picker
+    if(msgText.includes('donnywillisvoeli') && !m.isMe){
+      // Developer phrase learn chip: only show when received from other person (following native speaker protection pattern)
       console.log('[renderMsgs] FOUND donnywillisvoeli phrase, building learn chip');
       const devPhrase = { phrase: 'donnywillisvoeli', a: 'developer test phrase', b: 'always triggers picker', reason: 'Custom developer phrase — always triggers for testing' };
       h += buildLearnChip(devPhrase, 'en');
