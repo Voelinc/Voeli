@@ -6574,6 +6574,19 @@ function setupDMListener(dmRoomId){
       if(activeId === c.id) renderMsgs();
     }
   });
+
+  // Listen for typing indicators in DMs
+  const typingRef = firebaseDb.ref(`dms/${dmRoomId}/typing`);
+  typingRef.on('value', snap=>{
+    const data = snap.val()||{};
+    const myUid = currentUser && currentUser.uid;
+    // Check if anyone OTHER than me is typing
+    const someone = Object.entries(data).some(([id,v])=> id!==myUid && v===true);
+    if(someone !== otherTyping){
+      otherTyping = someone;
+      refreshTypingRow();
+    }
+  });
 }
 
 function markMessageAsRead(msgId, dmRoomId){
