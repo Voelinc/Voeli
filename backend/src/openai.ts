@@ -619,9 +619,53 @@ function getEmotionGroup(emotion: string): string | null {
   return null;
 }
 
+// Intensity modifiers that don't convey emotional flavor difference.
+// These words only change strength, not the emotional stance itself.
+const INTENSITY_WORDS = new Set([
+  'very', 'really', 'so', 'much', 'quite', 'fairly', 'rather',
+  'extremely', 'incredibly', 'absolutely', 'completely', 'totally',
+  'utterly', 'entirely', 'just', 'simply', 'merely', 'only',
+  'strongly', 'deeply', 'profoundly', 'intensely', 'seriously',
+  'more', 'less', 'most', 'least', 'too', 'even',
+]);
+
+// Check if two translations differ ONLY by intensity words.
+// If true, they express the same emotional stance at different intensity levels.
+function differsOnlyByIntensity(textA: string, textB: string): boolean {
+  const aWords = textA.toLowerCase().split(/\s+/);
+  const bWords = textB.toLowerCase().split(/\s+/);
+
+  // If same length, check position-by-position
+  if (aWords.length === bWords.length) {
+    let hasAnyDifference = false;
+    for (let i = 0; i < aWords.length; i++) {
+      if (aWords[i] !== bWords[i]) {
+        hasAnyDifference = true;
+        // Difference must be an intensity word
+        if (!INTENSITY_WORDS.has(aWords[i]) && !INTENSITY_WORDS.has(bWords[i])) {
+          return false; // Non-intensity difference found
+        }
+      }
+    }
+    return hasAnyDifference; // True if all differences were intensity words
+  }
+
+  // Different lengths: strip intensity words and compare cores
+  const aCore = aWords.filter(w => !INTENSITY_WORDS.has(w));
+  const bCore = bWords.filter(w => !INTENSITY_WORDS.has(w));
+
+  if (aCore.length === bCore.length && aCore.length > 0) {
+    return aCore.every((w, i) => w === bCore[i]);
+  }
+
+  return false;
+}
+
 // Filter options to keep only meaningfully different ones.
-// Uses emotion grouping to avoid keeping similar emotions with different labels.
-// Compares translations semantically to remove near-duplicates.
+// Uses two-layer approach for same-emotion-group options:
+// Layer 1: If 90%+ similar, check Layer 2
+// Layer 2: If differing ONLY by intensity words, filter out as duplicate
+// Otherwise: Apply original thresholds for different emotions
 function filterOptionsForMeaningfulDifferences(result: Record<string, unknown>): Record<string, unknown> {
   const options = result.options as Array<Record<string, unknown>>;
   if (!Array.isArray(options) || options.length <= 1) return result;
@@ -658,8 +702,16 @@ function filterOptionsForMeaningfulDifferences(result: Record<string, unknown>):
       const keptEmotionGroup = getEmotionGroup(keptEmotion);
 
       // Same emotion group (or both unclassified)
-      // Use strict threshold: 75% similarity removes duplicate
       if (emotionGroup === keptEmotionGroup) {
+        // Layer 1: If 90%+ similar, apply intensity check (Layer 2)
+        if (similarity > 0.90) {
+          // Layer 2: Check if difference is ONLY intensity words
+          if (differsOnlyByIntensity(translation, keptTranslation)) {
+            return true; // Filter out as intensity-only duplicate
+          }
+          // If there's real content difference, keep it despite high similarity
+        }
+        // Otherwise use original same-emotion threshold (75%)
         return similarity > 0.75;
       }
 
