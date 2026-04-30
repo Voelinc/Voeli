@@ -138,11 +138,11 @@ function buildPickerSystemPrompt(
     tgtIsVietnamese
       ? '      "literalFlow": "<very literal English gloss showing the machinery>",'
       : '      "literalFlow": null,',
-    '      "backTranslation": { "en": "<clean natural English meaning of the option>", "vi": "<same meaning in Vietnamese>" }',
+    `      "backTranslation": "<explanation of what this option means, in ${reasoningLang}>",`,
     tgtIsVietnamese
       ? '      "breakdown": { "pronouns":[{"word":"<vi>","meaning":"<EN>"}], "softeners":[...], "particles":[...] },'
       : '      "breakdown": null,',
-    '      "howItLands": { "en": "<1 sentence>", "vi": "<same in Vietnamese>" }',
+    `      "howItLands": "<explanation of how this will land/sound, in ${reasoningLang}>",`,
     '    }',
     '  ],',
     srcIsVietnamese
