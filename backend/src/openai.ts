@@ -130,7 +130,7 @@ function buildPickerSystemPrompt(
     tgtIsVietnamese
       ? '      "literalFlow": "<very literal English gloss showing the machinery>",'
       : '      "literalFlow": null,',
-    '      "backTranslation": "<clean natural English meaning of the option>",',
+    '      "backTranslation": { "en": "<clean natural English meaning of the option>", "vi": "<same meaning in Vietnamese>" }',
     tgtIsVietnamese
       ? '      "breakdown": { "pronouns":[{"word":"<vi>","meaning":"<EN>"}], "softeners":[...], "particles":[...] },'
       : '      "breakdown": null,',
@@ -499,33 +499,37 @@ function fixEnglishTenses(result: Record<string, unknown>, englishText: string):
   };
 }
 
-// Ensure bilingual fields (en/vi objects) in howItLands have both versions.
+// Ensure bilingual fields (en/vi objects) have both versions.
 // If vi is missing but en exists, use en as fallback for now.
-function ensureBilingualHowItLands(result: Record<string, unknown>): Record<string, unknown> {
+function ensureBilingualFields(result: Record<string, unknown>): Record<string, unknown> {
   const options = result.options as Array<Record<string, unknown>>;
   if (!Array.isArray(options)) return result;
 
   return {
     ...result,
     options: options.map((option) => {
-      const howItLands = option.howItLands;
-      if (!howItLands || typeof howItLands !== 'object' || Array.isArray(howItLands)) {
-        return option;
+      const fields = ['howItLands', 'backTranslation'];
+      const updated: Record<string, unknown> = { ...option };
+
+      for (const fieldName of fields) {
+        const field = option[fieldName];
+        if (!field || typeof field !== 'object' || Array.isArray(field)) {
+          continue;
+        }
+
+        const bilingual = field as Record<string, unknown>;
+        // Ensure both en and vi exist; if vi is missing, fallback to en
+        if (!bilingual.vi && bilingual.en) {
+          bilingual.vi = bilingual.en;
+        }
+        if (!bilingual.en && bilingual.vi) {
+          bilingual.en = bilingual.vi;
+        }
+
+        updated[fieldName] = bilingual;
       }
 
-      const lands = howItLands as Record<string, unknown>;
-      // Ensure both en and vi exist; if vi is missing, fallback to en
-      if (!lands.vi && lands.en) {
-        lands.vi = lands.en;
-      }
-      if (!lands.en && lands.vi) {
-        lands.en = lands.vi;
-      }
-
-      return {
-        ...option,
-        howItLands: lands,
-      };
+      return updated;
     }),
   };
 }
@@ -575,8 +579,8 @@ export async function handleTranslate(
   const [src, tgt] = langPair(payload.direction);
   let result = json;
 
-  // Ensure howItLands has both en and vi versions
-  result = ensureBilingualHowItLands(result);
+  // Ensure bilingual fields (howItLands, backTranslation) have both en and vi versions
+  result = ensureBilingualFields(result);
 
   // Vietnamese → English: fix prepositions and aspect particles
   if (src === 'Vietnamese') {

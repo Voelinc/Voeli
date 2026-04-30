@@ -8824,7 +8824,8 @@ function buildOptionCard(opt, index, isBest, original){
   const el = emotionLabel ? emotionLabel[isVI ? 'vi' : 'en'] : 'Option ' + (index+1);
   const bestLbl = appDir==='vi-en' ? 'Tốt nhất' : 'Best';
   const recBadge = isBest ? `<span class="oc-recbadge">★ ${esc(bestLbl)}</span>` : '';
-  const back = opt.backTranslation ? `<div class="oc-back">"${esc(opt.backTranslation)}"</div>` : '';
+  const backText = pickUi(opt.backTranslation);
+  const back = backText ? `<div class="oc-back">"${esc(backText)}"</div>` : '';
   const landsText = pickUi(opt.howItLands);
   const lands = landsText ? `<div class="oc-lands">${esc(landsText)}</div>` : '';
   let chips = '';
@@ -8885,7 +8886,16 @@ function finalizeStreamedSheet(result, original){
   }
 
   // Remove any skeleton placeholders that weren't filled (fewer than 4 options returned)
-  list.querySelectorAll('.ocard.skel').forEach(s => s.remove());
+  const skels = list.querySelectorAll('.ocard.skel');
+  skels.forEach(s => {
+    s.remove();
+  });
+
+  // Ensure no extra empty cards remain by removing any cards beyond the option count
+  const allCards = list.querySelectorAll('.ocard:not(.skel)');
+  for(let i = opts.length; i < allCards.length; i++){
+    allCards[i].remove();
+  }
 
   // Apply "best" badge to the card matching recommendedOption.
   const recEmo = (result.recommendedOption||'').toLowerCase();
