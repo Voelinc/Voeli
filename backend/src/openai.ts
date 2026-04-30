@@ -111,14 +111,11 @@ function buildPickerSystemPrompt(
     '6) recommendedOption = detectedEmotion.',
     '',
     '============================================================',
-    '# CRITICAL: EXPLANATION LANGUAGE — ONLY ONE LANGUAGE',
+    '# CRITICAL: EXPLANATION LANGUAGE',
     '============================================================',
-    `MANDATORY: Generate backTranslation and howItLands in ${reasoningLang} ONLY. NO English. NO both languages.`,
-    `The listener speaks ${reasoningLang}. Generate explanations in ${reasoningLang}.`,
-    `When reasoningLang = "Vietnamese": WRITE IN VIETNAMESE ONLY.`,
-    `When reasoningLang = "English": WRITE IN ENGLISH ONLY.`,
-    `Example: if reasoningLang="Vietnamese", write: "Cách nói trung lập, phù hợp với mọi bối cảnh" (NOT "neutral tone, suitable for any context").`,
-    `CRITICAL: backTranslation and howItLands are SINGLE-LANGUAGE strings—return ONE language only, based on reasoningLang. Do NOT create {en, vi} objects.`,
+    `Generate backTranslation and howItLands in BOTH English AND Vietnamese.`,
+    `The listener will receive the language that matches their setting.`,
+    `Always provide both { "en": "<English explanation>", "vi": "<Vietnamese explanation>" } for these fields.`,
     '',
     '============================================================',
     '# OUTPUT JSON SCHEMA',
@@ -140,11 +137,11 @@ function buildPickerSystemPrompt(
     tgtIsVietnamese
       ? '      "literalFlow": "<very literal English gloss showing the machinery>",'
       : '      "literalFlow": null,',
-    `      "backTranslation": "<explanation of what this option means, in ${reasoningLang}>",`,
+    `      "backTranslation": { "en": "<English explanation>", "vi": "<Vietnamese explanation>" },`,
     tgtIsVietnamese
       ? '      "breakdown": { "pronouns":[{"word":"<vi>","meaning":"<EN>"}], "softeners":[...], "particles":[...] },'
       : '      "breakdown": null,',
-    `      "howItLands": "<explanation of how this will land/sound, in ${reasoningLang}>",`,
+    `      "howItLands": { "en": "<English explanation>", "vi": "<Vietnamese explanation>" },`,
     '    }',
     '  ],',
     srcIsVietnamese
@@ -557,6 +554,34 @@ function ensureBilingualFields(result: Record<string, unknown>): Record<string, 
   };
 }
 
+// Select user's language from bilingual fields for backTranslation and howItLands
+function selectUserLanguage(result: Record<string, unknown>, uiLang: 'en' | 'vi'): Record<string, unknown> {
+  const options = result.options as Array<Record<string, unknown>>;
+  if (!Array.isArray(options)) return result;
+
+  return {
+    ...result,
+    options: options.map((option) => {
+      const fields = ['howItLands', 'backTranslation'];
+      const updated: Record<string, unknown> = { ...option };
+
+      for (const fieldName of fields) {
+        const field = option[fieldName];
+        if (!field || typeof field !== 'object' || Array.isArray(field)) {
+          continue;
+        }
+
+        const bilingual = field as Record<string, string>;
+        // Select the user's language, fallback to the other if not available
+        const selectedLang = uiLang === 'vi' ? bilingual.vi || bilingual.en : bilingual.en || bilingual.vi;
+        updated[fieldName] = selectedLang;
+      }
+
+      return updated;
+    }),
+  };
+}
+
 // PICKER PATH — full 4-option translation with optional streaming.
 export async function handleTranslate(
   payload: TranslatePayload,
@@ -605,6 +630,9 @@ export async function handleTranslate(
 
   // Ensure bilingual fields (howItLands, backTranslation) have both en and vi versions
   result = ensureBilingualFields(result);
+
+  // Select the correct language for the user (Vietnamese speakers get Vietnamese explanations, English speakers get English)
+  result = selectUserLanguage(result, uiLang);
 
   // Vietnamese → English: fix prepositions and aspect particles
   if (src === 'Vietnamese') {
