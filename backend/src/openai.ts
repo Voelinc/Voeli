@@ -582,6 +582,51 @@ function selectUserLanguage(result: Record<string, unknown>, uiLang: 'en' | 'vi'
   };
 }
 
+// Filter options to keep only meaningfully different ones.
+// Compares translations semantically to remove near-duplicates.
+function filterOptionsForMeaningfulDifferences(result: Record<string, unknown>): Record<string, unknown> {
+  const options = result.options as Array<Record<string, unknown>>;
+  if (!Array.isArray(options) || options.length <= 1) return result;
+
+  // Simple word-overlap similarity score (0-1, where 1 = identical)
+  function textSimilarity(a: string, b: string): number {
+    const aWords = a.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    const bWords = b.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    if (aWords.length === 0 || bWords.length === 0) return 0;
+
+    const aSet = new Set(aWords);
+    const bSet = new Set(bWords);
+    const overlap = [...aSet].filter(w => bSet.has(w)).length;
+    const union = aSet.size + bSet.size - overlap;
+    return union > 0 ? overlap / union : 0;
+  }
+
+  // Keep the first option, then iteratively add options that differ from all kept ones
+  const kept: Array<Record<string, unknown>> = [];
+  const similarityThreshold = 0.75; // Options too similar (>75% overlap) are filtered out
+
+  for (const option of options) {
+    const translation = option.translation as string;
+    if (!translation) continue;
+
+    // Check if this option is too similar to any already-kept option
+    const isDuplicate = kept.some(keptOption => {
+      const keptTranslation = keptOption.translation as string;
+      return keptTranslation && textSimilarity(translation, keptTranslation) > similarityThreshold;
+    });
+
+    if (!isDuplicate) {
+      kept.push(option);
+    }
+  }
+
+  // Always keep at least one option (the first or best one)
+  return {
+    ...result,
+    options: kept.length > 0 ? kept : [options[0]],
+  };
+}
+
 // PICKER PATH — full 4-option translation with optional streaming.
 export async function handleTranslate(
   payload: TranslatePayload,
@@ -644,6 +689,9 @@ export async function handleTranslate(
   if (src === 'English' && tgt === 'Vietnamese') {
     result = fixEnglishTenses(result, payload.text);
   }
+
+  // Filter options to remove near-duplicates — keep only meaningfully different options
+  result = filterOptionsForMeaningfulDifferences(result);
 
   return Response.json(result);
 }
@@ -720,6 +768,9 @@ export async function handleVoice(
   if (src === 'English' && tgt === 'Vietnamese' && json.transcript) {
     result = fixEnglishTenses(result, json.transcript);
   }
+
+  // Filter options to remove near-duplicates — keep only meaningfully different options
+  result = filterOptionsForMeaningfulDifferences(result);
 
   return Response.json(result);
 }
