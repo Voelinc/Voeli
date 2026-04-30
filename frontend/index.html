@@ -3659,6 +3659,22 @@ function extractCompleteOptions(text){
   return options;
 }
 
+// Emotion translations for tone picker labels
+const emotionLabels = {
+  'warm': { en: 'Warm', vi: 'Ấm áp' },
+  'playful': { en: 'Playful', vi: 'Vui nhộn' },
+  'curious': { en: 'Curious', vi: 'Tò mò' },
+  'neutral': { en: 'Neutral', vi: 'Trung lập' },
+  'direct': { en: 'Direct', vi: 'Trực tiếp' },
+  'urgent': { en: 'Urgent', vi: 'Gấp' },
+  'cold': { en: 'Cold', vi: 'Lạnh lùng' },
+  'irritated': { en: 'Irritated', vi: 'Khó chịu' },
+  'angry': { en: 'Angry', vi: 'Tức giận' },
+  'formal': { en: 'Formal', vi: 'Trang trọng' },
+  'affectionate': { en: 'Affectionate', vi: 'Thân mến' },
+  'sarcastic': { en: 'Sarcastic', vi: 'Mỉa mai' }
+};
+
 // Pick the right language variant from a {en, vi} object, falling back to a
 // plain string for backward compat with older responses.
 function pickUi(v){
@@ -8803,10 +8819,11 @@ function buildOptionCard(opt, index, isBest, original){
   card.dataset.index = String(index);
   card.dataset.emotion = ek;
   card.dataset.tutorial = isBest ? 'option-card-recommended' : 'option-card';
-  const el = ek ? ek[0].toUpperCase() + ek.slice(1) : 'Option ' + (index+1);
+  const isVI = appDir === 'vi-en';
+  const emotionLabel = emotionLabels[ek];
+  const el = emotionLabel ? emotionLabel[isVI ? 'vi' : 'en'] : 'Option ' + (index+1);
   const bestLbl = appDir==='vi-en' ? 'Tốt nhất' : 'Best';
   const recBadge = isBest ? `<span class="oc-recbadge">★ ${esc(bestLbl)}</span>` : '';
-  const isVI = appDir === 'vi-en';
   const back = opt.backTranslation ? `<div class="oc-back">"${esc(opt.backTranslation)}"</div>` : '';
   const landsText = pickUi(opt.howItLands);
   const lands = landsText ? `<div class="oc-lands">${esc(landsText)}</div>` : '';

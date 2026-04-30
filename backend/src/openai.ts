@@ -499,6 +499,37 @@ function fixEnglishTenses(result: Record<string, unknown>, englishText: string):
   };
 }
 
+// Ensure bilingual fields (en/vi objects) in howItLands have both versions.
+// If vi is missing but en exists, use en as fallback for now.
+function ensureBilingualHowItLands(result: Record<string, unknown>): Record<string, unknown> {
+  const options = result.options as Array<Record<string, unknown>>;
+  if (!Array.isArray(options)) return result;
+
+  return {
+    ...result,
+    options: options.map((option) => {
+      const howItLands = option.howItLands;
+      if (!howItLands || typeof howItLands !== 'object' || Array.isArray(howItLands)) {
+        return option;
+      }
+
+      const lands = howItLands as Record<string, unknown>;
+      // Ensure both en and vi exist; if vi is missing, fallback to en
+      if (!lands.vi && lands.en) {
+        lands.vi = lands.en;
+      }
+      if (!lands.en && lands.vi) {
+        lands.en = lands.vi;
+      }
+
+      return {
+        ...option,
+        howItLands: lands,
+      };
+    }),
+  };
+}
+
 // PICKER PATH — full 4-option translation with optional streaming.
 export async function handleTranslate(
   payload: TranslatePayload,
@@ -543,6 +574,9 @@ export async function handleTranslate(
   // Post-process for both directions
   const [src, tgt] = langPair(payload.direction);
   let result = json;
+
+  // Ensure howItLands has both en and vi versions
+  result = ensureBilingualHowItLands(result);
 
   // Vietnamese → English: fix prepositions and aspect particles
   if (src === 'Vietnamese') {
