@@ -8816,8 +8816,18 @@ function buildOptionCard(opt, index, isBest, original){
   const bestLbl = appDir==='vi-en' ? 'Tốt nhất' : 'Best';
   const recBadge = isBest ? `<span class="oc-recbadge">★ ${esc(bestLbl)}</span>` : '';
   const backText = pickUi(opt.backTranslation);
-  const back = backText ? `<div class="oc-back">"${esc(backText)}"</div>` : '';
   const landsText = pickUi(opt.howItLands);
+  console.log('[TONE_PICKER_DATA]', {
+    appDir,
+    uiLang,
+    emotion: opt.emotion,
+    translation: opt.translation,
+    backTranslation_raw: opt.backTranslation,
+    backTranslation_selected: backText,
+    howItLands_raw: opt.howItLands,
+    howItLands_selected: landsText
+  });
+  const back = backText ? `<div class="oc-back">"${esc(backText)}"</div>` : '';
   const lands = landsText ? `<div class="oc-lands">${esc(landsText)}</div>` : '';
   let chips = '';
   if(opt.breakdown && typeof opt.breakdown === 'object'){
