@@ -7566,7 +7566,24 @@ if(!window._readReceiptObserver){
         }
       }
     });
-  }, { threshold: 0.5 });
+  }, { threshold: 0.1 });
+}
+
+// Mark already-visible messages as read
+function markVisibleMessagesAsRead(){
+  const c = activeCont();
+  if(!c || !c.dmRoomId) return;
+  const msgsArea = document.getElementById('msgsArea');
+  if(!msgsArea) return;
+
+  document.querySelectorAll('.bubble[data-msgid]').forEach(el => {
+    const rect = el.getBoundingClientRect();
+    // Check if element is visible in viewport (with some margin)
+    if(rect.top < window.innerHeight && rect.bottom > 0){
+      const msgId = el.dataset.msgid;
+      if(msgId) markMessageAsRead(msgId, c.dmRoomId);
+    }
+  });
 }
 
 // Observe messages for read receipt tracking
@@ -7581,6 +7598,8 @@ setTimeout(() => {
     document.querySelectorAll('.bubble[data-msgid]').forEach(el => {
       window._readReceiptObserver.observe(el);
     });
+    // Immediately mark visible messages as read (for already-visible messages)
+    markVisibleMessagesAsRead();
   }
 }, 100);
 
