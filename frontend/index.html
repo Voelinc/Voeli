@@ -6554,7 +6554,7 @@ function setupDMListener(dmRoomId){
     renderSidebar();
   });
 
-  // Listen for updates to existing messages (reactions, read receipts, etc.)
+  // Listen for updates to existing messages (reactions, read receipts, deletions, etc.)
   msgRef.on('child_changed', snap=>{
     console.log(`[setupDMListener] Message updated in ${dmRoomId}`);
     const m = snap.val();
@@ -6566,6 +6566,7 @@ function setupDMListener(dmRoomId){
     if(existing){
       existing.reactions = m.reactions || {};
       existing.readBy = m.readBy || {};
+      existing.deleted = m.deleted || false;
       // Set readAt if current user has read this message
       if(currentUser && existing.readBy[currentUser.uid]){
         existing.readAt = existing.readBy[currentUser.uid];
@@ -7664,12 +7665,17 @@ function showEditCtxMenu(x, y, msgId){ showBubbleCtxMenu(x, y, msgId, true); }
 
 function deleteMessage(msgId){
   const c = activeCont();
-  if(!c) return;
+  if(!c || !c.dmRoomId) return;
   const msg = c.msgs.find(m=>m.id===msgId);
   if(!msg) return;
   msg.deleted = true;
   renderMsgs(); renderSidebar();
-  syncToFirebase(msg);
+  // Update the deleted flag in Firebase instead of creating a new message
+  if(firebaseDb && currentUser && msg.id){
+    firebaseDb.ref(`dms/${c.dmRoomId}/messages/${msg.id}/deleted`).set(true).catch(err => {
+      console.warn('[deleteMessage] Failed to sync deletion:', err);
+    });
+  }
 }
 
 function toggleReaction(msgId, emoji){
