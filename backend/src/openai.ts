@@ -582,7 +582,35 @@ function selectUserLanguage(result: Record<string, unknown>, uiLang: 'en' | 'vi'
   };
 }
 
+// Emotion semantic groups — emotions that express the same vibe
+const EMOTION_GROUPS: Record<string, string[]> = {
+  'PLAYFUL': ['playful', 'joking', 'teasing', 'light-hearted', 'witty', 'humorous', 'funny', 'sarcastic'],
+  'SINCERE': ['sincere', 'genuine', 'honest', 'vulnerable', 'authentic', 'real', 'open'],
+  'FORMAL': ['formal', 'professional', 'direct', 'straightforward', 'factual', 'observational'],
+  'WARM': ['warm', 'affectionate', 'loving', 'caring', 'kind', 'gentle', 'sweet', 'tender'],
+  'ASSERTIVE': ['assertive', 'confident', 'bold', 'strong', 'firm', 'decisive', 'commanding'],
+  'APOLOGETIC': ['apologetic', 'remorseful', 'regretful', 'sorry', 'guilty', 'ashamed', 'contrite'],
+  'CONCERNED': ['concerned', 'worried', 'anxious', 'nervous', 'insecure', 'uncertain', 'fearful'],
+  'GRATEFUL': ['grateful', 'thankful', 'appreciative', 'blessed'],
+  'CRITICAL': ['critical', 'disappointed', 'frustrated', 'exasperated'],
+  'REASSURING': ['reassuring', 'comforting', 'supportive', 'calming', 'encouraging'],
+};
+
+// Map an emotion label to its semantic group
+function getEmotionGroup(emotion: string): string | null {
+  const normalized = (emotion || '').toLowerCase().trim();
+  if (!normalized) return null;
+
+  for (const [group, emotions] of Object.entries(EMOTION_GROUPS)) {
+    if (emotions.includes(normalized)) {
+      return group;
+    }
+  }
+  return null;
+}
+
 // Filter options to keep only meaningfully different ones.
+// Uses emotion grouping to avoid keeping similar emotions with different labels.
 // Compares translations semantically to remove near-duplicates.
 function filterOptionsForMeaningfulDifferences(result: Record<string, unknown>): Record<string, unknown> {
   const options = result.options as Array<Record<string, unknown>>;
@@ -601,18 +629,41 @@ function filterOptionsForMeaningfulDifferences(result: Record<string, unknown>):
     return union > 0 ? overlap / union : 0;
   }
 
-  // Keep the first option, then iteratively add options that differ from all kept ones
   const kept: Array<Record<string, unknown>> = [];
-  const similarityThreshold = 0.75; // Options too similar (>75% overlap) are filtered out
 
   for (const option of options) {
     const translation = option.translation as string;
+    const emotion = (option.emotion || '').toLowerCase();
     if (!translation) continue;
 
     // Check if this option is too similar to any already-kept option
     const isDuplicate = kept.some(keptOption => {
       const keptTranslation = keptOption.translation as string;
-      return keptTranslation && textSimilarity(translation, keptTranslation) > similarityThreshold;
+      const keptEmotion = (keptOption.emotion || '').toLowerCase();
+
+      const similarity = textSimilarity(translation, keptTranslation);
+
+      // Get emotion groups for both options
+      const emotionGroup = getEmotionGroup(emotion);
+      const keptEmotionGroup = getEmotionGroup(keptEmotion);
+
+      // Same emotion group (or both unclassified)
+      // Use strict threshold: 75% similarity removes duplicate
+      if (emotionGroup === keptEmotionGroup) {
+        return similarity > 0.75;
+      }
+
+      // Different emotion groups (both are classified)
+      // Use lenient threshold: 80% similarity removes duplicate
+      // Allows different emotions to survive at lower similarity
+      if (emotionGroup && keptEmotionGroup) {
+        return similarity > 0.80;
+      }
+
+      // One or both emotions unclassified (unknown emotion)
+      // Use very strict threshold: 85% similarity removes duplicate
+      // Only remove if nearly identical, safe fallback for unknown emotions
+      return similarity > 0.85;
     });
 
     if (!isDuplicate) {
