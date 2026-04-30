@@ -7619,6 +7619,9 @@ function showBubbleCtxMenu(x, y, msgId, isMe){
     `<button class="ctx-react-btn${myReaction===e?' active':''}" data-react="${esc(e)}" title="${esc(e)}">${e}</button>`
   ).join('')}</div><div class="ctx-sep"></div>`;
 
+  // Message details (always)
+  html += `<div class="edit-ctx-item" id="ctxDetails"><span>${isVI?'Chi tiết tin nhắn':'Message details'}</span></div>`;
+
   // Reply (always)
   html += `<div class="edit-ctx-item" id="ctxReply"><span>${isVI?'Trả lời':'Reply'}</span></div>`;
 
@@ -7649,6 +7652,7 @@ function showBubbleCtxMenu(x, y, msgId, isMe){
   menu.querySelectorAll('.ctx-react-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{ removeEditCtxMenu(); toggleReaction(msgId, btn.dataset.react); });
   });
+  menu.querySelector('#ctxDetails')?.addEventListener('click', ()=>{ removeEditCtxMenu(); showMessageDetails(msgId); });
   menu.querySelector('#ctxReply')?.addEventListener('click', ()=>{ removeEditCtxMenu(); startReply(msgId); });
   menu.querySelector('#ctxOrig')?.addEventListener('click', ()=>{ removeEditCtxMenu(); if(bubble) bubble.classList.toggle('showorig'); });
   if(isMe && !msg.deleted){
@@ -7676,6 +7680,70 @@ function deleteMessage(msgId){
       console.warn('[deleteMessage] Failed to sync deletion:', err);
     });
   }
+}
+
+function showMessageDetails(msgId){
+  const c = activeCont();
+  if(!c) return;
+  const msg = c.msgs.find(m=>m.id===msgId);
+  if(!msg) return;
+  const isVI = appDir==='vi-en';
+
+  // Format timestamps
+  const formatTime = (ts) => new Date(ts).toLocaleString([], {
+    year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit'
+  });
+
+  // Build status info
+  let html = `<div style="padding:20px;font-size:14px;">`;
+  html += `<h3 style="margin:0 0 16px 0;font-weight:600;">${isVI?'Chi tiết tin nhắn':'Message Details'}</h3>`;
+
+  // Sent time
+  html += `<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--line);">`;
+  html += `<div style="color:var(--muted);font-size:12px;margin-bottom:4px;">${isVI?'Gửi lúc':'Sent at'}</div>`;
+  html += `<div style="font-weight:500;">${formatTime(msg.ts)}</div>`;
+  html += `</div>`;
+
+  // Delivered status
+  if(msg.delivered){
+    html += `<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--line);">`;
+    html += `<div style="color:var(--muted);font-size:12px;margin-bottom:4px;">${isVI?'Đã gửi':'Delivered'}</div>`;
+    html += `<div style="color:#22C55E;font-weight:500;">✓ ${isVI?'Có':'Yes'}</div>`;
+    html += `</div>`;
+  }
+
+  // Read status
+  if(msg.readAt){
+    html += `<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--line);">`;
+    html += `<div style="color:var(--muted);font-size:12px;margin-bottom:4px;">${isVI?'Đã đọc lúc':'Read at'}</div>`;
+    html += `<div style="font-weight:500;">${formatTime(msg.readAt)}</div>`;
+    html += `</div>`;
+  } else if(!msg.isMe && msg.delivered){
+    html += `<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--line);">`;
+    html += `<div style="color:var(--muted);font-size:12px;margin-bottom:4px;">${isVI?'Trạng thái':'Status'}</div>`;
+    html += `<div style="color:var(--muted);font-weight:500;">${isVI?'Chưa đọc':'Not read yet'}</div>`;
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+
+  // Create and show modal
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:10000;';
+  modal.innerHTML = `<div style="background:var(--panel);border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:60vh;overflow-y:auto;box-shadow:0 -4px 24px rgba(0,0,0,.12);">${html}</div>`;
+
+  modal.addEventListener('click', (e)=>{ if(e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+
+  // Close on outside click
+  setTimeout(()=>{
+    document.addEventListener('click', function closeModal(e){
+      if(!modal.contains(e.target) && modal.parentElement){
+        modal.remove();
+        document.removeEventListener('click', closeModal);
+      }
+    });
+  }, 0);
 }
 
 function toggleReaction(msgId, emoji){
