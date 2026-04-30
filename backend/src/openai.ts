@@ -116,7 +116,7 @@ function buildPickerSystemPrompt(
     `Generate backTranslation and howItLands explanations in: ${reasoningLang}`,
     `The listener speaks ${reasoningLang}—they need to understand what each English option MEANS.`,
     'So explain each option in their language: what it means, how it sounds, why this emotion/tone.',
-    `For all bilingual fields {en, vi}: generate BOTH versions regardless. But backTranslation and howItLands should be especially clear in ${reasoningLang}.`,
+    `NOTE: backTranslation and howItLands are single-language strings (in ${reasoningLang}), not bilingual objects.`,
     '',
     '============================================================',
     '# OUTPUT JSON SCHEMA',

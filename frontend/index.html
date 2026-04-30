@@ -4295,10 +4295,7 @@ function setAuthLoading(on){
 function initApp(){
   const savedAppDir = localStorage.getItem('appDir');
   if(savedAppDir && (savedAppDir === 'en-vi' || savedAppDir === 'vi-en')) {
-    appDir = savedAppDir;
-    updPlaceholder();
-    applyAuthLang();
-    applyAppLang();
+    setAppDir(savedAppDir);
   }
   showOnboarding();
   updateButtonStates();
@@ -9842,7 +9839,7 @@ async function callOpenAI(payload) {
         contextHash = ((contextHash << 5) - contextHash) + c.id.charCodeAt(i);
         contextHash |= 0; // Convert to 32-bit integer
       }
-      const cacheKey = 'cache_' + payload.text.slice(0, 80) + '_' + payload.direction + '_' + Math.abs(contextHash);
+      const cacheKey = 'cache_' + payload.text.slice(0, 80) + '_' + payload.direction + '_' + (payload.uiLang || 'en') + '_' + Math.abs(contextHash);
       try {
         const cached = localStorage.getItem(cacheKey);
         if(cached) {
@@ -9923,7 +9920,7 @@ async function callOpenAI(payload) {
             contextHash = ((contextHash << 5) - contextHash) + c.id.charCodeAt(i);
             contextHash |= 0;
           }
-          const cacheKey = 'cache_' + payload.text.slice(0, 80) + '_' + payload.direction + '_' + Math.abs(contextHash);
+          const cacheKey = 'cache_' + payload.text.slice(0, 80) + '_' + payload.direction + '_' + (payload.uiLang || 'en') + '_' + Math.abs(contextHash);
           try { localStorage.setItem(cacheKey, JSON.stringify(result)); } catch(_) {}
         }
       }
@@ -9944,7 +9941,7 @@ async function callOpenAI(payload) {
           contextHash = ((contextHash << 5) - contextHash) + c.id.charCodeAt(i);
           contextHash |= 0;
         }
-        const cacheKey = 'cache_' + payload.text.slice(0, 80) + '_' + payload.direction + '_' + Math.abs(contextHash);
+        const cacheKey = 'cache_' + payload.text.slice(0, 80) + '_' + payload.direction + '_' + (payload.uiLang || 'en') + '_' + Math.abs(contextHash);
         try { localStorage.setItem(cacheKey, JSON.stringify(result)); } catch(_) {}
       }
     }
