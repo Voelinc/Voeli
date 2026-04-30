@@ -104,6 +104,16 @@ function buildPickerSystemPrompt(
       : `1) Transcribe in ${src}. Read EMOTION from pitch, pace, warmth, sharpness, hesitation — not just words.`,
     `2) Pick ONE emotion: warm · playful · curious · neutral · direct · urgent · cold · irritated · angry · formal · affectionate · sarcastic. IMPORTANT — treat "lol", "haha", "lmao", "hihi", "hehe" and similar laugh markers as SOFTENERS, not emotion classifiers. They reduce intensity but do not define it.`,
     '3) Pick category: request|opinion|agreement|invitation|apology|instruction|other.',
+    '',
+    '# MULTI-EMOTIONAL MESSAGES (especially family/kinship, apologies with pushback, boundaries with care):',
+    'If the message contains TWO EMOTIONS that must coexist (NOT sequential), include a BALANCED OPTION.',
+    'Examples: "I love you AND I need a boundary" (not OR), "I\'m sorry AND I\'m standing firm" (not OR), "I respect you AND I disagree" (not OR).',
+    'For these cases, create ONE option that explicitly balances both emotions:',
+    '- Instead of just "Loving" and "Firm", also offer: "Loving yet firm" or "With love and respect for myself" (EN→VI especially)',
+    '- Instead of just "Apologetic" and "Honest", also offer: "Apologizing while standing my ground" or "Sorry AND here\'s my truth"',
+    '- In Vietnamese, use natural constructions with "nhưng" (but), particles, and pronouns that express both (e.g., "em yêu mẹ nhưng em cần...")',
+    'This balanced option replaces a less meaningful variation if needed. Include it ONLY if the message genuinely requires both emotions.',
+    '',
     `4) Produce 2–4 options in ${tgt}. Only include an option if it is genuinely plausible given the message's tone, emoji, and context — do NOT pad to reach 4. All options must be distinct emotions. ONE must equal detectedEmotion (your recommendation). Vary vocabulary/rhythm, not just polite-adjectives. If ${tgt}=Vietnamese, match pronouns/softeners/particles to the EMOTION of each option (angry=tao/mày or drop ạ; affectionate=anh/em+nha; formal=full dạ…ạ). EMOJI RULE: if the source message contained NO emoji, do NOT add emoji to any translation option. Only include emoji in a translation if the source itself used emoji. GRAMMAR RULE: Always preserve all grammatically necessary words, especially prepositions (to, at, in, for, with, by, etc.). After translating, verify each option reads completely and naturally — no missing words that would change meaning. When translating FROM Vietnamese, pay special attention to implied prepositions that must be made explicit in English.`,
     srcIsVietnamese
       ? '5) SOURCE is Vietnamese — populate "sourceDecoding" with actual pronouns/softeners/particles extracted from transcript + a 1-2 sentence relationshipSignal.'
