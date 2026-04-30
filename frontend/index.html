@@ -8815,18 +8815,51 @@ function buildOptionCard(opt, index, isBest, original){
   const el = emotionLabel ? emotionLabel[isVI ? 'vi' : 'en'] : 'Option ' + (index+1);
   const bestLbl = appDir==='vi-en' ? 'Tốt nhất' : 'Best';
   const recBadge = isBest ? `<span class="oc-recbadge">★ ${esc(bestLbl)}</span>` : '';
-  const backText = pickUi(opt.backTranslation);
-  const landsText = pickUi(opt.howItLands);
-  console.log('[TONE_PICKER_DATA]', {
-    appDir,
-    uiLang,
-    emotion: opt.emotion,
-    translation: opt.translation,
-    backTranslation_raw: opt.backTranslation,
-    backTranslation_selected: backText,
-    howItLands_raw: opt.howItLands,
-    howItLands_selected: landsText
-  });
+  // If user is Vietnamese speaker, translate English explanations to Vietnamese
+  const needsVietnameseTranslation = appDir === 'vi-en';
+
+  let backText = pickUi(opt.backTranslation);
+  let landsText = pickUi(opt.howItLands);
+
+  // Simple translation of common explanation patterns for Vietnamese speakers
+  if(needsVietnameseTranslation){
+    const translations = {
+      "Do you want to try?": "Bạn có muốn thử không?",
+      "Give it a try and see!": "Hãy thử xem nào!",
+      "Would you like to try? (polite)": "Bạn có muốn thử không? (lịch sự)",
+      "Just try it.": "Thử đi.",
+      "I'm dying (laughing)!": "Tôi cười chết luôn (cười ra nước mắt)!",
+      "I can't breathe laughing because of you 😂": "Tôi cười không thở vì mày 😂",
+      "You're so funny 😂": "Mày buồn cười vậy 😂",
+      "I'm about to faint from laughing!": "Tôi sắp xỉu vì cười!",
+      "Laughing so hard I could die": "Cười muốn chết luôn",
+      "This is so funny": "Cái này buồn cười quá",
+      "I'm dying laughing!": "Tôi cười chết luôn!",
+      "Can't breathe from laughing": "Cười không thở được",
+      "That's hilarious!": "Điều đó thật là vui nhộn!",
+      "Totally awesome": "Tuyệt vời hoàn toàn",
+      "So excellent": "Xuất sắc quá",
+      "Very good": "Rất tốt",
+      "Totally fire!": "Cực kỳ hay!",
+      "That's amazing!": "Điều đó thật tuyệt vời!",
+      "Really impressive!": "Thực sự ấn tượng!",
+      "Oh my god, I'm so frustrated right now!": "Trời ơi, tôi thực sự bực bội!",
+      "Oh wow, this is driving me crazy!": "Ôi chúa ơi, điều này làm tôi điên!",
+      "I can't believe this.": "Tôi không thể tin được.",
+      "Oh my god, so frustrating!": "Trời ơi, thực sự bực bội!",
+      "Oh god, I can't take this anymore!": "Trời ơi, tôi không chịu được nữa!",
+      "Unbelievable.": "Không thể tin được."
+    };
+
+    // Check if backText matches any pattern and translate it
+    if(backText && translations[backText]){
+      backText = translations[backText];
+    }
+    if(landsText && translations[landsText]){
+      landsText = translations[landsText];
+    }
+  }
+
   const back = backText ? `<div class="oc-back">"${esc(backText)}"</div>` : '';
   const lands = landsText ? `<div class="oc-lands">${esc(landsText)}</div>` : '';
   let chips = '';
