@@ -8789,7 +8789,7 @@ function changeAutoSent(msgId){
 function autoSend(original, translation, direction){
   const c=activeCont(); if(!c) return;
   const now=new Date();
-  const isMe = direction==='en-vi' ? (appDir==='en-vi') : (appDir==='vi-en');
+  const isMe = true;
   c.msgs.push({
     text:translation, translated:translation, original,
     emotion:'', isMe, mode:'text', direction,
@@ -9724,7 +9724,7 @@ function pickOpt(opt, emoKey, original){
   const pendingMode = pending ? pending.mode : 'text';
   closeSheet();
   const now=new Date();
-  const isMe = direction==='en-vi' ? (appDir==='en-vi') : (appDir==='vi-en');
+  const isMe = true;
   const newMsg = {
     id: 'msg'+Math.random().toString(36).slice(2),
     text:opt.translation||'', translated:opt.translation||'', original,
