@@ -1045,16 +1045,6 @@ body.is-offline::before{
       <span id="googleBtnLabel">Continue with Google</span>
     </button>
 
-    <div style="display:flex;align-items:center;gap:10px;margin-top:14px;">
-      <div style="flex:1;height:1px;background:var(--line);"></div>
-      <span class="auth-or" style="font-size:12px;color:var(--muted);">or</span>
-      <div style="flex:1;height:1px;background:var(--line);"></div>
-    </div>
-
-    <button id="demoBtn" style="width:100%;margin-top:12px;padding:10px 16px;border-radius:10px;border:1.5px solid var(--line);background:var(--panel-2);color:var(--ink);font-size:14px;font-weight:500;cursor:pointer;">
-      🧪 Try Demo Mode (no account needed)
-    </button>
-    <p id="demoHelp" style="text-align:center;font-size:11.5px;color:var(--muted-2);margin-top:8px;line-height:1.5;">Demo returns fake translations so you can explore the UI without signing up.</p>
     <p id="termsLine" style="text-align:center;font-size:11.5px;color:var(--muted-2);margin-top:14px;line-height:1.5;">
       By continuing you agree to our
       <a href="/terms.html" target="_blank" style="color:var(--blue);text-decoration:none;">Terms</a>
@@ -1682,6 +1672,8 @@ const SLANG_EN = [
 ];
 
 const SLANG_VI = [
+  // Developer test phrase
+  { pattern:/\bdonnywillisvoeli2\b/i, phrase:"donnywillisvoeli2", a:"Vietnamese developer test phrase", b:"always triggers picker with Vietnamese explanations", reason:"Vietnamese developer test phrase — ensures picker always appears with Vietnamese explanations for testing.", vietnameseEquiv:"donnywillisvoeli2", dismissScope:"global" },
   // Multi-word phrases — specific enough to be safe without trailing anchors
   { pattern:/chết con rồi/i,         phrase:"Chết con rồi",       a:"laughing so hard, having a great time",                      b:"oh no, something actually went wrong",       aEn:"I'm dying, that's hilarious",       bEn:"oh no, I'm in trouble",       reason:"Literally 'I'm dead (child form)' — Vietnamese hyperbole mirrors English 'I'm dying.' Death = extreme reaction, not literal.",         englishEquiv:"I'm dead",              dismissScope:"global" },
   { pattern:/ghét cái mặt/i,         phrase:"Ghét cái mặt",       a:"playful affectionate teasing between close friends",          b:"genuinely disliking someone's face",         aEn:"you're the worst (affectionate)",       bEn:"I really can't stand you",       reason:"Literally 'hate your face' — between close friends it's like 'I can't stand how great you are.' Outsiders read it as an insult.",         englishEquiv:"I hate you",            dismissScope:"global"  },
@@ -9840,7 +9832,7 @@ async function callOpenAI(payload) {
         contextHash = ((contextHash << 5) - contextHash) + c.id.charCodeAt(i);
         contextHash |= 0; // Convert to 32-bit integer
       }
-      const cacheKey = 'cache_' + payload.text.slice(0, 80) + '_' + payload.direction + '_' + (payload.uiLang || 'en') + '_' + Math.abs(contextHash);
+      const cacheKey = 'cache_' + payload.text.slice(0, 80) + '_' + payload.direction + '_' + uiLang + '_' + Math.abs(contextHash);
       try {
         const cached = localStorage.getItem(cacheKey);
         if(cached) {
@@ -9896,6 +9888,7 @@ async function callOpenAI(payload) {
   const streaming = !!(payload && payload.onProgress && isText);
 
   if(isText){
+    console.log('[DEBUG] Sending to /api/translate:', { text: (payload.text || '').substring(0, 50), direction, uiLang, appDir });
     const res = await workerRequest('/api/translate', {
       text: payload.text || '',
       direction,
@@ -9921,7 +9914,7 @@ async function callOpenAI(payload) {
             contextHash = ((contextHash << 5) - contextHash) + c.id.charCodeAt(i);
             contextHash |= 0;
           }
-          const cacheKey = 'cache_' + payload.text.slice(0, 80) + '_' + payload.direction + '_' + (payload.uiLang || 'en') + '_' + Math.abs(contextHash);
+          const cacheKey = 'cache_' + payload.text.slice(0, 80) + '_' + payload.direction + '_' + uiLang + '_' + Math.abs(contextHash);
           try { localStorage.setItem(cacheKey, JSON.stringify(result)); } catch(_) {}
         }
       }
@@ -9942,7 +9935,7 @@ async function callOpenAI(payload) {
           contextHash = ((contextHash << 5) - contextHash) + c.id.charCodeAt(i);
           contextHash |= 0;
         }
-        const cacheKey = 'cache_' + payload.text.slice(0, 80) + '_' + payload.direction + '_' + (payload.uiLang || 'en') + '_' + Math.abs(contextHash);
+        const cacheKey = 'cache_' + payload.text.slice(0, 80) + '_' + payload.direction + '_' + uiLang + '_' + Math.abs(contextHash);
         try { localStorage.setItem(cacheKey, JSON.stringify(result)); } catch(_) {}
       }
     }
