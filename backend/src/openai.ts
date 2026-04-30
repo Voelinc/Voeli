@@ -162,6 +162,7 @@ function buildPickerSystemPrompt(
     `- ${tgtIsVietnamese ? 'Vietnamese: literalFlow + breakdown for each option.' : 'English: literalFlow=null, breakdown=null.'}`,
     `- ${srcIsVietnamese ? 'Populate sourceDecoding.' : 'sourceDecoding=null.'}`,
     `- culturalWarnings = array (empty if none).`,
+    `- BILINGUAL FIELDS (CRITICAL): For ALL fields that have {en, vi} structure (detectedTone, toneSignals, backTranslation, howItLands, recommendationReason, etc.), ALWAYS generate BOTH English and Vietnamese versions. Never omit the Vietnamese version. Example: "backTranslation": { "en": "English meaning", "vi": "Ý nghĩa tiếng Việt" }. This applies even if the user is Vietnamese—generate both versions.`,
     `- Every translation MUST be grammatically complete. All prepositions, articles, and function words required for natural speech must be present. Double-check each option before returning.`,
     `- ${srcIsVietnamese ? 'ASPECT PARTICLES: If source contains đang/rồi/sắp/xong/thường/có thể/phải, ensure target English uses correct tense/continuous form (present continuous, past perfect, near future, etc.). Do NOT lose aspect information in translation.' : ''}`,
     `- ${srcIsVietnamese ? '' : 'TENSE MAPPING: If source contains present continuous (is/am/are -ing), perfect (have/has -ed), or future forms (will/about to), map to correct Vietnamese particles (đang, đã...rồi, sắp, vừa...xong, etc.). Do NOT lose temporal information in translation.'}`,
