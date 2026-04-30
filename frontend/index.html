@@ -10482,7 +10482,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   const ta = document.getElementById('txtInput');
   if(!ta) return;
   ta.addEventListener('input',()=>{
-    if(!firebaseDb||!roomCode) return;
+    if(!firebaseDb) return;
+    // Works for both DMs (dmRoomId) and rooms (roomCode)
+    const c = activeCont();
+    if(!roomCode && (!c || !c.dmRoomId)) return;
     setMyTyping(ta.value.length>0);
     clearTimeout(typingTimer);
     typingTimer = setTimeout(()=>setMyTyping(false), 3000);
@@ -10492,12 +10495,13 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 // Typing bubble — appended after messages, managed separately from renderMsgs
 function refreshTypingRow(){
-  const room = contacts.find(c=>c._isRoom);
+  const c = activeCont();
   const area = document.getElementById('msgsArea');
   if(!area) return;
   const old = document.getElementById('typingRow');
   if(old) old.remove();
-  if(otherTyping && room && activeId===room.id){
+  // Show typing bubble for both DMs and rooms when other person is typing
+  if(otherTyping && c && activeId===c.id){
     const row = document.createElement('div');
     row.className='mrow them'; row.id='typingRow'; row.style.marginTop='2px';
     row.innerHTML=`<div class="bubble them tail">
