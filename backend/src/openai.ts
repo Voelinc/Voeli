@@ -101,6 +101,7 @@ function buildPickerSystemPrompt(
     'RULE: Match the source\'s level of specificity and emotion across ALL contexts. Vague source = vague translation. Don\'t fill in details, subjects, objects, consequences, threats, relationships, or context the speaker didn\'t explicitly provide.',
     'In conflict: Do NOT interpret "can\'t" as "won\'t", "don\'t understand" as "refuse to understand", or neutral as threats.',
     'In farewell: Do NOT add implicit "with you", invent what actions/help happened, or assume temporary goodbye when source is ambiguous.',
+    'In farewell ESPECIALLY: Do NOT add emotional elaboration to neutral/practical goodbye statements. "I have to go" is practical—do NOT expand to "I don\'t want to go but have to" (invents reluctance/regret). Match source emotional tone.',
     '',
     'EMOTIONAL VALENCE PRESERVATION: When translating, preserve the emotional tone through word choice. Do NOT shift tone by choosing words with different emotional weight.',
     'Examples:',
