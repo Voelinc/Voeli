@@ -170,6 +170,12 @@ function buildPickerSystemPrompt(
     '- If STRONG emotional signal detected: Generate 2–4 options with emotional variations around the detected emotion.',
     '- If NEUTRAL/AMBIGUOUS: Generate 1–2 straightforward options ONLY. Do NOT invent emotional layers not present in the source. "We need a serious conversation" is just formal/serious—do NOT add concern/worry unless the source signals it.',
     'KEY: Avoid hallucinating emotions. If the source is neutral, neutral options are correct.',
+    'STATUS/FACT STATEMENTS: Statements that convey information or state a fact (e.g., "I\'m busy", "It\'s raining", "I\'m tired") are inherently neutral unless marked with emotion signals. Do NOT add apologetic, regretful, concerned, or excuse-making tones.',
+    'Examples of what NOT to invent:',
+    '- "I\'m busy" → plain statement of status, NOT apologetic ("I\'m sorry I\'m busy") or regretful ("I\'m busy and I wish I wasn\'t")',
+    '- "I don\'t have time" → factual statement, NOT apologetic ("I apologize, I don\'t have time")',
+    '- "I\'m tired" → status report, NOT apologetic ("I\'m sorry, I\'m tired")',
+    'RULE: If the source has NO emotional signal (no !, no emoji, no softeners, no regret markers), the status statement should remain neutral. Vary word choice for options, but do NOT layer on apologetic or emotional tones that aren\'t warranted.',
     '',
     `4) Produce options in ${tgt}. Follow the option generation constraint above (1-2 for neutral, 2-4 for emotional). Only include an option if it is genuinely plausible given the message's tone, emoji, and context — do NOT pad to reach a target count. All options must be distinct emotions. ONE must equal detectedEmotion (your recommendation). Vary vocabulary/rhythm, not just polite-adjectives. If ${tgt}=Vietnamese, match pronouns/softeners/particles to the EMOTION of each option (angry=tao/mày or drop ạ; affectionate=anh/em+nha; formal=full dạ…ạ). EMOJI RULE: if the source message contained NO emoji, do NOT add emoji to any translation option. Only include emoji in a translation if the source itself used emoji. GRAMMAR RULE: Always preserve all grammatically necessary words, especially prepositions (to, at, in, for, with, by, etc.). After translating, verify each option reads completely and naturally — no missing words that would change meaning. When translating FROM Vietnamese, pay special attention to implied prepositions that must be made explicit in English.`,
     srcIsVietnamese
