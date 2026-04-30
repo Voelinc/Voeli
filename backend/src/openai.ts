@@ -712,8 +712,8 @@ function filterOptionsForMeaningfulDifferences(result: Record<string, unknown>):
 
       // Same emotion group (or both unclassified)
       if (emotionGroup === keptEmotionGroup) {
-        // Layer 1: If 90%+ similar, apply intensity check (Layer 2)
-        if (similarity > 0.90) {
+        // Layer 1: If 85%+ similar, apply intensity check (Layer 2)
+        if (similarity > 0.85) {
           // Layer 2: Check if difference is ONLY intensity words
           if (differsOnlyByIntensity(translation, keptTranslation)) {
             return true; // Filter out as intensity-only duplicate
