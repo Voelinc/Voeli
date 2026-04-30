@@ -711,6 +711,61 @@ function differsOnlyByIntensity(textA: string, textB: string): boolean {
   return false;
 }
 
+// Validate Vietnamese grammar and coherence.
+// Detects malformed patterns that shouldn't be generated (e.g., disconnected clause combinations).
+function isGrammaticallyValid(text: string, targetLang: string): boolean {
+  // Only validate Vietnamese
+  if (targetLang !== 'Vietnamese') return true;
+
+  const words = text.split(/\s+/);
+  if (words.length === 0) return true;
+
+  // Red flags for malformed Vietnamese: disconnected phrases joined by commas
+  // Example: "Tôi khỏe, đồng ý cảm ơn" has three unrelated concepts
+  // Check for comma-separated clauses that lack coherent connection
+
+  const commaParts = text.split(',').map(part => part.trim()).filter(p => p.length > 0);
+  if (commaParts.length > 1) {
+    // Each comma-separated part should be grammatically valid on its own
+    // AND they should form a coherent sequence
+
+    // Pattern: if we have 3+ comma-separated parts with 1-3 words each,
+    // and they contain unrelated verbs (agree + thank + be, etc),
+    // it's likely malformed
+    if (commaParts.length >= 3) {
+      const partWords = commaParts.map(p => p.split(/\s+/));
+      const avgLength = partWords.reduce((sum, w) => sum + w.length, 0) / partWords.length;
+
+      // If parts are very short and numerous, check for semantic coherence
+      if (avgLength <= 3) {
+        const hasMultipleVerbs = commaParts.filter(part => {
+          // Common Vietnamese verbs/actions
+          const verbs = ['đồng ý', 'cảm ơn', 'xin lỗi', 'hiểu', 'yêu', 'ghét', 'khỏe', 'mệt'];
+          return verbs.some(v => part.includes(v));
+        }).length;
+
+        // 3+ disconnected verb concepts joined by commas = malformed
+        if (hasMultipleVerbs >= 3) {
+          return false;
+        }
+      }
+    }
+  }
+
+  // Check for obviously broken patterns
+  // Words that shouldn't appear together without proper connectors
+  const brokenPatterns = [
+    /\bđồng ý\s+cảm ơn\b/i, // "agree thank" without connector
+    /\bkhỏe\s+đồng ý\b/i,   // "healthy agree" — unrelated
+  ];
+
+  if (brokenPatterns.some(pattern => pattern.test(text))) {
+    return false;
+  }
+
+  return true;
+}
+
 // Filter options to keep only meaningfully different ones.
 // Uses two-layer approach for same-emotion-group options:
 // Layer 1: If 90%+ similar, check Layer 2
@@ -733,12 +788,28 @@ function filterOptionsForMeaningfulDifferences(result: Record<string, unknown>):
     return union > 0 ? overlap / union : 0;
   }
 
+  // Determine target language from options
+  let targetLang = 'English';
+  const firstOption = options[0];
+  if (firstOption && firstOption.translation && typeof firstOption.translation === 'string') {
+    // Check if it looks like Vietnamese (contains Vietnamese diacritics or particles)
+    const translation = firstOption.translation as string;
+    if (/[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/.test(translation)) {
+      targetLang = 'Vietnamese';
+    }
+  }
+
   const kept: Array<Record<string, unknown>> = [];
 
   for (const option of options) {
     const translation = option.translation as string;
     const emotion = (option.emotion || '').toLowerCase();
     if (!translation) continue;
+
+    // Check grammar validity (filters malformed sentences)
+    if (!isGrammaticallyValid(translation, targetLang)) {
+      continue; // Skip malformed options
+    }
 
     // Check if this option is too similar to any already-kept option
     const isDuplicate = kept.some(keptOption => {
