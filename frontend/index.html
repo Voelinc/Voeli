@@ -2941,6 +2941,7 @@ function getDirection(){ return appDir; }
 function getRelationship(){ return activeCont()?activeCont().type:'formal'; }
 function setAppDir(dir){
   appDir=dir;
+  uiLang = dir==='vi-en' ? 'vi' : 'en';
   localStorage.setItem('appDir', dir);
   document.querySelectorAll('#langTog button, #langTogAuth button, #langTogProfile button').forEach(b=>b.classList.toggle('active', b.dataset.dir===dir));
   updPlaceholder();
