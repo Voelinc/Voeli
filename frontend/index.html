@@ -1494,6 +1494,9 @@ body.is-offline::before{
         <button class="cact cact-danger" id="actBlock" onclick="toggleContactFlag('blocked')">
           <span class="cact-ico">⊘</span><span class="cact-lbl">Block</span>
         </button>
+        <button class="cact" id="actReadReceipts" onclick="toggleReadReceipts()">
+          <span class="cact-ico">✓✓</span><span class="cact-lbl">Read Receipts</span>
+        </button>
       </div>
     </div>
     <div class="mactions" id="mActions"></div>
@@ -2590,7 +2593,7 @@ function saveContactProfile(contactId, profile){
 
 function updateContactProfile(contactId, msgs){
   if(!contactId || !msgs || msgs.length < 2) return;
-  const profile = loadContactProfile(contactId) || { totalMessages:0, emotionCounts:{}, avgMsgLength:0, lastUpdated:null };
+  const profile = loadContactProfile(contactId) || { totalMessages:0, emotionCounts:{}, avgMsgLength:0, lastUpdated:null, readReceiptsEnabled:true };
   const withEmotion = msgs.filter(m => m.emotion);
   const emotionCounts = {};
   withEmotion.forEach(m => {
@@ -6062,6 +6065,7 @@ function _refreshActionGrid(c){
   const fav=document.getElementById('actFav');
   const blk=document.getElementById('actBlock');
   const shr=document.getElementById('actShare');
+  const rr=document.getElementById('actReadReceipts');
   fav.classList.toggle('active', !!c.favourite);
   fav.querySelector('.cact-ico').textContent = c.favourite ? '★' : '☆';
   fav.querySelector('.cact-lbl').textContent = isVI ? 'Yêu thích' : 'Favourite';
@@ -6070,6 +6074,12 @@ function _refreshActionGrid(c){
   blk.querySelector('.cact-lbl').textContent = c.blocked
     ? (isVI ? 'Bỏ chặn' : 'Unblock')
     : (isVI ? 'Chặn' : 'Block');
+  // Read Receipts toggle
+  const profile = loadContactProfile(c.id);
+  const readReceiptsOn = !profile || profile.readReceiptsEnabled !== false;
+  rr.classList.toggle('active', readReceiptsOn);
+  rr.querySelector('.cact-ico').textContent = readReceiptsOn ? '✓✓' : '✓';
+  rr.querySelector('.cact-lbl').textContent = isVI ? 'Xác nhận đã đọc' : 'Read Receipts';
 }
 
 function toggleContactFlag(flag){
@@ -6079,6 +6089,16 @@ function toggleContactFlag(flag){
   c[flag]=!c[flag];
   _refreshActionGrid(c);
   renderSidebar();
+}
+
+function toggleReadReceipts(){
+  if(!editingId) return;
+  const c=contacts.find(x=>x.id===editingId);
+  if(!c) return;
+  const profile = loadContactProfile(c.id) || { totalMessages:0, emotionCounts:{}, avgMsgLength:0, lastUpdated:null, readReceiptsEnabled:true };
+  profile.readReceiptsEnabled = !profile.readReceiptsEnabled;
+  saveContactProfile(c.id, profile);
+  _refreshActionGrid(c);
 }
 
 function shareContact(){
@@ -6534,7 +6554,7 @@ function setupDMListener(dmRoomId){
     renderSidebar();
   });
 
-  // Listen for updates to existing messages (reactions, etc.)
+  // Listen for updates to existing messages (reactions, read receipts, etc.)
   msgRef.on('child_changed', snap=>{
     console.log(`[setupDMListener] Message updated in ${dmRoomId}`);
     const m = snap.val();
@@ -6545,8 +6565,28 @@ function setupDMListener(dmRoomId){
     const existing = c.msgs.find(msg => msg.id === msgId);
     if(existing){
       existing.reactions = m.reactions || {};
+      existing.readBy = m.readBy || {};
+      // Set readAt if current user has read this message
+      if(currentUser && existing.readBy[currentUser.uid]){
+        existing.readAt = existing.readBy[currentUser.uid];
+      }
       if(activeId === c.id) renderMsgs();
     }
+  });
+}
+
+function markMessageAsRead(msgId, dmRoomId){
+  if(!currentUser || !firebaseDb || !dmRoomId || !msgId) return;
+  const c = contacts.find(contact => contact.dmRoomId === dmRoomId);
+  if(!c) return;
+
+  // Check if read receipts are enabled for this contact
+  const profile = loadContactProfile(c.id);
+  if(profile && profile.readReceiptsEnabled === false) return;
+
+  const readByPath = `dms/${dmRoomId}/messages/${msgId}/readBy/${currentUser.uid}`;
+  firebaseDb.ref(readByPath).set(Date.now()).catch(err => {
+    console.warn('[markMessageAsRead] Failed to set read receipt:', err);
   });
 }
 
@@ -7418,7 +7458,7 @@ function renderMsgs(){
     const timeStr = fmtTime(m.ts);
     const editedLabel = m.edited ? `<span class="b-edited">${isVI?'đã sửa':'edited'}</span>` : '';
     const queuedLabel = m.queued ? `<span class="b-queued">${isVI?'chờ xử lý':'pending'}</span>` : '';
-    const ticksDisplay = m.isMe ? (m.delivered ? doubleTicks : singleTick) : '';
+    const ticksDisplay = m.isMe ? (m.readAt ? doubleTicks : (m.delivered ? doubleTicks : singleTick)) : '';
     const metaRow = `<div class="b-meta">${editedLabel}${queuedLabel}${esc(timeStr)}${altBtn}${ticksDisplay}</div>`;
     // "sent as playful · Change" chip — sender-only
     const changeChip = (m.isMe && m.autoSent && m.id)
@@ -7512,6 +7552,36 @@ function renderMsgs(){
   });
 }
 function scrollBot(){ const a=document.getElementById('msgsArea'); a.scrollTop=a.scrollHeight; }
+
+// Setup Intersection Observer for read receipts
+if(!window._readReceiptObserver){
+  window._readReceiptObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if(entry.isIntersecting && entry.target.dataset.msgid){
+        const msgId = entry.target.dataset.msgid;
+        const c = activeCont();
+        if(c && c.dmRoomId){
+          markMessageAsRead(msgId, c.dmRoomId);
+        }
+      }
+    });
+  }, { threshold: 0.5 });
+}
+
+// Observe messages for read receipt tracking
+setTimeout(() => {
+  const msgsArea = document.getElementById('msgsArea');
+  if(msgsArea){
+    // Clear previous observers
+    document.querySelectorAll('[data-msgid]').forEach(el => {
+      window._readReceiptObserver.unobserve(el);
+    });
+    // Observe all message bubbles
+    document.querySelectorAll('.bubble[data-msgid]').forEach(el => {
+      window._readReceiptObserver.observe(el);
+    });
+  }
+}, 100);
 
 // ═══════════════════════════════════════════════════════
 // MESSAGE EDIT (Snapchat-style — 60-second window)
