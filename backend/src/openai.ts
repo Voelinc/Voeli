@@ -502,6 +502,7 @@ function fixEnglishTenses(result: Record<string, unknown>, englishText: string):
 
 // Ensure bilingual fields (en/vi objects) have both versions.
 // If vi is missing but en exists, use en as fallback for now.
+// Also converts string fields to {en, vi} objects.
 function ensureBilingualFields(result: Record<string, unknown>): Record<string, unknown> {
   const options = result.options as Array<Record<string, unknown>>;
   if (!Array.isArray(options)) return result;
@@ -514,7 +515,18 @@ function ensureBilingualFields(result: Record<string, unknown>): Record<string, 
 
       for (const fieldName of fields) {
         const field = option[fieldName];
-        if (!field || typeof field !== 'object' || Array.isArray(field)) {
+        if (!field) {
+          continue;
+        }
+
+        // If it's a string, convert to {en, vi} object
+        if (typeof field === 'string') {
+          updated[fieldName] = { en: field, vi: field };
+          continue;
+        }
+
+        // If it's an array or not an object, skip
+        if (typeof field !== 'object' || Array.isArray(field)) {
           continue;
         }
 
