@@ -740,6 +740,11 @@ function filterOptionsForMeaningfulDifferences(result: Record<string, unknown>):
 
       const similarity = textSimilarity(translation, keptTranslation);
 
+      // SAFETY NET: If 100% identical, always filter (prevents duplicate generation)
+      if (similarity >= 0.99) {
+        return true;
+      }
+
       // Get emotion groups for both options
       const emotionGroup = getEmotionGroup(emotion);
       const keptEmotionGroup = getEmotionGroup(keptEmotion);
