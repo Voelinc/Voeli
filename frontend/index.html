@@ -2141,7 +2141,8 @@ function buildLearnChip(match, phraseLanguage){
     const contactId = activeCont() ? activeCont().id : 'global';
 
     const abbrevLabel = isVI ? '(viết tắt)' : '(abbreviation)';
-    const meaning = `${abbrevLabel} = ${match.full} → ${match.meaning}`;
+    const meaningText = isVI && match.viMeaning ? match.viMeaning : match.meaning;
+    const meaning = `${abbrevLabel} = ${match.full} → ${meaningText}`;
 
     return `<div class="learn-chip" data-tutorial="learn-chip">
       <span class="lc-icon">💬</span>
@@ -3380,23 +3381,23 @@ function detectConflictInPhrase(contact, phraseKey){
 // ═══════════════════════════════════════════════════════
 const ABBREVIATIONS = {
   en: {
-    'lol': { full: 'Laugh Out Loud', meaning: 'laughing really hard' },
-    'omg': { full: 'Oh My God', meaning: 'expressing surprise or shock' },
-    'idk': { full: "I Don't Know", meaning: 'uncertain or unsure' },
-    'brb': { full: 'Be Right Back', meaning: 'will return shortly' },
-    'btw': { full: 'By The Way', meaning: 'additional information' },
-    'ttyl': { full: 'Talk To You Later', meaning: 'goodbye for now' },
-    'imo': { full: 'In My Opinion', meaning: 'personal viewpoint' },
-    'tbh': { full: 'To Be Honest', meaning: 'being truthful or frank' },
-    'nvm': { full: 'Never Mind', meaning: 'disregard what I said' },
-    'smh': { full: 'Shaking My Head', meaning: 'expressing disapproval' },
-    'fyi': { full: 'For Your Information', meaning: 'informative notice' },
-    'asap': { full: 'As Soon As Possible', meaning: 'urgently or immediately' },
-    'lmk': { full: 'Let Me Know', meaning: 'inform me later' },
-    'ofc': { full: 'Of Course', meaning: 'obviously or certainly' },
-    'ngl': { full: 'Not Gonna Lie', meaning: 'being honest or truthful' },
-    'fr': { full: 'For Real', meaning: 'being serious or truthful' },
-    'np': { full: 'No Problem', meaning: 'it is okay or acceptable' }
+    'lol': { full: 'Laugh Out Loud', meaning: 'laughing really hard', viMeaning: 'cười rất to' },
+    'omg': { full: 'Oh My God', meaning: 'expressing surprise or shock', viMeaning: 'bày tỏ ngạc nhiên hoặc sợ hãi' },
+    'idk': { full: "I Don't Know", meaning: 'uncertain or unsure', viMeaning: 'không chắc hoặc bằng lòng' },
+    'brb': { full: 'Be Right Back', meaning: 'will return shortly', viMeaning: 'sẽ quay lại ngay' },
+    'btw': { full: 'By The Way', meaning: 'additional information', viMeaning: 'thông tin bổ sung' },
+    'ttyl': { full: 'Talk To You Later', meaning: 'goodbye for now', viMeaning: 'tạm biệt bây giờ' },
+    'imo': { full: 'In My Opinion', meaning: 'personal viewpoint', viMeaning: 'quan điểm cá nhân' },
+    'tbh': { full: 'To Be Honest', meaning: 'being truthful or frank', viMeaning: 'nói thật thà hoặc thẳng thắn' },
+    'nvm': { full: 'Never Mind', meaning: 'disregard what I said', viMeaning: 'đừng để tâm đến điều tôi nói' },
+    'smh': { full: 'Shaking My Head', meaning: 'expressing disapproval', viMeaning: 'bày tỏ sự không đồng ý' },
+    'fyi': { full: 'For Your Information', meaning: 'informative notice', viMeaning: 'thông báo thông tin cho bạn' },
+    'asap': { full: 'As Soon As Possible', meaning: 'urgently or immediately', viMeaning: 'gấp rút hoặc ngay lập tức' },
+    'lmk': { full: 'Let Me Know', meaning: 'inform me later', viMeaning: 'báo cho tôi biết sau' },
+    'ofc': { full: 'Of Course', meaning: 'obviously or certainly', viMeaning: 'rõ ràng hoặc chắc chắn' },
+    'ngl': { full: 'Not Gonna Lie', meaning: 'being honest or truthful', viMeaning: 'nói thật hoặc tự sự' },
+    'fr': { full: 'For Real', meaning: 'being serious or truthful', viMeaning: 'nói thật hoặc seriousness' },
+    'np': { full: 'No Problem', meaning: 'it is okay or acceptable', viMeaning: 'không sao hoặc được chấp nhận' }
   },
   vi: {
     'k': { full: 'không', meaning: 'no/not' },
