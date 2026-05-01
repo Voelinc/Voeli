@@ -2537,7 +2537,7 @@ function recordPickPreference(recommended, picked, rel, dir){
 // Deleted messages and cross-session messages are excluded automatically.
 const SESSION_GAP_MS = 24 * 60 * 60 * 1000; // 24 hours
 const MIN_HISTORY_FOR_BYPASS = 12; // need at least 12 session messages before auto-bypassing picker
-const CONTEXT_CONFIDENCE_THRESHOLD = 85; // AI must be this confident to skip the picker
+const CONTEXT_CONFIDENCE_THRESHOLD = 80; // AI must be this confident to skip the picker
 
 function getConversationContext(msgs, maxMessages = 20){
   if(!msgs || msgs.length < 2) return '';
