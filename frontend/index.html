@@ -2896,6 +2896,23 @@ function slangContextNote(matches){
   return note;
 }
 
+function colloquialContextNote(matches){
+  if(!matches || !matches.length) return '';
+  const note = '\n\nVIETNAMESE AFFECTIONATE LANGUAGE DETECTED:\n'
+    + 'This message contains Vietnamese terms of endearment / colloquial affectionate expressions:\n'
+    + matches.map(m =>
+        `• "${m.phrase}" = Vietnamese: "${m.vietnameseMeaning}" → Preserve emotional warmth (${m.category})`
+      ).join('\n')
+    + '\n\nIMPORTANT: These signal emotional closeness and warmth in Vietnamese culture.\n'
+    + 'PRESERVE THIS WARMTH IN TRANSLATION:\n'
+    + '- Warm option: Keep the endearment directly ("my precious", "you\'re so cute")\n'
+    + '- Playful option: Match the playful/teasing tone\n'
+    + '- Casual option: Light-touch affection ("hey cutie", "you\'re cute")\n'
+    + 'Do NOT sanitize affection away. Do NOT make warm messages sound cold.\n'
+    + 'Add a culturalWarning with type="colloquial" to alert both users about emotional warmth.';
+  return note;
+}
+
 // ═══════════════════════════════════════════════════════
 // RELATIONSHIP HINTS — from original (verbatim)
 // ═══════════════════════════════════════════════════════
@@ -3428,6 +3445,37 @@ const ABBREVIATIONS = {
     'cmt': { full: 'comment', meaning: 'comment' }
   }
 };
+
+// ═════════════════════════════════════════════════════════════════
+// VIETNAMESE COLLOQUIAL TERMS & TERMS OF ENDEARMENT
+// ═════════════════════════════════════════════════════════════════
+const VIETNAMESE_COLLOQUIAL_TERMS = [
+  { pattern: /\bcục\s+(vàng|dàng)/i, phrase: "cục vàng/dàng", vietnameseMeaning: "my precious one", englishMeaning: "sweetheart, darling", category: "term_of_endearment", confidence: 0.95 },
+  { pattern: /\bcực\s+(xinh|dễ\s+thương|yêu)/i, phrase: "cực xinh/dễ thương", vietnameseMeaning: "extremely cute/adorable", englishMeaning: "so cute, super adorable", category: "intensified_endearment", confidence: 0.92 },
+  { pattern: /\bbé\s+(\w+)/i, phrase: "bé [name]", vietnameseMeaning: "little [one] - diminutive", englishMeaning: "dear, cutie, little one", category: "diminutive_endearment", confidence: 0.90 },
+  { pattern: /\banh\s+ơi\b/i, phrase: "anh ơi", vietnameseMeaning: "hey you (male, affectionate)", englishMeaning: "hey, babe", category: "affectionate_address", confidence: 0.88 },
+  { pattern: /\bchị\s+ơi\b/i, phrase: "chị ơi", vietnameseMeaning: "hey you (female, affectionate)", englishMeaning: "hey, babe", category: "affectionate_address", confidence: 0.88 },
+  { pattern: /\bem\s+ơi\b/i, phrase: "em ơi", vietnameseMeaning: "hey you (younger, affectionate)", englishMeaning: "hey babe, you there", category: "affectionate_address", confidence: 0.87 },
+  { pattern: /\banh\s+yêu\b|\bchị\s+yêu\b|\bem\s+yêu\b/i, phrase: "anh/chị/em yêu", vietnameseMeaning: "I love you (casual)", englishMeaning: "I love you", category: "term_of_endearment", confidence: 0.93 },
+  { pattern: /\bxinh\s+quá\s+đi/i, phrase: "xinh quá đi", vietnameseMeaning: "you're so cute (please stop)", englishMeaning: "you're too cute, stop being adorable", category: "intensified_endearment", confidence: 0.91 },
+  { pattern: /\bxinh\s+lắm\b/i, phrase: "xinh lắm", vietnameseMeaning: "very cute/pretty", englishMeaning: "you're so pretty, very cute", category: "intensified_endearment", confidence: 0.90 },
+  { pattern: /\bơi\b/, phrase: "ơi", vietnameseMeaning: "hey (closeness marker)", englishMeaning: "hey, calling out", category: "familiar_particle", confidence: 0.84 },
+  { pattern: /\bnày\b/, phrase: "này", vietnameseMeaning: "this (casual)", englishMeaning: "hey, look", category: "familiar_particle", confidence: 0.82 },
+  { pattern: /\bkìa\b/, phrase: "kìa", vietnameseMeaning: "that (casual observation)", englishMeaning: "that, look", category: "familiar_particle", confidence: 0.81 },
+  { pattern: /\bđược\s+rồi\b/i, phrase: "được rồi", vietnameseMeaning: "okay, alright", englishMeaning: "okay, sounds good", category: "casual_agreement", confidence: 0.88 },
+  { pattern: /\bổn\s+áp\b/i, phrase: "ổn áp", vietnameseMeaning: "all good, comfortable", englishMeaning: "all good, no worries", category: "casual_agreement", confidence: 0.89 },
+  { pattern: /\bk\b|\bko\b/i, phrase: "k/ko", vietnameseMeaning: "không (no) - shortened", englishMeaning: "no, nope", category: "playful_shortened", confidence: 0.91 },
+  { pattern: /\br\b(?!\w)/, phrase: "r", vietnameseMeaning: "rồi (already) - shortened", englishMeaning: "already, done", category: "playful_shortened", confidence: 0.90 },
+  { pattern: /\bvs\b/i, phrase: "vs", vietnameseMeaning: "với (with) - shortened", englishMeaning: "with, and", category: "playful_shortened", confidence: 0.88 },
+  { pattern: /\bj\b/i, phrase: "j", vietnameseMeaning: "gì (what) - shortened", englishMeaning: "what", category: "playful_shortened", confidence: 0.89 },
+  { pattern: /\bh\b(?!\w)/, phrase: "h", vietnameseMeaning: "giờ (now) - shortened", englishMeaning: "now, right now", category: "playful_shortened", confidence: 0.87 },
+  { pattern: /\byêu\s+quá\b/i, phrase: "yêu quá", vietnameseMeaning: "I love you so much", englishMeaning: "I love you so much", category: "term_of_endearment", confidence: 0.92 }
+];
+
+function detectColloquialTerms(text, direction){
+  if(direction !== 'vi-en') return [];
+  return VIETNAMESE_COLLOQUIAL_TERMS.filter(term => term.pattern.test(text));
+}
 
 function isMessageOnlyAbbreviations(text, direction){
   if(!text || !text.trim()) return false;
@@ -10107,6 +10155,10 @@ async function callOpenAI(payload) {
       const slangMatches = detectSlang(String(payload.text), direction);
       const slangNote = slangContextNote(slangMatches);
       if(slangNote) promptExtensions += slangNote;
+
+      const colloquialMatches = detectColloquialTerms(String(payload.text), direction);
+      const colloquialNote = colloquialContextNote(colloquialMatches);
+      if(colloquialNote) promptExtensions += colloquialNote;
     }
   }
   promptExtensions += getUserPreferenceNote(relKey, direction);

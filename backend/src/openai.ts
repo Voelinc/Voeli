@@ -11,6 +11,7 @@ import type {
 } from './types';
 import { rewriteSlang } from './slang-fix';
 import { buildAmbiguityPromptEnhancement, filterOptionsByConfidence } from './vietnamese-ambiguity-detector';
+import { detectColloquialTerms } from './vietnamese-colloquial-terms';
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -141,6 +142,20 @@ function buildPickerSystemPrompt(
     `# IDIOMS: Always flag. Examples: "I'm dying", "break a leg", "spill the tea", "kill it", "hit me up". Provide literalMeaning, likelyMeaning, and natural rewrite.`,
     '',
     srcIsVietnamese
+      ? `# VIETNAMESE COLLOQUIAL / TERMS OF ENDEARMENT (affectionate language):
+  - "cục vàng/dàng": "my precious one" (playful mispronunciation of vàng=gold). Shows affection + value.
+  - "cực xinh/dễ thương": "extremely cute/adorable". Direct praise of someone's appearance/nature.
+  - "bé + [name/term]": diminutive form, shows closeness (bé Linh = dear Linh).
+  - "anh/chị/em + ơi": affectionate call-out, signals warmth + familiarity.
+  - Shortened forms (k, r, vs, j, h): casual & informal, shows comfort/closeness.
+  PRESERVE THIS WARMTH IN TRANSLATION: Do NOT sanitize affection away. Options should reflect emotional closeness.
+  - Warm option: Keep endearment ("my precious", "you're so cute").
+  - Playful option: Match playful/teasing tone.
+  - Casual option: Light affection ("hey cutie").
+  Flag these in culturalWarnings with type="colloquial" to alert both users about emotional warmth.`
+      : '',
+    '',
+    srcIsVietnamese
       ? `# AMBIGUOUS VIETNAMESE VERBS (context determines meaning):
   - "được": (1) permission/ability "được không?" = "can I?", (2) obtained "được bạn giúp" = "got help from friend", (3) suitable "cái này được" = "this is nice". Choose based on: is it a question? is there an object? is it evaluative?
   - "để": (1) let/allow "để tôi làm" = "let me do it", (2) put/place "để ở đâu?" = "where to put?", (3) defer "để sau" = "leave for later". Choose based on: is there an imperative? does it reference location? does it reference time?
@@ -227,7 +242,7 @@ function buildPickerSystemPrompt(
       : '  "sourceDecoding": null,',
     '  "culturalWarnings": [',
     '    {',
-    '      "type": "kinship|face_threat|idiom|slang|other",',
+    '      "type": "kinship|face_threat|idiom|slang|colloquial|other",',
     '      "term": "<problem phrase>",',
     '      "where": "source|target",',
     '      "literalMeaning": { "en":"...", "vi":"..." },',
