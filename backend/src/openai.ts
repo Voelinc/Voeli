@@ -9,6 +9,8 @@ import type {
   VoiceTranslatePayload,
   GrammarPayload,
 } from './types';
+import { rewriteSlang } from './slang-fix';
+import { buildAmbiguityPromptEnhancement, filterOptionsByConfidence } from './vietnamese-ambiguity-detector';
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -215,6 +217,9 @@ function buildPickerSystemPrompt(
       ? '      "breakdown": { "pronouns":[{"word":"<vi>","meaning":"<EN>"}], "softeners":[...], "particles":[...] },'
       : '      "breakdown": null,',
     `      "howItLands": { "en": "<English explanation>", "vi": "<Vietnamese explanation>" },`,
+    srcIsVietnamese
+      ? '      "confidenceScore": <0-100, how confident are you this is the right interpretation?>'
+      : '      "confidenceScore": null,',
     '    }',
     '  ],',
     srcIsVietnamese
@@ -244,6 +249,7 @@ function buildPickerSystemPrompt(
     `- culturalWarnings = array (empty if none).`,
     `- BILINGUAL FIELDS (CRITICAL): For fields with {en, vi} structure (detectedTone, toneSignals, recommendationReason, culturalWarnings.literalMeaning/likelyMeaning/whyRisky), ALWAYS generate BOTH English and Vietnamese versions. Exception: backTranslation and howItLands are SINGLE-LANGUAGE STRINGS in ${reasoningLang} ONLY — do NOT create {en, vi} objects for these.`,
     `- Every translation MUST be grammatically complete. All prepositions, articles, and function words required for natural speech must be present. Double-check each option before returning.`,
+    `- ${srcIsVietnamese ? 'CONFIDENCE SCORES (CRITICAL FOR AMBIGUOUS VERBS): For Vietnamese input, include "confidenceScore" (0-100) for EACH option. Score how confident you are that this option correctly interprets any ambiguous verbs (được, để, tới, có, ghê, hay, mà, vì, etc.). Higher score = more certain this interpretation fits the context. Lower score = multiple plausible interpretations exist. This score determines whether the picker is shown to the user.' : 'CONFIDENCE SCORES: English input should set confidenceScore to null.'}`,
     `- ${srcIsVietnamese ? 'ASPECT PARTICLES: If source contains đang/rồi/sắp/xong/thường/có thể/phải, ensure target English uses correct tense/continuous form (present continuous, past perfect, near future, etc.). Do NOT lose aspect information in translation.' : ''}`,
     `- ${srcIsVietnamese ? '' : 'TENSE MAPPING: If source contains present continuous (is/am/are -ing), perfect (have/has -ed), or future forms (will/about to), map to correct Vietnamese particles (đang, đã...rồi, sắp, vừa...xong, etc.). Do NOT lose temporal information in translation.'}`,
   ];
@@ -886,7 +892,23 @@ export async function handleTranslate(
 ): Promise<Response> {
   const uiLang = payload.uiLang || 'en';
   console.log('[DEBUG] handleTranslate received:', { text: payload.text?.substring(0, 50), direction: payload.direction, payloadUiLang: payload.uiLang, calculatedUiLang: uiLang });
-  const systemPrompt = buildPickerSystemPrompt(payload, true, uiLang);
+
+  // Fix Vietnamese slang before sending to OpenAI
+  if (payload.direction === 'vi-en') {
+    const { rewritten, wasChanged } = rewriteSlang(payload.text);
+    if (wasChanged) {
+      payload.text = rewritten;
+    }
+  }
+
+  // Detect ambiguous Vietnamese verbs and add context to system prompt
+  let systemPrompt = buildPickerSystemPrompt(payload, true, uiLang);
+  if (payload.direction === 'vi-en') {
+    const ambiguityEnhancement = buildAmbiguityPromptEnhancement(payload.text);
+    if (ambiguityEnhancement) {
+      systemPrompt += ambiguityEnhancement;
+    }
+  }
   const stream = !!payload.stream;
 
   const body: OpenAIBody = {
@@ -924,6 +946,13 @@ export async function handleTranslate(
   // Post-process for both directions
   const [src, tgt] = langPair(payload.direction);
   let result = json;
+
+  // Smart ambiguity filtering: only show picker if truly ambiguous
+  if (src === 'Vietnamese') {
+    const { filtered, shouldShowPicker, reason } = filterOptionsByConfidence(result);
+    result = filtered;
+    console.log('[AMBIGUITY FILTER]', { shouldShowPicker, reason, optionCount: result.options.length });
+  }
 
   // Ensure bilingual fields (howItLands, backTranslation) have both en and vi versions
   result = ensureBilingualFields(result);
@@ -974,6 +1003,10 @@ export async function handleVoice(
   env: Env
 ): Promise<Response> {
   const uiLang = payload.uiLang || 'en';
+
+  // Note: Voice transcription happens in OpenAI first, then we'd fix the transcript.
+  // For now, we'll fix it after transcription (in post-processing below).
+
   const systemPrompt = buildPickerSystemPrompt(
     {
       text: '',
@@ -1010,10 +1043,14 @@ export async function handleVoice(
   const [src, tgt] = langPair(payload.direction);
   let result = json;
 
-  // Vietnamese → English: fix prepositions and aspect particles
+  // Vietnamese → English: fix slang, prepositions and aspect particles
   if (src === 'Vietnamese' && json.transcript) {
-    result = fixMissingPrepositions(result, json.transcript);
-    result = fixAspectParticles(result, json.transcript);
+    // Fix slang in transcript before other processing
+    const { rewritten } = rewriteSlang(json.transcript);
+    result.transcript = rewritten;
+
+    result = fixMissingPrepositions(result, rewritten);
+    result = fixAspectParticles(result, rewritten);
   }
 
   // English → Vietnamese: verify tense mapping to particles
