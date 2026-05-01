@@ -151,8 +151,7 @@ function buildPickerSystemPrompt(
   PRESERVE THIS WARMTH IN TRANSLATION: Do NOT sanitize affection away. Options should reflect emotional closeness.
   - Warm option: Keep endearment ("my precious", "you're so cute").
   - Playful option: Match playful/teasing tone.
-  - Casual option: Light affection ("hey cutie").
-  Flag these in culturalWarnings with type="colloquial" to alert both users about emotional warmth.`
+  - Casual option: Light affection ("hey cutie").`
       : '',
     '',
     srcIsVietnamese
