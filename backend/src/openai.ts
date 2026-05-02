@@ -48,6 +48,10 @@ import {
   detectDishNames,
   buildDishNamesPrompt,
 } from './vietnamese-dish-names';
+import {
+  detectEnglishPronouns,
+  buildEnglishPronounsPrompt,
+} from './english-pronouns';
 import { vnRe } from './vn-regex';
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
@@ -1086,6 +1090,21 @@ export async function handleTranslate(
     }
   }
 
+  // English pronoun signals (EN→VI only): "you" plurality and "we"
+  // inclusivity. Tightly gated for 1v1 chat — colloquial "you guys"/"y'all"
+  // are NOT treated as plural here.
+  if (payload.direction === 'en-vi') {
+    const enPronouns = detectEnglishPronouns(payload.text);
+    if (enPronouns.youNumber === 'plural' || enPronouns.weInclusivity !== 'unknown') {
+      console.log('[EN-PRONOUNS]', {
+        you: enPronouns.youNumber,
+        we: enPronouns.weInclusivity,
+        matched: enPronouns.matchedTokens,
+      });
+      systemPrompt += buildEnglishPronounsPrompt(enPronouns);
+    }
+  }
+
   // Idiom hints (BOTH directions): flag known cross-language idioms so the
   // model picks the right reading and surfaces the original meaning to the
   // user via culturalWarnings.
@@ -1291,6 +1310,18 @@ export async function handleQuick(
     if (classifierMatches.length > 0) {
       console.log('[QUICK CLASSIFIERS]', { nouns: classifierMatches.map((m) => m.english) });
       systemPrompt += buildClassifierPrompt(classifierMatches);
+    }
+  }
+
+  // English pronoun signals (EN→VI).
+  if (payload.direction === 'en-vi') {
+    const enPronouns = detectEnglishPronouns(payload.text);
+    if (enPronouns.youNumber === 'plural' || enPronouns.weInclusivity !== 'unknown') {
+      console.log('[QUICK EN-PRONOUNS]', {
+        you: enPronouns.youNumber,
+        we: enPronouns.weInclusivity,
+      });
+      systemPrompt += buildEnglishPronounsPrompt(enPronouns);
     }
   }
 
