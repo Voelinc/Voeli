@@ -9362,9 +9362,16 @@ function replaceSkeletonAt(index, opt, original){
 // wordplay/cultural warnings blocks — without rebuilding the cards that already streamed.
 function finalizeStreamedSheet(result, original){
   const list = document.getElementById('optList');
-  const opts = Array.isArray(result.options) ? result.options : [];
+  // Filter out options with empty/missing translations BEFORE doing anything
+  // else. Without this, blank options manifest as empty card slots that look
+  // like leftover skeletons (ocard without .skel class but with no content).
+  // The streaming onProgress already filters during stream; we filter here to
+  // catch options that ended up empty after final parse.
+  const opts = (Array.isArray(result.options) ? result.options : []).filter(
+    o => o && typeof o.translation === 'string' && o.translation.trim().length > 0
+  );
 
-  // If the stream ended before all options rendered (parse edge case), fill them in.
+  // If the stream ended before all valid options rendered (parse edge case), fill them in.
   for(let i=0; i<opts.length; i++){
     if(!list.querySelector(`.ocard[data-index="${i}"]`)){
       replaceSkeletonAt(i, opts[i], original);
@@ -9377,7 +9384,10 @@ function finalizeStreamedSheet(result, original){
     s.remove();
   });
 
-  // Ensure no extra empty cards remain by removing any cards beyond the option count
+  // Trim any extra non-skel cards beyond the filtered option count. Handles
+  // two cases: (a) streaming filled cards for now-empty options, (b) the
+  // backend's smart-confidence filter dropped options between streaming
+  // and finalize.
   const allCards = list.querySelectorAll('.ocard:not(.skel)');
   for(let i = opts.length; i < allCards.length; i++){
     allCards[i].remove();
