@@ -83,7 +83,28 @@ function findVocativeAddressee(text: string): string | null {
   return last.replace(/\s+ơi\s*$/i, '').trim();
 }
 
-export function detectPronounSignals(text: string): PronounSignals {
+// When the contact's pronoun pair has been established in prior turns, the
+// detector should TRUST that memory instead of falling back to the
+// word-order heuristic. This fixes the inversion bug where "Anh nịnh em thôi"
+// (sent by a partner who calls themselves em) was being read as "I flatter
+// you" when the actual meaning is "you flatter me."
+//
+// In Vietnamese 1v1 chat, the same sentence has opposite meanings depending
+// on who is speaking — "anh" and "em" can be either subject or object. The
+// only reliable disambiguator is knowing the contact's established
+// self-pronoun. Memory at confidence ≥ 0.7 from previous turns wins over
+// any in-text inference.
+export interface ContactPronounMemoryHint {
+  selfPronoun: string | null;
+  otherPronoun: string | null;
+  relationship: string | null;
+  confidence: number;
+}
+
+export function detectPronounSignals(
+  text: string,
+  contactMemory?: ContactPronounMemoryHint
+): PronounSignals {
   const lower = text.toLowerCase();
   const tokens = tokenize(text);
   const counts = countTokens(tokens);
@@ -257,6 +278,44 @@ export function detectPronounSignals(text: string): PronounSignals {
   if (self) matched.push(`self: ${self}`);
   if (other) matched.push(`other: ${other}`);
 
+  // ─── CONTACT MEMORY OVERRIDE ──────────────────────────────────────────
+  // If the frontend passed us a confident pronoun memory from prior turns,
+  // trust it. Word-order heuristics are unreliable in 1v1 chat because
+  // "anh" and "em" can be either grammatical subject or object — only the
+  // established speaker identity disambiguates. Memory at confidence ≥ 0.7
+  // wins over any in-text inference, AND memory injects a signal even when
+  // the source has no pronoun pair to detect (e.g., "Còn anh thì nói..."
+  // has only "anh" — no detector case fires, but the model still needs to
+  // know how to resolve "anh" given the established speaker identity).
+  if (contactMemory && contactMemory.confidence >= 0.7 && contactMemory.selfPronoun) {
+    const memorySelf = contactMemory.selfPronoun;
+    const memoryOther = contactMemory.otherPronoun;
+    const memoryRel = contactMemory.relationship;
+
+    if (self === null) {
+      // Detector found nothing — adopt memory wholesale.
+      matched.push(
+        `[MEMORY ESTABLISHED] no in-text pronoun pair detected; using contact's established pair: self=${memorySelf} other=${memoryOther ?? '∅'}.`
+      );
+      self = memorySelf;
+      other = memoryOther;
+      if (memoryRel) rel = memoryRel as RelationshipKey;
+    } else {
+      const agrees = self === memorySelf && other === memoryOther;
+      if (!agrees) {
+        matched.push(
+          `[MEMORY OVERRIDE] heuristic said self=${self} other=${other ?? '∅'}; contact's established pair is self=${memorySelf} other=${memoryOther ?? '∅'}. Trusting memory.`
+        );
+        self = memorySelf;
+        other = memoryOther;
+        if (memoryRel) rel = memoryRel as RelationshipKey;
+      } else {
+        matched.push('[MEMORY CONFIRMS] heuristic agrees with contact pronoun memory.');
+      }
+    }
+    confidence = Math.max(confidence, 0.9);
+  }
+
   return {
     selfPronoun: self,
     otherPronoun: other,
@@ -318,23 +377,43 @@ export function verifyPronounPair(
 }
 
 // Build a focused system-prompt block with the detected evidence so the model
-// has both the stored relationship and the in-text signals to weigh.
+// has both the stored relationship and the in-text signals to weigh. When
+// memory was used, the framing is more directive (don't second-guess) to
+// prevent the model from defaulting to subject-position-as-speaker on
+// sentences like "Anh nịnh em thôi" where the grammatical subject is
+// actually the listener.
 export function buildPronounContextPrompt(signals: PronounSignals): string {
   if (!signals.inferredRelationship || signals.confidence < 0.5) return '';
-  const lines: string[] = ['', '# DETECTED PRONOUN CONTEXT (from source text):'];
-  if (signals.selfPronoun) lines.push(`- Speaker self-references as: ${signals.selfPronoun}`);
-  if (signals.otherPronoun) lines.push(`- Speaker addresses listener as: ${signals.otherPronoun}`);
+  const memoryUsed = signals.matchedTokens.some(
+    (t) => t.includes('[MEMORY OVERRIDE]') || t.includes('[MEMORY CONFIRMS]')
+  );
+
+  const lines: string[] = ['', '# PRONOUN CONTEXT (this is the speaker’s established pronoun pair):'];
+  if (signals.selfPronoun)
+    lines.push(`- The SPEAKER (sender of this message) self-references as: "${signals.selfPronoun}"`);
+  if (signals.otherPronoun)
+    lines.push(`- The SPEAKER addresses the LISTENER (the user reading the translation) as: "${signals.otherPronoun}"`);
   lines.push(
-    `- Inferred relationship: ${signals.inferredRelationship} (confidence ${(signals.confidence * 100).toFixed(0)}%)`
+    `- Relationship: ${signals.inferredRelationship} (confidence ${(signals.confidence * 100).toFixed(0)}%)`
   );
   if (signals.inferredGender.speaker)
     lines.push(`- Likely speaker gender: ${signals.inferredGender.speaker}`);
   if (signals.inferredGender.other)
     lines.push(`- Likely listener gender: ${signals.inferredGender.other}`);
-  lines.push(`- Formality level: ${signals.formalityLevel}`);
-  lines.push(
-    `Anchor your translation to this evidence. The detected pair takes priority over generic relationship guidance when they conflict.`
-  );
+
+  if (memoryUsed) {
+    lines.push('');
+    lines.push(
+      '⚠ CRITICAL: This pair is locked from prior conversation memory. When you see "anh"/"em"/"chị" in the source, resolve them according to this map — do NOT assume the first pronoun in the sentence is the speaker. In Vietnamese SVO, the first pronoun is just the grammatical subject; the speaker identity is fixed by the established pair above.'
+    );
+    lines.push(
+      `Concrete example: if speaker=${signals.selfPronoun} and listener=${signals.otherPronoun}, then "${signals.otherPronoun} VERB ${signals.selfPronoun}" means "the LISTENER verbs the SPEAKER" (i.e., you, the user, did the verb to the contact). Do NOT translate as "I VERB you" just because the first pronoun comes first.`
+    );
+  } else {
+    lines.push(
+      'Anchor your translation to this evidence. The detected pair takes priority over generic relationship guidance when they conflict.'
+    );
+  }
   return lines.join('\n');
 }
 

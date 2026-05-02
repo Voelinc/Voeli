@@ -975,9 +975,12 @@ export async function handleTranslate(
   // and disagrees with the stored relationship, override silently for this
   // translation only (don't mutate the user's contact). If 0.5–0.8, append
   // evidence to the system prompt so the model has both signals to weigh.
+  // When the frontend supplied contactPronounMemory from prior turns, the
+  // detector trusts that as canonical instead of running the word-order
+  // heuristic — see vietnamese-pronoun-resolver.ts for why.
   let pronounSignals: ReturnType<typeof detectPronounSignals> | null = null;
   if (payload.direction === 'vi-en') {
-    pronounSignals = detectPronounSignals(payload.text);
+    pronounSignals = detectPronounSignals(payload.text, payload.contactPronounMemory);
     if (
       pronounSignals.inferredRelationship &&
       pronounSignals.confidence >= 0.8 &&
@@ -1256,10 +1259,12 @@ export async function handleQuick(
     if (wasChanged) payload.text = rewritten;
   }
 
-  // Pronoun signals (VI→EN). Silent override at confidence ≥ 0.8.
+  // Pronoun signals (VI→EN). Silent override at confidence ≥ 0.8. When the
+  // frontend supplied contactPronounMemory, the detector uses it as
+  // canonical override instead of running the word-order heuristic.
   let pronounSignals: ReturnType<typeof detectPronounSignals> | null = null;
   if (payload.direction === 'vi-en') {
-    pronounSignals = detectPronounSignals(payload.text);
+    pronounSignals = detectPronounSignals(payload.text, payload.contactPronounMemory);
     if (
       pronounSignals.inferredRelationship &&
       pronounSignals.confidence >= 0.8 &&

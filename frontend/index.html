@@ -2801,6 +2801,21 @@ function savePronounMemory(contactId, signals){
   }catch(_){}
 }
 
+// Returns the raw pronoun memory blob for a contact, or null if absent or
+// stale. Sent verbatim to the backend on every translate request so the
+// pronoun detector can override its word-order heuristic with the
+// established speaker identity.
+function getContactPronounMemory(contactId){
+  if(!contactId) return null;
+  const profile = loadContactProfile(contactId);
+  if(!profile || !profile.pronounMemory) return null;
+  const m = profile.pronounMemory;
+  if(!m.selfPronoun && !m.otherPronoun) return null;
+  // Decay: ignore memory older than 30 days.
+  if(m.capturedAt && Date.now() - m.capturedAt > 30*24*60*60*1000) return null;
+  return m;
+}
+
 function getPronounMemoryNote(contactId, direction){
   if(!contactId) return '';
   const profile = loadContactProfile(contactId);
@@ -10268,6 +10283,10 @@ async function callOpenAI(payload) {
       promptExtensions,
       culturalConceptCounts: getCulturalConceptCounts(),
       dishCounts: getDishCounts(),
+      contactPronounMemory: (() => {
+        const c = activeCont();
+        return c && c.id ? getContactPronounMemory(c.id) : null;
+      })(),
       stream: streaming,
     });
 
@@ -10417,6 +10436,10 @@ async function callOpenAIQuick({text, direction}) {
     promptExtensions,
     culturalConceptCounts: getCulturalConceptCounts(),
     dishCounts: getDishCounts(),
+    contactPronounMemory: (() => {
+      const c = activeCont();
+      return c && c.id ? getContactPronounMemory(c.id) : null;
+    })(),
   });
   const data = await res.json();
   const content = data && data.choices && data.choices[0] && data.choices[0].message

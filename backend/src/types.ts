@@ -38,7 +38,24 @@ export interface TranslatePayload {
   // culturalConceptCounts. Iconic dishes (phở, bánh mì) have a low threshold;
   // regional dishes (mì quảng, cao lầu) have a higher threshold.
   dishCounts?: Record<string, number>;
+  // Contact-level pronoun memory captured from prior VI→EN responses. When
+  // set, the pronoun detector trusts this as canonical instead of running
+  // the word-order heuristic — fixes the case where "Anh nịnh em thôi"
+  // gets inverted to "I flatter you" when the contact actually means
+  // "you flatter me." selfPronoun is what the contact uses for themselves;
+  // otherPronoun is what they call the user.
+  contactPronounMemory?: ContactPronounMemory;
   stream?: boolean;
+}
+
+export interface ContactPronounMemory {
+  selfPronoun: string | null;
+  otherPronoun: string | null;
+  relationship: string | null;
+  formality?: string | null;
+  gender?: { speaker?: string | null; other?: string | null } | null;
+  confidence: number;
+  capturedAt?: number;
 }
 
 export interface QuickTranslatePayload {
@@ -55,6 +72,7 @@ export interface QuickTranslatePayload {
   promptExtensions?: string;
   culturalConceptCounts?: Record<string, number>;
   dishCounts?: Record<string, number>;
+  contactPronounMemory?: ContactPronounMemory;
 }
 
 export interface VoiceTranslatePayload {
