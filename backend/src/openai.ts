@@ -60,6 +60,10 @@ import {
   detectEnglishSofteners,
   buildEnglishSoftenersPrompt,
 } from './english-softeners';
+import {
+  detectEnglishFoodItems,
+  buildEnglishFoodItemsPrompt,
+} from './english-food-items';
 import { vnRe } from './vn-regex';
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
@@ -1137,6 +1141,16 @@ export async function handleTranslate(
     }
   }
 
+  // English food / cultural items (EN→VI only). Reuses dishCounts storage
+  // and dish_name warning type — frontend chip rendering already exists.
+  if (payload.direction === 'en-vi') {
+    const enFoodMatches = detectEnglishFoodItems(payload.text, payload.dishCounts);
+    if (enFoodMatches.length > 0) {
+      console.log('[EN-FOOD-ITEMS]', { items: enFoodMatches.map((m) => m.term) });
+      systemPrompt += buildEnglishFoodItemsPrompt(enFoodMatches);
+    }
+  }
+
   // Idiom hints (BOTH directions): flag known cross-language idioms so the
   // model picks the right reading and surfaces the original meaning to the
   // user via culturalWarnings.
@@ -1379,6 +1393,15 @@ export async function handleQuick(
         items: softenerMatches.map((m) => `${m.category}:${m.display}`),
       });
       systemPrompt += buildEnglishSoftenersPrompt(softenerMatches);
+    }
+  }
+
+  // English food / cultural items (EN→VI).
+  if (payload.direction === 'en-vi') {
+    const enFoodMatches = detectEnglishFoodItems(payload.text, payload.dishCounts);
+    if (enFoodMatches.length > 0) {
+      console.log('[QUICK EN-FOOD-ITEMS]', { items: enFoodMatches.map((m) => m.term) });
+      systemPrompt += buildEnglishFoodItemsPrompt(enFoodMatches);
     }
   }
 
