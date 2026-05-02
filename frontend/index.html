@@ -3925,6 +3925,28 @@ function isMixedLanguage(text){
   return hasEN;
 }
 
+// Returns true if the input is essentially only emoji + whitespace (with at
+// most minor accompanying punctuation like ! or .). Emoji-only messages
+// don't need translation — passing them through the API hallucinates
+// semantic content (e.g., "❤️" → "Yêu em ❤️" / "I love you ❤️"). The
+// fix bypasses both the picker and the API call entirely; sendAsIs
+// preserves the emoji and ships it.
+function isEmojiOnly(text){
+  if(!text) return false;
+  const stripped = String(text).trim();
+  if(!stripped) return false;
+  // Must actually contain at least one pictographic emoji — bare punctuation
+  // like "..." or "!" alone shouldn't trigger this path.
+  if(!/[\p{Extended_Pictographic}]/u.test(stripped)) return false;
+  // Strip emoji, ZWJ, variation selectors, skin tones, whitespace, and a
+  // few common punctuation marks that often accompany emoji bursts.
+  const remaining = stripped.replace(
+    /[\p{Extended_Pictographic}\p{Emoji_Component}‍️\u{1F3FB}-\u{1F3FF}\s.,!?~]/gu,
+    ''
+  );
+  return remaining.length === 0;
+}
+
 // Locale-aware formatters. We store only the raw timestamp (ts) on each message
 // and format at render time, so dates/times re-localize when the user toggles
 // language without touching the stored data.
@@ -8825,6 +8847,10 @@ async function onSendText(ev){
   const isDeveloperPhrase = text.toLowerCase().includes('donnywillisvoeli');
   let forcePicker = ev && ev.shiftKey || isDeveloperPhrase;
   if(isDeveloperPhrase) console.log('[onSendText] Developer phrase detected, forcing picker');
+
+  // Emoji-only messages → send as-is, translation hallucinates semantic content
+  // (e.g., "❤️" → "Yêu em ❤️"). Bypass picker AND API call entirely.
+  if(!forcePicker && isEmojiOnly(text)){ sendAsIs(text); return; }
 
   // Mixed Viet-English code-switching → send as-is, translation would mangle it
   if(!forcePicker && isMixedLanguage(text)){ sendAsIs(text); return; }
