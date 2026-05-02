@@ -46,6 +46,15 @@ export interface QuickTranslatePayload {
   direction: 'en-vi' | 'vi-en';
   relationship: 'formal' | 'elder' | 'senior' | 'friend' | 'partner' | 'junior';
   slangHint?: boolean;
+  // Optional fields that mirror TranslatePayload so the same detector chain
+  // (pronoun, topic-comment, register, zero-subject, cultural concepts,
+  // segmentation, classifiers, idioms, dish names) can run on the fast
+  // compose path. The quick path uses these to inject prompt nudges and
+  // populate culturalWarnings in the response.
+  uiLang?: 'en' | 'vi';
+  promptExtensions?: string;
+  culturalConceptCounts?: Record<string, number>;
+  dishCounts?: Record<string, number>;
 }
 
 export interface VoiceTranslatePayload {

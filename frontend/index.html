@@ -10364,6 +10364,13 @@ async function callOpenAI(payload) {
 // callOpenAIQuick — fast single-translation path for
 // low-emotion messages (no 4-option picker). Uses gpt-4o-mini
 // with a short prompt so it feels like a normal text send.
+//
+// As of the detector-suite work, this path runs the SAME detector chain
+// as the picker (pronoun, topic-comment, register, zero-subject, cultural
+// concepts, segmentation, classifiers, idioms, dish names). Translation
+// quality matches; the only difference vs. the picker path is that no
+// chip UI is rendered inline. Cultural-concept and dish-name learning
+// counts still increment, so the learn-once behavior works on both paths.
 // ═══════════════════════════════════════════════════════
 async function callOpenAIQuick({text, direction}) {
   if(demoMode){
@@ -10376,17 +10383,68 @@ async function callOpenAIQuick({text, direction}) {
   // will offer the alternatives separately").
   const slangHit = detectSlang(String(text||''), direction).length > 0;
 
+  // Mirror the picker path's promptExtensions so the same context (contact
+  // profile, conversation pattern, slang notes, pronoun memory, etc.) is
+  // available on the quick path.
+  let promptExtensions = '';
+  try{
+    const c = activeCont();
+    if(c && c.msgs){
+      promptExtensions += getContactProfileNote(c.id);
+      promptExtensions += getConversationContext(c.msgs);
+      promptExtensions += getToneConflictNote(c.id, c.msgs.slice(-4));
+      promptExtensions += getPronounMemoryNote(c.id, direction);
+    }
+    if(text){
+      const slangMatches = detectSlang(String(text), direction);
+      const slangNote = slangContextNote(slangMatches);
+      if(slangNote) promptExtensions += slangNote;
+      const colloquialMatches = detectColloquialTerms(String(text), direction);
+      const colloquialNote = colloquialContextNote(colloquialMatches);
+      if(colloquialNote) promptExtensions += colloquialNote;
+    }
+    promptExtensions += getUserPreferenceNote(relKey, direction);
+    promptExtensions += getUserFeedbackNote(relKey, direction);
+    promptExtensions += getPatternCorrectionNote(relKey, direction);
+  }catch(_){}
+
   const res = await workerRequest('/api/translate-quick', {
     text: String(text||''),
     direction,
     relationship: relKey,
     slangHint: slangHit,
+    uiLang,
+    promptExtensions,
+    culturalConceptCounts: getCulturalConceptCounts(),
+    dishCounts: getDishCounts(),
   });
   const data = await res.json();
   const content = data && data.choices && data.choices[0] && data.choices[0].message
     ? data.choices[0].message.content : '';
   if(!content) throw new Error('Empty response from server.');
   const parsed = parseAIJson(content);
+
+  // Persist pronoun signals (VI→EN) to the contact profile so EN→VI replies
+  // can lock the established pronoun pair. _pronounSignals is at wrapper
+  // level (sibling to data.choices), not inside parsed content.
+  if(direction === 'vi-en' && data && data._pronounSignals){
+    try{
+      const c = activeCont();
+      if(c && c.id) savePronounMemory(c.id, data._pronounSignals);
+    }catch(_){}
+  }
+
+  // Increment exposure counts for any cultural-concept or dish-name warnings
+  // the model populated, so learn-once decay works on the quick path too.
+  if(direction === 'vi-en' && parsed && Array.isArray(parsed.culturalWarnings)){
+    parsed.culturalWarnings.forEach(w => {
+      if(!w) return;
+      const tk = (w.type||'').toLowerCase();
+      if(tk === 'cultural_concept' && w.term) recordCulturalConceptSeen(w.term, 1);
+      if(tk === 'dish_name' && w.term) recordDishSeen(w.term, 1);
+    });
+  }
+
   return parsed.translation || '';
 }
 

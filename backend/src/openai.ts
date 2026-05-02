@@ -321,7 +321,8 @@ function buildQuickSystemPrompt(payload: QuickTranslatePayload): string {
     `Preserve the sender's register and any emoji they used. Do NOT add punctuation or emoji the sender did not use — if the source had no emoji, the translation must have no emoji.`,
     `If ${tgt} is Vietnamese, choose the correct pronoun pair, softeners, and any appropriate sentence-final particle based on the relationship. No explanations, no options.`,
     '',
-    `Return STRICT JSON: { "translation": "<${tgt} text>" }. No markdown, no commentary.`,
+    `Return STRICT JSON: { "translation": "<${tgt} text>", "culturalWarnings": [optional array — include only when a detector explicitly asks you to populate it; omit or use [] otherwise] }. No markdown, no commentary.`,
+    `Each culturalWarnings entry: { "type": "idiom"|"slang"|"cultural_concept"|"dish_name"|"face_threat"|"kinship"|"other", "term": "<source phrase>", "literalMeaning": "<short explanation>", "suggestion": "<the rendering you chose>" }.`,
   ].join('\n');
   return payload.slangHint
     ? `${base}\n\nNote: slang detected — translate the most likely intended meaning naturally. Full options will be shown separately.`
@@ -1172,23 +1173,161 @@ export async function handleTranslate(
 }
 
 // QUICK PATH — single translation, no picker.
+//
+// This is the path the frontend uses for inline message-compose translation
+// (the live chat thread). It runs the SAME detector chain as the picker
+// path, with the prompts appended to the quick system prompt. The response
+// shape stays compatible with the original `{ translation }` shape but adds
+// optional `culturalWarnings` (when detectors fire) and `_pronounSignals`
+// (on VI→EN, for frontend pronoun-memory persistence).
 export async function handleQuick(
   payload: QuickTranslatePayload,
   env: Env
 ): Promise<Response> {
+  // Slang fix is direction-aware and modifies the source text in-place
+  // before downstream detectors see it.
+  if (payload.direction === 'vi-en') {
+    const { rewritten, wasChanged } = rewriteSlang(payload.text);
+    if (wasChanged) payload.text = rewritten;
+  }
+
+  // Pronoun signals (VI→EN). Silent override at confidence ≥ 0.8.
+  let pronounSignals: ReturnType<typeof detectPronounSignals> | null = null;
+  if (payload.direction === 'vi-en') {
+    pronounSignals = detectPronounSignals(payload.text);
+    if (
+      pronounSignals.inferredRelationship &&
+      pronounSignals.confidence >= 0.8 &&
+      pronounSignals.inferredRelationship !== payload.relationship
+    ) {
+      console.log('[QUICK PRONOUN OVERRIDE]', {
+        stored: payload.relationship,
+        inferred: pronounSignals.inferredRelationship,
+        confidence: pronounSignals.confidence,
+      });
+      payload.relationship = pronounSignals.inferredRelationship;
+    }
+  }
+
+  let systemPrompt = buildQuickSystemPrompt(payload);
+
+  // Ambiguity hints (VI→EN).
+  if (payload.direction === 'vi-en') {
+    const ambiguityEnhancement = buildAmbiguityPromptEnhancement(payload.text);
+    if (ambiguityEnhancement) systemPrompt += ambiguityEnhancement;
+  }
+
+  // Pronoun evidence block (when we have any detected signal).
+  if (pronounSignals && pronounSignals.confidence >= 0.5) {
+    systemPrompt += buildPronounContextPrompt(pronounSignals);
+  }
+
+  // Topic-comment (VI→EN).
+  let topicCommentDetected = false;
+  if (payload.direction === 'vi-en') {
+    const topicMatch = detectTopicComment(payload.text);
+    if (topicMatch.detected) {
+      topicCommentDetected = true;
+      console.log('[QUICK TOPIC-COMMENT]', { topic: topicMatch.topic });
+      systemPrompt += buildTopicCommentPrompt(topicMatch);
+    }
+  }
+
+  // Zero-subject (VI→EN).
+  if (payload.direction === 'vi-en') {
+    const subjectMatch = detectImpliedSubject(payload.text, {
+      topicCommentDetected,
+      pronounSignals,
+    });
+    if (subjectMatch.detected) {
+      console.log('[QUICK ZERO-SUBJECT]', { role: subjectMatch.role });
+      systemPrompt += buildImpliedSubjectPrompt(subjectMatch, pronounSignals);
+    }
+  }
+
+  // Register signal (VI→EN) and relationship-driven register guidance (EN→VI).
+  if (payload.direction === 'vi-en') {
+    const registerSignal = detectRegisterSignal(payload.text);
+    if (registerSignal.level !== 'unmarked') {
+      console.log('[QUICK REGISTER]', { level: registerSignal.level });
+      systemPrompt += buildRegisterSignalPrompt(registerSignal);
+    }
+  } else if (payload.direction === 'en-vi') {
+    systemPrompt += buildRegisterPromptForRelationship(payload.relationship, payload.direction);
+  }
+
+  // Cultural concepts (VI→EN, with learn-once suppression).
+  if (payload.direction === 'vi-en') {
+    const culturalMatches = detectCulturalConcepts(payload.text, payload.culturalConceptCounts);
+    if (culturalMatches.length > 0) {
+      console.log('[QUICK CULTURAL-CONCEPTS]', { terms: culturalMatches.map((m) => m.term) });
+      systemPrompt += buildCulturalConceptsPrompt(culturalMatches);
+    }
+  }
+
+  // Segmentation (VI→EN).
+  if (payload.direction === 'vi-en') {
+    const segmentation = detectSegmentationIssues(payload.text);
+    if (segmentation.ambiguous.length > 0 || segmentation.reduplicatives.length > 0) {
+      console.log('[QUICK SEGMENTATION]', {
+        ambiguous: segmentation.ambiguous.map((a) => a.phrase),
+      });
+      systemPrompt += buildSegmentationPrompt(segmentation);
+    }
+  }
+
+  // Dish names (VI→EN, with learn-once suppression).
+  if (payload.direction === 'vi-en') {
+    const dishMatches = detectDishNames(payload.text, payload.dishCounts);
+    if (dishMatches.length > 0) {
+      console.log('[QUICK DISH-NAMES]', { dishes: dishMatches.map((m) => m.name) });
+      systemPrompt += buildDishNamesPrompt(dishMatches);
+    }
+  }
+
+  // Classifier guidance (EN→VI).
+  if (payload.direction === 'en-vi') {
+    const classifierMatches = detectNounsNeedingClassifier(payload.text);
+    if (classifierMatches.length > 0) {
+      console.log('[QUICK CLASSIFIERS]', { nouns: classifierMatches.map((m) => m.english) });
+      systemPrompt += buildClassifierPrompt(classifierMatches);
+    }
+  }
+
+  // Idioms (both directions).
+  const idiomMatches = detectIdioms(payload.text, payload.direction);
+  if (idiomMatches.length > 0) {
+    console.log('[QUICK IDIOMS]', {
+      direction: payload.direction,
+      phrases: idiomMatches.map((m) => m.phrase),
+    });
+    systemPrompt += buildIdiomPrompt(idiomMatches);
+  }
+
+  // Optional client-supplied prompt extensions (slang notes, contact profile,
+  // pronoun memory) — same shape as the picker path.
+  if (payload.promptExtensions) systemPrompt += payload.promptExtensions;
+
   const body: OpenAIBody = {
     model: 'gpt-4o-mini',
     response_format: { type: 'json_object' },
     temperature: 0.5,
     messages: [
-      { role: 'system', content: buildQuickSystemPrompt(payload) },
+      { role: 'system', content: systemPrompt },
       { role: 'user', content: payload.text },
     ],
   };
   const upstream = await callOpenAI(body, env.OPENAI_API_KEY);
   if (!upstream.ok) return forwardError(upstream);
-  const json = await upstream.json();
-  return Response.json(json);
+  const upstreamJson = (await upstream.json()) as Record<string, unknown>;
+
+  // Surface pronoun signals on VI→EN responses so the frontend can persist
+  // them on the contact profile (parallel to the picker path).
+  if (pronounSignals && pronounSignals.confidence >= 0.5 && payload.direction === 'vi-en') {
+    upstreamJson._pronounSignals = pronounSignals;
+  }
+
+  return Response.json(upstreamJson);
 }
 
 // VOICE PATH — base64 WAV in, full picker JSON out.

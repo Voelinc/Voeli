@@ -8,6 +8,8 @@
     "start": "serve -s ../frontend -l 3000"
   },
   "dependencies": {
+    "@sentry/cloudflare": "^10.51.0",
+    "jose": "^6.2.3",
     "serve": "^14.2.0"
   }
 }
