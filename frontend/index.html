@@ -1178,13 +1178,13 @@ body.is-offline::before{
       <button class="sb-tab active" id="tabAll">All</button>
       <button class="sb-tab" id="tabUnread">Unread</button>
       <button class="sb-tab" id="tabFav">★</button>
-      <button class="fab" onclick="openModal()" id="fabBtn" data-tutorial="add-contact-button" title="New contact" aria-label="New contact">
+      <button class="fab" onclick="openModal()" id="fabBtn" title="New contact" aria-label="New contact">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
       </button>
     </div>
-    <div class="sb-list" id="cList" data-tutorial="contacts-list"></div>
+    <div class="sb-list" id="cList"></div>
     <!-- Fix 3: Dictionary panel -->
     <div id="dictionaryPanel" style="display:none;overflow-y:auto;padding:16px;flex:1;">
       <div style="margin-bottom:16px;">
@@ -1311,7 +1311,7 @@ body.is-offline::before{
             </svg>
           </button>
           <div class="c-input-wrap">
-            <textarea id="txtInput" data-tutorial="message-input" rows="1" placeholder="Type a message…"></textarea>
+            <textarea id="txtInput" rows="1" placeholder="Type a message…"></textarea>
             <span id="langBadge" class="lang-badge">EN→VI</span>
           </div>
           <!-- Mic column: button + tiny caption underneath so the capability is obvious -->
@@ -1336,7 +1336,7 @@ body.is-offline::before{
                   <span aria-hidden="true">⚡</span> <span id="directLbl">Direct</span>
                 </button>
               </div>
-              <button id="sendBtn" class="cbtn cbtn-send" data-tutorial="send-button" title="Send (Shift+Enter forces the picker)">
+              <button id="sendBtn" class="cbtn cbtn-send" title="Send (Shift+Enter forces the picker)">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
               </button>
             </div>
@@ -1346,7 +1346,7 @@ body.is-offline::before{
       </div>
 
       <!-- Options sheet overlay -->
-      <div class="optoverlay" id="optOverlay" data-tutorial="options-overlay">
+      <div class="optoverlay" id="optOverlay">
         <div class="optsheet">
           <div class="shdl"></div>
           <div class="shsaid" id="shSaid"></div>
@@ -1384,7 +1384,7 @@ body.is-offline::before{
       <!-- User Profile Card -->
       <div style="background:var(--panel);border-radius:16px;padding:20px;text-align:center;margin-bottom:32px;border:1px solid var(--line);">
         <div id="profileAvatar" style="width:80px;height:80px;border-radius:50%;background:var(--blue);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:40px;color:white;font-weight:600;"></div>
-        <h3 id="profileName" data-tutorial="profile-name" style="font-size:22px;font-weight:600;margin-bottom:6px;margin-top:0;cursor:pointer;padding:4px 8px;border-radius:6px;transition:background 0.2s;"
+        <h3 id="profileName" style="font-size:22px;font-weight:600;margin-bottom:6px;margin-top:0;cursor:pointer;padding:4px 8px;border-radius:6px;transition:background 0.2s;"
             onmouseover="this.style.background='var(--panel-2)'" onmouseout="this.style.background='transparent'"
             onclick="editProfileName(this)">Your Name</h3>
         <p id="profileEmail" style="font-size:14px;color:var(--muted);margin:0;">email@example.com</p>
@@ -1415,7 +1415,7 @@ body.is-offline::before{
             <p style="font-size:13px;color:var(--muted);margin:12px 0 0 0;line-height:1.6;text-align:left;">Grammar check monitors your messages in real time as you type, offering instant suggestions to improve clarity, correctness, and professionalism. It catches spelling mistakes, grammatical errors, punctuation issues, and awkward phrasing to help you communicate more effectively.</p>
           </details>
           <label class="sett-toggle" style="margin:0;">
-            <input type="checkbox" id="grammarToggleProfile" data-tutorial="grammar-toggle" onchange="onGrammarToggleChange(this.checked)">
+            <input type="checkbox" id="grammarToggleProfile" onchange="onGrammarToggleChange(this.checked)">
             <span class="sett-toggle-track"></span>
           </label>
         </div>
@@ -1428,7 +1428,7 @@ body.is-offline::before{
             <p style="font-size:13px;color:var(--muted);margin:12px 0 0 0;line-height:1.6;text-align:left;">Communication insights help you understand your own communication style and how you naturally express yourself. We analyze patterns in how you communicate, like your message length, frequency, and tone preferences. We don't save your messages, read their content, or know what you're talking about. Think of it like analyzing the shape of your handwriting, not the words you wrote.</p>
           </details>
           <label class="sett-toggle" style="margin:0;">
-            <input type="checkbox" id="styleToggleProfile" data-tutorial="insights-toggle" onchange="onStyleToggleChange(this.checked)">
+            <input type="checkbox" id="styleToggleProfile" onchange="onStyleToggleChange(this.checked)">
             <span class="sett-toggle-track"></span>
           </label>
         </div>
@@ -1440,7 +1440,7 @@ body.is-offline::before{
 
   <!-- BOTTOM NAVIGATION -->
   <div id="bottomNav" style="display:flex;background:var(--panel);height:calc(60px + env(safe-area-inset-bottom));width:100%;align-items:center;justify-content:space-around;box-sizing:border-box;padding:0 calc(18px + env(safe-area-inset-left)) env(safe-area-inset-bottom) calc(18px + env(safe-area-inset-right));border-top:1px solid var(--line);">
-    <button id="navContacts" class="nav-btn" data-tutorial="contacts-tab" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:0.6;transition:all 0.2s;padding:8px 0;font-size:11px;" onclick="switchTab('contacts')">
+    <button id="navContacts" class="nav-btn" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:0.6;transition:all 0.2s;padding:8px 0;font-size:11px;" onclick="switchTab('contacts')">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="11"/>
         <circle cx="7.5" cy="9" r="2"/>
@@ -1450,13 +1450,13 @@ body.is-offline::before{
       </svg>
       <span>Contacts</span>
     </button>
-    <button id="navMessages" class="nav-btn active" data-tutorial="messages-tab" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:1;transition:all 0.2s;padding:8px 0;font-size:11px;color:var(--blue);" onclick="switchTab('messages')">
+    <button id="navMessages" class="nav-btn active" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:1;transition:all 0.2s;padding:8px 0;font-size:11px;color:var(--blue);" onclick="switchTab('messages')">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
       <span>Messages</span>
     </button>
-    <button id="navProfile" class="nav-btn" data-tutorial="profile-tab" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:0.6;transition:all 0.2s;padding:8px 0;font-size:11px;" onclick="switchTab('profile')">
+    <button id="navProfile" class="nav-btn" style="flex:1;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:0.6;transition:all 0.2s;padding:8px 0;font-size:11px;" onclick="switchTab('profile')">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="11"/>
         <circle cx="12" cy="8" r="2.5"/>
@@ -1468,20 +1468,20 @@ body.is-offline::before{
 </div>
 
 <!-- MODAL (new / edit contact) -->
-<div class="modalbg" id="modalBg" data-tutorial="add-contact-modal">
+<div class="modalbg" id="modalBg">
   <div class="modalbox">
     <div class="mhdr">
       <h3 id="modalTitle">New Contact</h3>
       <button class="mclose" onclick="closeModal()">✕</button>
     </div>
     <label class="flabel">Name</label>
-    <input type="text" id="mcName" class="finput" data-tutorial="name-field" placeholder="Their name or nickname" autocomplete="off">
+    <input type="text" id="mcName" class="finput" placeholder="Their name or nickname" autocomplete="off">
     <label class="flabel">Mobile number (optional)</label>
     <input type="tel" id="mcPhone" class="finput" placeholder="+1 555 000 0000" autocomplete="off">
     <label class="flabel">Email <span style="color:red;">*</span></label>
-    <input type="email" id="mcEmail" class="finput" data-tutorial="email-field" placeholder="their@email.com" autocomplete="off" required>
+    <input type="email" id="mcEmail" class="finput" placeholder="their@email.com" autocomplete="off" required>
     <label class="flabel">Relationship</label>
-    <div class="relgrid" id="relGrid" data-tutorial="relationship-selector"></div>
+    <div class="relgrid" id="relGrid"></div>
     <div id="cActionGrid" style="display:none;">
       <label class="flabel" style="margin-bottom:8px;">Actions</label>
       <div class="cact-grid">
@@ -2144,7 +2144,7 @@ function buildLearnChip(match, phraseLanguage){
     const meaningText = isVI && match.viMeaning ? match.viMeaning : match.meaning;
     const meaning = `${abbrevLabel} = ${match.full} → ${meaningText}`;
 
-    return `<div class="learn-chip" data-tutorial="learn-chip">
+    return `<div class="learn-chip">
       <span class="lc-icon">💬</span>
       <span class="lc-new-label">${newPhraseLbl}</span>
       <span class="lc-phrase">"${esc(match.phrase)}"</span>
@@ -2169,7 +2169,7 @@ function buildLearnChip(match, phraseLanguage){
   const dismissLbl = isVI ? 'Ẩn' : '✕';
   const phraseKey = getPhraseKey(match.phrase);
   const contactId = activeCont() ? activeCont().id : 'global';
-  return `<div class="learn-chip" data-tutorial="learn-chip">
+  return `<div class="learn-chip">
     <span class="lc-icon">💬</span>
     <span class="lc-new-label">${newPhraseLbl}</span>
     <span class="lc-phrase">"${esc(match.phrase)}"</span>
@@ -3801,10 +3801,6 @@ async function launchApp(){
   setInterval(() => {
     contacts.forEach(c => cleanOldPhrases(c, 30 * 60 * 1000));
   }, 10 * 60 * 1000);
-
-  // Tutorial is now optional - users can start it from Settings
-  // Initialize spotlightOverlay in case user wants to start tutorial
-  initSpotlightOverlay();
 }
 
 function syncProfileToggles(){
@@ -4385,8 +4381,6 @@ function initApp(){
         cred = await fbAuth.signInWithEmailAndPassword(email, pwd);
       } else {
         // New user signup — fresh account with no contacts
-        // Users can start the tutorial from Settings if they want, which will load demo contacts
-
         cred = await fbAuth.createUserWithEmailAndPassword(email, pwd);
         if(cred && cred.user && cred.user.uid && signupBirthday){
           try{ localStorage.setItem('user_birthday_'+cred.user.uid, signupBirthday); }catch(_){}
@@ -5521,15 +5515,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 // Bottom navigation tab switching
 function switchTab(tab){
-  // Tutorial access control - block messages tab if tutorial is active
-  if (tutorialManager.isActive && tab === 'messages') {
-    const currentStep = tutorialManager.getCurrentStep();
-    const messageSteps = ['messages_tab', 'type_message', 'picker_appears', 'option_card', 'best_option', 'pick_tone', 'message_sent', 'receiver_learns', 'learn_chip_example', 'completion'];
-    if (!messageSteps.includes(currentStep?.id)) {
-      return; // Don't switch to messages yet
-    }
-  }
-
   currentTab = tab;
   console.log('switchTab called with:', tab);
   // Find elements by class instead of querySelector - more reliable
@@ -6660,14 +6645,6 @@ function openChat(id){
   activeId=id;
   const c=activeCont(); if(!c) return;
 
-  // Tutorial hook - user opened a chat
-  if(tutorialManager.isActive) {
-    const currentStepId = tutorialManager.getCurrentStep()?.id;
-    if(currentStepId === 'messages_tab' || currentStepId === 'open_contact_chat') {
-      setTimeout(() => tutorialManager.advance(), 300);
-    }
-  }
-
   c.unread=0; // clear unread when chat is opened
   currentMessagesView = 'chat'; // ensure we're in chat view, not list view
   document.getElementById('chatEmpty').style.display='none';
@@ -7539,7 +7516,7 @@ function renderMsgs(){
       h+=`<div class="mrow ${side}">${reactHtml}<div class="bubble ${side}${tailCls} gif-bubble"${editAttr}><img class="msg-gif" src="${esc(m.gifUrl)}" alt="GIF" loading="lazy"/>${metaRow}</div></div>`;
       return h;
     }
-    h+=`<div class="mrow ${side}">${reactHtml}<div class="bubble ${side}${tailCls}${translatingCls}" data-tutorial="message-bubble"${editAttr}>${replyRefHtml}${esc(m.translated||m.text)}${origRow}${altsPanel}${metaRow}</div>${changeChip}</div>`;
+    h+=`<div class="mrow ${side}">${reactHtml}<div class="bubble ${side}${tailCls}${translatingCls}"${editAttr}>${replyRefHtml}${esc(m.translated||m.text)}${origRow}${altsPanel}${metaRow}</div>${changeChip}</div>`;
     // Learn chip — receiver only, fires when the other person's original text contains slang
     // Phase 3 fix: only show if there's a generation/language mismatch (avoid condescending chips)
     // Developer exception: ALWAYS show for "donnywillisvoeli" test phrase - hard-coded direct trigger
@@ -8675,10 +8652,8 @@ async function onSendText(ev){
   if(!text||!activeCont()) return;
   hideGrammarChip(); clearTimeout(_grammarTimer); _grammarDismissedFor = null;
   const isDeveloperPhrase = text.toLowerCase().includes('donnywillisvoeli');
-  const isTutorialTyping = tutorialManager?.isActive && tutorialManager?.getCurrentStep()?.id === 'type_message';
-  let forcePicker = ev && ev.shiftKey || isDeveloperPhrase || isTutorialTyping;
+  let forcePicker = ev && ev.shiftKey || isDeveloperPhrase;
   if(isDeveloperPhrase) console.log('[onSendText] Developer phrase detected, forcing picker');
-  if(isTutorialTyping) console.log('[onSendText] Tutorial type_message step - forcing picker to show tone options');
 
   // Mixed Viet-English code-switching → send as-is, translation would mangle it
   if(!forcePicker && isMixedLanguage(text)){ sendAsIs(text); return; }
@@ -9041,7 +9016,6 @@ function buildOptionCard(opt, index, isBest, original){
   const ek = (opt.emotion||'').toLowerCase();
   card.dataset.index = String(index);
   card.dataset.emotion = ek;
-  card.dataset.tutorial = isBest ? 'option-card-recommended' : 'option-card';
   const isVI = appDir === 'vi-en';
   const emotionLabel = emotionLabels[ek];
   const el = emotionLabel ? emotionLabel[isVI ? 'vi' : 'en'] : 'Option ' + (index+1);
@@ -9612,10 +9586,6 @@ function showSkeletonSheet(original){
       <span class="skline" style="width:55%"></span>`;
     list.appendChild(card);
   }
-  // Tutorial hook - picker appeared
-  if(tutorialManager.isActive && tutorialManager.getCurrentStep()?.id === 'type_message') {
-    setTimeout(() => tutorialManager.advance(), 300);
-  }
   document.getElementById('optOverlay').style.display='flex';
 }
 
@@ -9916,19 +9886,7 @@ function pickOpt(opt, emoKey, original){
   console.log('[pickOpt] DEBUG: activeId =', activeId, 'contacts.length =', contacts.length);
   if(!c) {
     console.error('[pickOpt] CRITICAL: No active contact! activeId:', activeId, 'contacts:', contacts.map(x => x.id));
-    // Force ensure we have the right contact for tutorial
-    if(contacts.length > 0) {
-      const demoContact = contacts.find(x => x.id === 'demo_linh' || x.id === 'demo_ba');
-      if(demoContact) {
-        console.log('[pickOpt] RECOVERY: Found demo contact', demoContact.id, 'forcing as active');
-        activeId = demoContact.id;
-        c = activeCont(); // RE-FETCH THE CONTACT AFTER UPDATING activeId
-      }
-    }
-    if(!c) {
-      console.error('[pickOpt] FATAL: Still no contact after recovery attempt');
-      return;
-    }
+    return;
   }
   console.log('[pickOpt] Active contact:', c.id, c.name, 'has', c.msgs?.length || 0, 'messages before add');
   // Capture pending data before closeSheet() nulls it
@@ -9981,9 +9939,6 @@ function pickOpt(opt, emoKey, original){
 
   console.log('[pickOpt] Before renderMsgs - contact has', c.msgs.length, 'messages');
   renderMsgs();
-  console.log('[pickOpt] After renderMsgs - checking DOM for message bubbles');
-  const bubbles = document.querySelectorAll('[data-tutorial="message-bubble"]');
-  console.log('[pickOpt] Found', bubbles.length, 'message bubbles in DOM');
 
   // Explicitly scroll to show the new message
   setTimeout(() => {
@@ -10016,22 +9971,6 @@ function pickOpt(opt, emoKey, original){
     showWhyPrompt(rec, (emoKey||'').toLowerCase(), rel, appDir, originalText).catch(()=>{});
   }
   clearTimeout(typingTimer); setMyTyping(false);
-
-  // Tutorial hook - tone picked and message sent
-  if(tutorialManager.isActive && ['pick_tone', 'option_card', 'best_option'].includes(tutorialManager.getCurrentStep()?.id)) {
-    // Wait longer to ensure DOM is fully updated before showing message_sent step
-    setTimeout(() => {
-      // Verify message exists in DOM before advancing
-      const latestBubble = document.querySelector('[data-tutorial="message-bubble"]:last-of-type');
-      if(latestBubble && latestBubble.offsetParent !== null) {
-        console.log('[pickOpt] Message bubble confirmed visible, advancing tutorial');
-      } else {
-        console.log('[pickOpt] Message bubble not yet visible, forcing re-render');
-        renderMsgs();
-      }
-      tutorialManager.advance();
-    }, 800);
-  }
   _pickOptInProgress = false;
 }
 function closeSheet(){ document.getElementById('optOverlay').style.display='none'; pending=null; }
@@ -11024,13 +10963,6 @@ function openSettings(){
   const termsBody = document.getElementById('settTermsBody');
   if(termsBody) termsBody.innerHTML = POLICY_CONTENT.terms[isVI ? 'vi' : 'en'];
 
-  // Tutorial button
-  const tutorialBtn = document.getElementById('settStartTutorial');
-  if (tutorialBtn) {
-    tutorialBtn.textContent = isVI ? 'Bắt đầu Hướng dẫn' : 'Start Tutorial';
-    tutorialBtn.onclick = startTutorialFromSettings;
-  }
-
   // Restore toggle state from Profile tab
   const grammarOn = isGrammarCheckOn();
   if(document.getElementById('grammarToggleProfile')) document.getElementById('grammarToggleProfile').checked = grammarOn;
@@ -11209,293 +11141,11 @@ function showOnboarding(){
   renderLangPicker();
 }
 
-// Start tutorial from Settings
-function startTutorialFromSettings() {
-  // Close settings modal
-  closeSettings();
-
-  // Load demo contacts and enable demo mode for tutorial
-  demoMode = true;
-  apiKey = 'demo';
-  loadDemoContacts();
-  renderSidebar();
-  renderChatList();
-
-  // Reset tutorial flags to start fresh
+// One-time cleanup of legacy tutorial state from localStorage
+try {
   localStorage.removeItem('tutorial_completed');
   localStorage.removeItem('tutorial_step');
-
-  // Initialize tutorial manager fresh
-  tutorialManager = new TutorialManager();
-
-  // Switch to Contacts tab so tutorial step 0 elements are visible
-  switchTab('contacts');
-
-  // Initialize and start tutorial
-  tutorialManager.initialize(TUTORIAL_STEPS);
-  tutorialManager.start();
-}
-
-// Tutorial system - interactive guide for new users
-class TutorialManager {
-  constructor() {
-    this.steps = [];
-    this.currentStep = 0;
-    this.isActive = false;
-    this.completed = localStorage.getItem('tutorial_completed') === 'true';
-    this.savedStep = parseInt(localStorage.getItem('tutorial_step') || '0', 10);
-  }
-
-  initialize(steps) {
-    this.steps = steps;
-    if (!this.completed) {
-      this.isActive = true;
-      // Read tutorial_step fresh from localStorage in case it was modified after construction (e.g., during signup)
-      this.currentStep = parseInt(localStorage.getItem('tutorial_step') || '0', 10);
-    }
-  }
-
-  start() {
-    if (this.completed) return;
-    this.isActive = true;
-    this.showCurrentStep();
-  }
-
-  getCurrentStep() {
-    return this.steps[this.currentStep] || null;
-  }
-
-  async advance() {
-    // Handle tab switches for specific steps before advancing
-    const currentStepData = this.getCurrentStep();
-    if (currentStepData?.id === 'messages_tab') {
-      // Clear activeId to ensure renderChatList shows the list, not a single chat
-      activeId = null;
-      currentMessagesView = 'list';
-      switchTab('messages');
-      // Wait for tab to switch and DOM to update before showing next step
-      await new Promise(resolve => setTimeout(resolve, 500));
-      // Force render chat list to show demo contacts
-      const chatList = document.getElementById('chatList');
-      const chatEmpty = document.getElementById('chatEmpty');
-      const activeChat = document.getElementById('activeChat');
-      if (chatList) chatList.style.display = 'flex';
-      if (chatEmpty) chatEmpty.style.display = 'none';
-      if (activeChat) activeChat.style.display = 'none';
-      // Render chat list with demo contacts
-      renderChatList();
-      if (this.currentStep < this.steps.length - 1) {
-        this.currentStep++;
-        this.saveState();
-        this.showCurrentStep();
-      } else {
-        await this.complete();
-      }
-      return;
-    }
-
-    if (this.currentStep < this.steps.length - 1) {
-      this.currentStep++;
-      this.saveState();
-      this.showCurrentStep();
-    } else {
-      await this.complete();
-    }
-  }
-
-  showCurrentStep() {
-    const step = this.getCurrentStep();
-    if (step) {
-      updateSpotlight(step);
-    }
-  }
-
-  async complete() {
-    this.isActive = false;
-    this.completed = true;
-    localStorage.setItem('tutorial_completed', 'true');
-    localStorage.removeItem('tutorial_step');
-    hideSpotlight();
-
-    // Exit demo mode and clear demo contacts
-    demoMode = false;
-    apiKey = '';
-    contacts = [];
-    document.getElementById('chatListItems').innerHTML = '';
-    document.getElementById('sidebarItems').innerHTML = '';
-    renderSidebar();
-    renderChatList();
-
-    showSt(appDir === 'vi-en' ? 'Chúc mừng! Bạn đã hoàn thành hướng dẫn.' : 'Great! You\'ve completed the tutorial.');
-  }
-
-  skip() {
-    if (confirm('Are you sure? You can restart the tutorial anytime in settings.')) {
-      this.isActive = false;
-      localStorage.removeItem('tutorial_step');
-      hideSpotlight();
-    }
-  }
-
-  saveState() {
-    localStorage.setItem('tutorial_step', String(this.currentStep));
-  }
-
-  isComplete() {
-    return this.completed;
-  }
-}
-
-let tutorialManager = new TutorialManager();
-
-// Spotlight overlay system - simplified without dark overlay
-function initSpotlightOverlay() {
-  // Remove old elements if they exist
-  ['tutorial-overlay', 'tutorial-spotlight', 'tutorial-tooltip'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.remove();
-  });
-
-  // Dark overlay background to focus attention on spotlight
-  const overlay = document.createElement('div');
-  overlay.id = 'tutorial-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:none;pointer-events:none;';
-  document.body.appendChild(overlay);
-
-  const highlight = document.createElement('div');
-  highlight.id = 'tutorial-highlight';
-  highlight.style.cssText = 'position:fixed;border:3px solid #3b82f6;border-radius:12px;z-index:10000;display:none;transition:all 0.3s ease;pointer-events:none;box-shadow:0 0 0 4px rgba(59,130,246,0.2);';
-  document.body.appendChild(highlight);
-
-  const tooltip = document.createElement('div');
-  tooltip.id = 'tutorial-tooltip';
-  tooltip.style.cssText = 'position:fixed;background:white;color:#1f2937;padding:16px;border-radius:12px;max-width:300px;z-index:10001;display:none;box-shadow:0 10px 40px rgba(0,0,0,0.2);pointer-events:auto;border:2px solid #e5e7eb;';
-  document.body.appendChild(tooltip);
-}
-
-function updateSpotlight(step) {
-  const highlight = document.getElementById('tutorial-highlight');
-  const tooltip = document.getElementById('tutorial-tooltip');
-
-  if (!highlight || !tooltip) {
-    initSpotlightOverlay();
-    return updateSpotlight(step);
-  }
-
-  const target = document.querySelector(step.targetSelector);
-  if (!target) {
-    // Element doesn't exist, skip to next step
-    console.warn('Tutorial: target not found: ' + step.targetSelector);
-    // Special case: message-bubble might be newly rendered, wait a bit
-    if (step.targetSelector.includes('message-bubble')) {
-      setTimeout(() => updateSpotlight(step), 200);
-      return;
-    }
-    if (tutorialManager.currentStep < tutorialManager.steps.length - 1) {
-      tutorialManager.advance();
-      return;
-    } else {
-      tutorialManager.complete();
-      return;
-    }
-  }
-
-  // If element is hidden, skip this step
-  if (target.offsetParent === null) {
-    console.warn('Tutorial: target element hidden, skipping step: ' + step.id);
-    // Special case: message-bubble might be temporarily hidden, wait a bit
-    if (step.targetSelector.includes('message-bubble')) {
-      setTimeout(() => updateSpotlight(step), 200);
-      return;
-    }
-    if (tutorialManager.currentStep < tutorialManager.steps.length - 1) {
-      tutorialManager.advance();
-      return;
-    } else {
-      tutorialManager.complete();
-      return;
-    }
-  }
-
-  // Scroll element into view if needed
-  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-  const rect = target.getBoundingClientRect();
-  const padding = 8;
-
-  // Position highlight box around element
-  highlight.style.top = (rect.top - padding) + 'px';
-  highlight.style.left = (rect.left - padding) + 'px';
-  highlight.style.width = (rect.width + padding * 2) + 'px';
-  highlight.style.height = (rect.height + padding * 2) + 'px';
-
-  // Tooltip content
-  const skipBtn = step.skipButton ? '<button onclick="tutorialManager.skip()" style="padding:8px 12px;border:1px solid #d1d5db;background:white;border-radius:6px;cursor:pointer;font-size:13px;margin-right:8px;">Skip</button>' : '';
-  const tooltipHTML = '<div style="margin-bottom:12px;"><h3 style="margin:0 0 8px 0;font-size:16px;font-weight:600;">' + step.title + '</h3><p style="margin:0;font-size:14px;line-height:1.5;">' + step.body + '</p></div><div style="display:flex;gap:8px;justify-content:flex-end;">' + skipBtn + '<button onclick="tutorialManager.advance()" style="padding:8px 16px;background:#3b82f6;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Next</button></div>';
-  tooltip.innerHTML = tooltipHTML;
-
-  // Position tooltip next to highlighted element
-  const viewportHeight = window.innerHeight;
-  const viewportWidth = window.innerWidth;
-  const tooltipMinWidth = 300;
-  const tooltipMinHeight = 180;
-  const spacing = 32;
-
-  let tooltipTop = rect.bottom + spacing;
-  let tooltipLeft = rect.left;
-
-  // Always position above if element is in bottom 50% of screen, or if not enough space below
-  const elementVerticalCenter = rect.top + rect.height / 2;
-  const shouldShowAbove = elementVerticalCenter > viewportHeight * 0.5 || rect.bottom + tooltipMinHeight + spacing > viewportHeight;
-
-  if (shouldShowAbove) {
-    tooltipTop = Math.max(spacing, rect.top - tooltipMinHeight - spacing - 20);
-  }
-
-  // Keep tooltip in viewport horizontally, prefer centering on element
-  const idealLeft = rect.left + (rect.width - tooltipMinWidth) / 2;
-  tooltipLeft = Math.max(spacing, Math.min(idealLeft, viewportWidth - tooltipMinWidth - spacing));
-
-  tooltip.style.top = tooltipTop + 'px';
-  tooltip.style.left = tooltipLeft + 'px';
-
-  highlight.style.display = 'block';
-  tooltip.style.display = 'block';
-}
-
-function hideSpotlight() {
-  const highlight = document.getElementById('tutorial-highlight');
-  const tooltip = document.getElementById('tutorial-tooltip');
-  if (highlight) highlight.style.display = 'none';
-  if (tooltip) tooltip.style.display = 'none';
-}
-
-// Tutorial steps - 20 step walkthrough for new users
-const TUTORIAL_STEPS = [
-  { id: 'welcome', title: 'Welcome to Voeli', body: 'You\'ll learn how to navigate contacts, add people, manage your profile, send messages, and understand tone options.', targetSelector: 'aside.sidebar', position: 'center', skipButton: true, nextButton: true },
-  { id: 'contacts_relationships', title: 'Your Contacts', body: 'This is where you manage your relationships. The relationship type (friend, family, elder, etc.).', targetSelector: '[data-tutorial="contacts-list"]', position: 'center', skipButton: false, nextButton: true },
-  { id: 'add_contact_btn', title: 'Add a New Contact', body: 'Click this button to add a new person to your contacts.', targetSelector: '[data-tutorial="add-contact-button"]', position: 'left', skipButton: false, nextButton: true },
-  { id: 'contact_modal', title: 'Contact Form', body: 'Enter their name, email, and choose your relationship type. This helps Voeli translate correctly for that person.', targetSelector: '[data-tutorial="add-contact-modal"]', position: 'center', skipButton: false, nextButton: true },
-  { id: 'name_field', title: 'Their Name', body: 'Type their name or nickname.', targetSelector: '[data-tutorial="name-field"]', position: 'bottom', skipButton: false, nextButton: true },
-  { id: 'email_field', title: 'Their Email', body: 'Enter their email address so you can message them.', targetSelector: '[data-tutorial="email-field"]', position: 'bottom', skipButton: false, nextButton: true },
-  { id: 'relationship_type', title: 'Relationship Type', body: 'Pick how you relate to this person. This shapes your tone - messages to family sound different than messages to friends.', targetSelector: '[data-tutorial="relationship-selector"]', position: 'top', skipButton: false, nextButton: true },
-  { id: 'profile_tab', title: 'Your Profile', body: 'This shows your learned phrases and where you personalize your settings.', targetSelector: '[data-tutorial="profile-tab"]', position: 'bottom', skipButton: false, nextButton: true },
-  { id: 'profile_name', title: 'Your Profile Card', body: 'Your name appears here. You can click it to change how others see you. This tab also shows phrases you\'ve learned from conversations.', targetSelector: '[data-tutorial="profile-name"]', position: 'bottom', skipButton: false, nextButton: true },
-  { id: 'messages_tab', title: 'Back to Messages', body: 'This is where you chat. Let\'s go back and send a message.', targetSelector: '[data-tutorial="messages-tab"]', position: 'bottom', skipButton: false, nextButton: true },
-  { id: 'open_contact_chat', title: 'Open a Chat', body: 'Click on Mai to open your conversation.', targetSelector: '[data-contact-id="demo_linh"]', position: 'left', skipButton: false, nextButton: false, action: 'wait_click' },
-  { id: 'message_input', title: 'Message Box', body: 'Type your message here. When you send, Voeli will show you tone options.', targetSelector: '[data-tutorial="message-input"]', position: 'top', skipButton: false, nextButton: true },
-  { id: 'type_message', title: 'Send a Message', body: 'Try typing "You\'re killing me" - it\'s a phrase that can mean different things depending on tone. You might say it when something\'s hilarious, or when something\'s genuinely difficult. Then click Send to see how Voeli handles it.', targetSelector: '[data-tutorial="message-input"]', position: 'top', skipButton: false, nextButton: false },
-  { id: 'picker_appears', title: 'Tone Options', body: 'Voeli detected emotion in your message and is showing 2-4 ways to say it. Each option changes the tone.', targetSelector: '[data-tutorial="options-overlay"]', position: 'center', skipButton: false, nextButton: true },
-  { id: 'option_card', title: 'See the Options', body: 'Each option shows: the emotion (playful, warm, direct, etc.), the translation, how it sounds to the other person, and details about pronouns or softeners.', targetSelector: '[data-tutorial="option-card"]', position: 'top', skipButton: false, nextButton: true },
-  { id: 'best_option', title: 'Recommended Option', body: 'The ★ Best option is what Voeli recommends based on your message. But you can pick any option that matches what you meant.', targetSelector: '[data-tutorial="option-card-recommended"]', position: 'top', skipButton: false, nextButton: true },
-  { id: 'pick_tone', title: 'Choose Your Tone', body: 'Pick one of these options. It can be the Best option or any other - choose what matches what you actually meant.', targetSelector: '[data-tutorial="options-overlay"]', position: 'center', skipButton: false, nextButton: true },
-  { id: 'message_sent', title: 'Message Sent!', body: 'Your message is sent with the tone you chose. The other person receives it in their language with that tone.', targetSelector: '[data-tutorial="message-bubble"]', position: 'bottom', skipButton: false, nextButton: true },
-  { id: 'receiver_learns', title: 'When You Receive Messages', body: 'When someone sends you a message with slang or phrases you might not know, Voeli shows you a "learn chip" explaining what it means. This teaches you how that person really communicates.', targetSelector: 'body', position: 'center', skipButton: false, nextButton: true },
-  { id: 'learn_chip_example', title: 'Learn Chips in Action', body: 'You\'ll see these whenever you get a message with a phrase, slang, or idiom. Dismiss it once you understand, and Voeli won\'t show it again for that phrase.', targetSelector: '[data-tutorial="learn-chip"]', position: 'bottom', skipButton: false, nextButton: true },
-  { id: 'completion', title: 'You\'re Ready!', body: 'You now know how Voeli works: add contacts, manage relationships, send messages with the right tone, and learn as you chat. Go message someone!', targetSelector: 'body', position: 'center', skipButton: false, nextButton: true }
-];
-
-// Tutorial initialization happens after onboarding completes (see finishOnboarding function)
+} catch(_){}
 </script>
 <!-- RELATIONSHIP EDITOR OVERLAY -->
 <div id="relEditOverlay" onclick="if(event.target===this)closeRelEditor()">
@@ -11544,9 +11194,6 @@ const TUTORIAL_STEPS = [
         <div class="sett-section-label">Your style insights</div>
         <div id="stylePanelContent"></div>
       </div>
-      <div class="sett-divider"></div>
-      <div class="sett-section-label">Help &amp; Learning</div>
-      <button id="settStartTutorial" type="button" style="width:100%;padding:14px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:inherit;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px;-webkit-appearance:none;touch-action:manipulation;position:relative;z-index:1;">Start Tutorial</button>
       <div class="sett-divider"></div>
       <div class="sett-section-label" id="settAccountLabel">Account</div>
       <button id="settSignOutBtn" type="button" style="width:100%;padding:14px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--red,#d93025);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px;-webkit-appearance:none;touch-action:manipulation;position:relative;z-index:1;">Sign out</button>
