@@ -52,6 +52,10 @@ import {
   detectEnglishPronouns,
   buildEnglishPronounsPrompt,
 } from './english-pronouns';
+import {
+  detectEnglishCulturalConcepts,
+  buildEnglishCulturalConceptsPrompt,
+} from './english-cultural-concepts';
 import { vnRe } from './vn-regex';
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
@@ -1105,6 +1109,19 @@ export async function handleTranslate(
     }
   }
 
+  // English cultural concepts (EN→VI only, with learn-once suppression
+  // sharing the same culturalConceptCounts store as Vietnamese concepts).
+  if (payload.direction === 'en-vi') {
+    const enCulturalMatches = detectEnglishCulturalConcepts(
+      payload.text,
+      payload.culturalConceptCounts
+    );
+    if (enCulturalMatches.length > 0) {
+      console.log('[EN-CULTURAL-CONCEPTS]', { terms: enCulturalMatches.map((m) => m.term) });
+      systemPrompt += buildEnglishCulturalConceptsPrompt(enCulturalMatches);
+    }
+  }
+
   // Idiom hints (BOTH directions): flag known cross-language idioms so the
   // model picks the right reading and surfaces the original meaning to the
   // user via culturalWarnings.
@@ -1322,6 +1339,20 @@ export async function handleQuick(
         we: enPronouns.weInclusivity,
       });
       systemPrompt += buildEnglishPronounsPrompt(enPronouns);
+    }
+  }
+
+  // English cultural concepts (EN→VI).
+  if (payload.direction === 'en-vi') {
+    const enCulturalMatches = detectEnglishCulturalConcepts(
+      payload.text,
+      payload.culturalConceptCounts
+    );
+    if (enCulturalMatches.length > 0) {
+      console.log('[QUICK EN-CULTURAL-CONCEPTS]', {
+        terms: enCulturalMatches.map((m) => m.term),
+      });
+      systemPrompt += buildEnglishCulturalConceptsPrompt(enCulturalMatches);
     }
   }
 
