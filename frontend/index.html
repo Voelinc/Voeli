@@ -3925,6 +3925,41 @@ function isMixedLanguage(text){
   return hasEN;
 }
 
+// Match runs of pictographic emoji + their modifiers (ZWJ, variation
+// selectors, skin tones, basic emoji components). Used to detect emoji-only
+// inputs and to preserve emojis through translation.
+const EMOJI_PATTERN = /[\p{Extended_Pictographic}\p{Emoji_Component}‍️\u{1F3FB}-\u{1F3FF}]+/gu;
+
+// Extract all emoji runs from text in source order.
+function extractEmojiRuns(text){
+  if(!text) return [];
+  return String(text).match(EMOJI_PATTERN) || [];
+}
+
+// If the translation is missing emojis that were in the source, append the
+// missing ones at the end. Reliable failsafe behind the prompt's "preserve
+// emoji" instruction — the model sometimes drops them anyway. Uses a
+// code-point diff so cases like "❤️❤️" with one heart preserved still get
+// the second restored.
+function preserveEmojis(sourceText, translatedText){
+  if(!sourceText || !translatedText) return translatedText || '';
+  const sourceEmojis = extractEmojiRuns(sourceText).join('');
+  if(!sourceEmojis) return translatedText;
+  const transEmojis = extractEmojiRuns(translatedText).join('');
+  if(sourceEmojis === transEmojis) return translatedText;
+
+  // Code-point-level diff: for each emoji char in source, remove one
+  // matching char from a translation copy. Whatever remains in source
+  // is missing and gets appended.
+  const remaining = [...sourceEmojis];
+  for(const c of [...transEmojis]){
+    const idx = remaining.indexOf(c);
+    if(idx >= 0) remaining.splice(idx, 1);
+  }
+  if(remaining.length === 0) return translatedText;
+  return translatedText.replace(/\s+$/, '') + ' ' + remaining.join('');
+}
+
 // Returns true if the input is essentially only emoji + whitespace (with at
 // most minor accompanying punctuation like ! or .). Emoji-only messages
 // don't need translation — passing them through the API hallucinates
@@ -10360,6 +10395,14 @@ async function callOpenAI(payload) {
         try { payload.onProgress(full); } catch(_){}
       }
       const result = parseAIJson(full);
+      // Restore any emojis the model dropped from each option's translation.
+      if(result && Array.isArray(result.options)){
+        result.options.forEach(opt => {
+          if(opt && opt.translation){
+            opt.translation = preserveEmojis(payload.text || '', opt.translation);
+          }
+        });
+      }
       // Persist pronoun signals from VI→EN translations to the contact profile.
       if(direction === 'vi-en' && result && result._pronounSignals){
         const c = activeCont();
@@ -10397,6 +10440,14 @@ async function callOpenAI(payload) {
       ? data.choices[0].message.content : '';
     if(!content) throw new Error('Empty response from server.');
     const result = parseAIJson(content);
+    // Restore any emojis the model dropped from each option's translation.
+    if(result && Array.isArray(result.options)){
+      result.options.forEach(opt => {
+        if(opt && opt.translation){
+          opt.translation = preserveEmojis(payload.text || '', opt.translation);
+        }
+      });
+    }
     if(direction === 'vi-en' && result && result._pronounSignals){
       const c = activeCont();
       if(c && c.id) savePronounMemory(c.id, result._pronounSignals);
@@ -10531,7 +10582,8 @@ async function callOpenAIQuick({text, direction}) {
     });
   }
 
-  return parsed.translation || '';
+  // Restore any emojis the model dropped (post-processing failsafe).
+  return preserveEmojis(String(text||''), parsed.translation || '');
 }
 
 // ═══════════════════════════════════════════════════════
