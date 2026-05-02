@@ -12,6 +12,43 @@ import type {
 import { rewriteSlang } from './slang-fix';
 import { buildAmbiguityPromptEnhancement, filterOptionsByConfidence } from './vietnamese-ambiguity-detector';
 import { detectColloquialTerms } from './vietnamese-colloquial-terms';
+import {
+  detectPronounSignals,
+  buildPronounContextPrompt,
+  fixPronounPairs,
+  type RelationshipKey,
+} from './vietnamese-pronoun-resolver';
+import { detectTopicComment, buildTopicCommentPrompt } from './vietnamese-topic-comment';
+import {
+  detectRegisterSignal,
+  buildRegisterSignalPrompt,
+  buildRegisterPromptForRelationship,
+} from './vietnamese-register';
+import {
+  detectImpliedSubject,
+  buildImpliedSubjectPrompt,
+} from './vietnamese-zero-subject';
+import {
+  detectCulturalConcepts,
+  buildCulturalConceptsPrompt,
+} from './vietnamese-cultural-concepts';
+import {
+  detectSegmentationIssues,
+  buildSegmentationPrompt,
+} from './vietnamese-segmentation';
+import {
+  detectNounsNeedingClassifier,
+  buildClassifierPrompt,
+} from './vietnamese-classifiers';
+import {
+  detectIdioms,
+  buildIdiomPrompt,
+} from './vietnamese-english-idioms';
+import {
+  detectDishNames,
+  buildDishNamesPrompt,
+} from './vietnamese-dish-names';
+import { vnRe } from './vn-regex';
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -406,26 +443,28 @@ function detectAspectParticles(vietnameseText: string): { particles: string[]; a
   const vn = vietnameseText.toLowerCase();
   const particles: string[] = [];
 
-  // Check for aspect particles
-  if (/\bđang\b/.test(vn)) {
+  // Check for aspect particles. Use VN-aware boundaries — JS `\b` silently
+  // misses matches when the boundary is adjacent to a non-ASCII letter
+  // (đ, ạ, ể, ó, etc.).
+  if (vnRe('đang').test(vn)) {
     particles.push('đang');
   }
-  if (/\b(đã|rồi)\b/.test(vn) || /rồi\b/.test(vn)) {
+  if (vnRe('(đã|rồi)').test(vn)) {
     particles.push('rồi/đã');
   }
-  if (/\bsắp\b/.test(vn)) {
+  if (vnRe('sắp').test(vn)) {
     particles.push('sắp');
   }
-  if (/\b(vừa|xong)\b/.test(vn) || /xong\b/.test(vn)) {
+  if (vnRe('(vừa|xong)').test(vn)) {
     particles.push('xong/vừa');
   }
-  if (/\b(thường|hay)\b/.test(vn)) {
+  if (vnRe('(thường|hay)').test(vn)) {
     particles.push('thường');
   }
-  if (/\bcó thể\b/.test(vn)) {
+  if (vnRe('có thể').test(vn)) {
     particles.push('có thể');
   }
-  if (/\bphải\b/.test(vn)) {
+  if (vnRe('phải').test(vn)) {
     particles.push('phải');
   }
 
@@ -915,6 +954,28 @@ export async function handleTranslate(
     }
   }
 
+  // Detect pronoun signals from the source text. If confidence is high (≥0.8)
+  // and disagrees with the stored relationship, override silently for this
+  // translation only (don't mutate the user's contact). If 0.5–0.8, append
+  // evidence to the system prompt so the model has both signals to weigh.
+  let pronounSignals: ReturnType<typeof detectPronounSignals> | null = null;
+  if (payload.direction === 'vi-en') {
+    pronounSignals = detectPronounSignals(payload.text);
+    if (
+      pronounSignals.inferredRelationship &&
+      pronounSignals.confidence >= 0.8 &&
+      pronounSignals.inferredRelationship !== payload.relationship
+    ) {
+      console.log('[PRONOUN OVERRIDE]', {
+        stored: payload.relationship,
+        inferred: pronounSignals.inferredRelationship,
+        confidence: pronounSignals.confidence,
+        matched: pronounSignals.matchedTokens,
+      });
+      payload.relationship = pronounSignals.inferredRelationship;
+    }
+  }
+
   // Detect ambiguous Vietnamese verbs and add context to system prompt
   let systemPrompt = buildPickerSystemPrompt(payload, true, uiLang);
   if (payload.direction === 'vi-en') {
@@ -923,6 +984,119 @@ export async function handleTranslate(
       systemPrompt += ambiguityEnhancement;
     }
   }
+  // Append pronoun evidence at medium confidence (or always, if we have any
+  // matched signals — the model benefits from the explicit "speaker says em,
+  // calls listener anh" framing even when the relationship was already correct).
+  if (pronounSignals && pronounSignals.confidence >= 0.5) {
+    systemPrompt += buildPronounContextPrompt(pronounSignals);
+  }
+
+  // Detect Vietnamese topic-comment structures (e.g., "Quyển sách này tôi đọc
+  // rồi") and nudge the model to restructure to natural English SVO instead
+  // of echoing the topic at the start.
+  let topicCommentDetected = false;
+  if (payload.direction === 'vi-en') {
+    const topicMatch = detectTopicComment(payload.text);
+    if (topicMatch.detected) {
+      topicCommentDetected = true;
+      console.log('[TOPIC-COMMENT]', { topic: topicMatch.topic, pattern: topicMatch.pattern });
+      systemPrompt += buildTopicCommentPrompt(topicMatch);
+    }
+  }
+
+  // Detect dropped subjects in short single-clause messages and infer whether
+  // the implicit subject is the speaker or the addressee. Tightly gated:
+  // requires no explicit pronoun, no third-party referent, no topic-comment
+  // structure, and a confident pronoun pair to resolve into English.
+  if (payload.direction === 'vi-en') {
+    const subjectMatch = detectImpliedSubject(payload.text, {
+      topicCommentDetected,
+      pronounSignals,
+    });
+    if (subjectMatch.detected) {
+      console.log('[ZERO-SUBJECT]', {
+        role: subjectMatch.role,
+        pattern: subjectMatch.pattern,
+        trigger: subjectMatch.trigger,
+      });
+      systemPrompt += buildImpliedSubjectPrompt(subjectMatch, pronounSignals);
+    }
+  }
+
+  // Register selection: VI→EN signals formality from Sino-Vietnamese
+  // vocabulary; EN→VI nudges toward Sino or native forms based on relationship.
+  if (payload.direction === 'vi-en') {
+    const registerSignal = detectRegisterSignal(payload.text);
+    if (registerSignal.level !== 'unmarked') {
+      console.log('[REGISTER]', {
+        level: registerSignal.level,
+        sino: registerSignal.matchedSino,
+        native: registerSignal.matchedNative,
+      });
+      systemPrompt += buildRegisterSignalPrompt(registerSignal);
+    }
+  } else if (payload.direction === 'en-vi') {
+    systemPrompt += buildRegisterPromptForRelationship(payload.relationship, payload.direction);
+  }
+
+  // Cultural concepts (VI→EN only): inject educational guidance + ask the
+  // model to populate culturalWarnings. Concepts the user has seen ≥ N times
+  // (per `culturalConceptCounts`) are silently filtered — invisible to the
+  // model and not surfaced in the UI.
+  if (payload.direction === 'vi-en') {
+    const culturalMatches = detectCulturalConcepts(payload.text, payload.culturalConceptCounts);
+    if (culturalMatches.length > 0) {
+      console.log('[CULTURAL-CONCEPTS]', { terms: culturalMatches.map((m) => m.term) });
+      systemPrompt += buildCulturalConceptsPrompt(culturalMatches);
+    }
+  }
+
+  // Segmentation hints (VI→EN only): flag genuinely ambiguous compounds and
+  // reduplicative forms so the model treats them correctly.
+  if (payload.direction === 'vi-en') {
+    const segmentation = detectSegmentationIssues(payload.text);
+    if (segmentation.ambiguous.length > 0 || segmentation.reduplicatives.length > 0) {
+      console.log('[SEGMENTATION]', {
+        ambiguous: segmentation.ambiguous.map((a) => a.phrase),
+        reduplicatives: segmentation.reduplicatives.map((r) => r.phrase),
+      });
+      systemPrompt += buildSegmentationPrompt(segmentation);
+    }
+  }
+
+  // Dish names (VI→EN only): preserve dish names as proper nouns; gloss on
+  // first encounter, translate plain after the user has learned them.
+  if (payload.direction === 'vi-en') {
+    const dishMatches = detectDishNames(payload.text, payload.dishCounts);
+    if (dishMatches.length > 0) {
+      console.log('[DISH-NAMES]', { dishes: dishMatches.map((m) => m.name) });
+      systemPrompt += buildDishNamesPrompt(dishMatches);
+    }
+  }
+
+  // Classifier guidance (EN→VI only): for countable nouns in the source,
+  // hint the natural Vietnamese classifier so the model doesn't default to
+  // generic "cái" when something more specific (con/quyển/chiếc/bức/...) fits.
+  if (payload.direction === 'en-vi') {
+    const classifierMatches = detectNounsNeedingClassifier(payload.text);
+    if (classifierMatches.length > 0) {
+      console.log('[CLASSIFIERS]', { nouns: classifierMatches.map((m) => m.english) });
+      systemPrompt += buildClassifierPrompt(classifierMatches);
+    }
+  }
+
+  // Idiom hints (BOTH directions): flag known cross-language idioms so the
+  // model picks the right reading and surfaces the original meaning to the
+  // user via culturalWarnings.
+  const idiomMatches = detectIdioms(payload.text, payload.direction);
+  if (idiomMatches.length > 0) {
+    console.log('[IDIOMS]', {
+      direction: payload.direction,
+      phrases: idiomMatches.map((m) => m.phrase),
+    });
+    systemPrompt += buildIdiomPrompt(idiomMatches);
+  }
+
   const stream = !!payload.stream;
 
   const body: OpenAIBody = {
@@ -978,11 +1152,17 @@ export async function handleTranslate(
   if (src === 'Vietnamese') {
     result = fixMissingPrepositions(result, payload.text);
     result = fixAspectParticles(result, payload.text);
+    // Surface the detected pronoun pair so the frontend can persist it on the
+    // contact profile and replay it via promptExtensions on outgoing messages.
+    if (pronounSignals && pronounSignals.confidence >= 0.5) {
+      (result as Record<string, unknown>)._pronounSignals = pronounSignals;
+    }
   }
 
   // English → Vietnamese: verify tense mapping to particles
   if (src === 'English' && tgt === 'Vietnamese') {
     result = fixEnglishTenses(result, payload.text);
+    result = fixPronounPairs(result, payload.relationship as RelationshipKey);
   }
 
   // Filter options to remove near-duplicates — keep only meaningfully different options

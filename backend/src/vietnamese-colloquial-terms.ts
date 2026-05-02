@@ -2,6 +2,8 @@
 // Covers both affectionate expressions and casual familiar particles
 // Used to preserve emotional warmth when translating Vietnamese→English
 
+import { vnRe, VN_LB, VN_RB } from './vn-regex';
+
 interface VietnamColloquialTerm {
   pattern: RegExp;
   phrase: string;
@@ -120,7 +122,7 @@ export const VIETNAMESE_COLLOQUIAL_TERMS: VietnamColloquialTerm[] = [
   },
 
   {
-    pattern: /\bđó\s+là\s+(người yêu|lại|xinh|ngon|dễ thương|cute)/i,
+    pattern: new RegExp(`${VN_LB}đó\\s+là\\s+(người yêu|lại|xinh|ngon|dễ thương|cute)`, 'iu'),
     phrase: "đó là [term of endearment]",
     vietnameseMeaning: "that's [my dear/sweet one]",
     englishMeaning: "that's my sweetheart, that's adorable",
@@ -190,7 +192,7 @@ export const VIETNAMESE_COLLOQUIAL_TERMS: VietnamColloquialTerm[] = [
   // ═══════════════════════════════════════════════════════════════
 
   {
-    pattern: /\bơi\b/,
+    pattern: vnRe('ơi'),
     phrase: "ơi",
     vietnameseMeaning: "hey, call out particle (shows closeness)",
     englishMeaning: "hey, you",
@@ -223,7 +225,7 @@ export const VIETNAMESE_COLLOQUIAL_TERMS: VietnamColloquialTerm[] = [
   },
 
   {
-    pattern: /\bđấy\b/,
+    pattern: vnRe('đấy'),
     phrase: "đấy",
     vietnameseMeaning: "that's it, there (confirmation)",
     englishMeaning: "that's it, exactly, there",
@@ -234,7 +236,7 @@ export const VIETNAMESE_COLLOQUIAL_TERMS: VietnamColloquialTerm[] = [
   },
 
   {
-    pattern: /\bđó\b/,
+    pattern: vnRe('đó'),
     phrase: "đó",
     vietnameseMeaning: "that (pointing out casually)",
     englishMeaning: "that, see, look",
@@ -245,7 +247,7 @@ export const VIETNAMESE_COLLOQUIAL_TERMS: VietnamColloquialTerm[] = [
   },
 
   {
-    pattern: /\bđây\b/,
+    pattern: vnRe('đây'),
     phrase: "đây",
     vietnameseMeaning: "this, here (pointing out)",
     englishMeaning: "this, here, look",
@@ -256,7 +258,7 @@ export const VIETNAMESE_COLLOQUIAL_TERMS: VietnamColloquialTerm[] = [
   },
 
   {
-    pattern: /\bđốc\b/,
+    pattern: vnRe('đốc'),
     phrase: "đốc",
     vietnameseMeaning: "right, exactly (affirmation)",
     englishMeaning: "exactly, right, yes",
@@ -267,7 +269,7 @@ export const VIETNAMESE_COLLOQUIAL_TERMS: VietnamColloquialTerm[] = [
   },
 
   {
-    pattern: /\bđúng\s+ko\b/i,
+    pattern: vnRe('đúng\\s+ko', 'i'),
     phrase: "đúng ko",
     vietnameseMeaning: "right, isn't it (question tag)",
     englishMeaning: "right, isn't it, isn't that true",
@@ -278,7 +280,7 @@ export const VIETNAMESE_COLLOQUIAL_TERMS: VietnamColloquialTerm[] = [
   },
 
   {
-    pattern: /\bkhông\s+phải\s+à\b/i,
+    pattern: vnRe('không\\s+phải\\s+à', 'i'),
     phrase: "không phải à",
     vietnameseMeaning: "isn't that so, right (seeking agreement)",
     englishMeaning: "isn't it, right, true",
@@ -289,7 +291,7 @@ export const VIETNAMESE_COLLOQUIAL_TERMS: VietnamColloquialTerm[] = [
   },
 
   {
-    pattern: /\bđặc\s+biệt\s+là\b/i,
+    pattern: vnRe('đặc\\s+biệt\\s+là', 'i'),
     phrase: "đặc biệt là",
     vietnameseMeaning: "especially (casual emphasis)",
     englishMeaning: "especially, particularly",
@@ -304,7 +306,7 @@ export const VIETNAMESE_COLLOQUIAL_TERMS: VietnamColloquialTerm[] = [
   // ═══════════════════════════════════════════════════════════════
 
   {
-    pattern: /\bđược\s+rồi\b/i,
+    pattern: vnRe('được\\s+rồi', 'i'),
     phrase: "được rồi",
     vietnameseMeaning: "okay, alright, fine (casual agreement)",
     englishMeaning: "okay, alright, sounds good",
@@ -315,7 +317,7 @@ export const VIETNAMESE_COLLOQUIAL_TERMS: VietnamColloquialTerm[] = [
   },
 
   {
-    pattern: /\bđược\s+thôi\b/i,
+    pattern: vnRe('được\\s+thôi', 'i'),
     phrase: "được thôi",
     vietnameseMeaning: "okay, that works (casual acceptance)",
     englishMeaning: "okay, that works, fine",
@@ -326,7 +328,7 @@ export const VIETNAMESE_COLLOQUIAL_TERMS: VietnamColloquialTerm[] = [
   },
 
   {
-    pattern: /\bổn\s+áp\b/i,
+    pattern: vnRe('ổn\\s+áp', 'i'),
     phrase: "ổn áp",
     vietnameseMeaning: "okay, all good (very casual, comfortable)",
     englishMeaning: "all good, no worries, sounds good",
@@ -348,7 +350,7 @@ export const VIETNAMESE_COLLOQUIAL_TERMS: VietnamColloquialTerm[] = [
   },
 
   {
-    pattern: /\bđược\s+chứ\b/i,
+    pattern: vnRe('được\\s+chứ', 'i'),
     phrase: "được chứ",
     vietnameseMeaning: "of course, obviously (affirmative)",
     englishMeaning: "of course, obviously, sure",
@@ -397,7 +399,7 @@ export const VIETNAMESE_COLLOQUIAL_TERMS: VietnamColloquialTerm[] = [
   },
 
   {
-    pattern: /\bj\b|\bgì\s+zợ\b/i,
+    pattern: new RegExp(`${VN_LB}j${VN_RB}|${VN_LB}gì\\s+zợ${VN_RB}`, 'iu'),
     phrase: "j / gì",
     variants: ["j", "gì"],
     vietnameseMeaning: "gì (what) - shortened to j",
@@ -468,7 +470,7 @@ export const VIETNAMESE_COLLOQUIAL_TERMS: VietnamColloquialTerm[] = [
   // ═══════════════════════════════════════════════════════════════
 
   {
-    pattern: /\byêu\s+quá\b/i,
+    pattern: vnRe('yêu\\s+quá', 'i'),
     phrase: "yêu quá",
     vietnameseMeaning: "I love you so much, you're so lovable",
     englishMeaning: "I love you, you're so lovable",

@@ -2775,6 +2775,125 @@ function getContactProfileNote(contactId){
     + 'Use this as the baseline relationship dynamic even at the start of a brand new session.';
 }
 
+// ─── Per-contact pronoun memory ──────────────────────────
+// Captures the self/other pronoun pair the contact uses when writing in
+// Vietnamese, so subsequent translations (especially EN→VI replies) can
+// anchor to the established pair instead of letting the model re-guess.
+// Backend returns _pronounSignals on VI→EN responses; we persist the
+// last one we got per contact.
+
+function savePronounMemory(contactId, signals){
+  if(!contactId || !signals) return;
+  if(!signals.selfPronoun && !signals.otherPronoun) return;
+  if((signals.confidence || 0) < 0.5) return;
+  try{
+    const profile = loadContactProfile(contactId) || {};
+    profile.pronounMemory = {
+      selfPronoun: signals.selfPronoun || null,
+      otherPronoun: signals.otherPronoun || null,
+      relationship: signals.inferredRelationship || null,
+      formality: signals.formalityLevel || null,
+      gender: signals.inferredGender || null,
+      confidence: signals.confidence || 0,
+      capturedAt: Date.now(),
+    };
+    saveContactProfile(contactId, profile);
+  }catch(_){}
+}
+
+function getPronounMemoryNote(contactId, direction){
+  if(!contactId) return '';
+  const profile = loadContactProfile(contactId);
+  if(!profile || !profile.pronounMemory) return '';
+  const m = profile.pronounMemory;
+  if(!m.selfPronoun && !m.otherPronoun) return '';
+  // Decay: ignore memory older than 30 days. Pronoun choices drift.
+  if(m.capturedAt && Date.now() - m.capturedAt > 30*24*60*60*1000) return '';
+
+  const lines = ['', '# ESTABLISHED PRONOUN PAIR FROM PRIOR MESSAGES (this contact):'];
+  if(m.selfPronoun) lines.push('- Contact self-references as: ' + m.selfPronoun);
+  if(m.otherPronoun) lines.push('- Contact addresses the user as: ' + m.otherPronoun);
+  if(m.relationship) lines.push('- Inferred relationship: ' + m.relationship + ' (confidence ' + Math.round((m.confidence||0)*100) + '%)');
+
+  if(direction === 'en-vi'){
+    // User is composing a reply. The roles invert: user-self should match
+    // what the contact has been calling the user; user-addresses-contact
+    // should match the contact's self-reference.
+    if(m.otherPronoun || m.selfPronoun){
+      lines.push('REPLY GUIDANCE: When translating the user\'s message into Vietnamese, lock the pair:');
+      if(m.otherPronoun) lines.push('  - User should self-reference as: ' + m.otherPronoun + ' (the term the contact has been using for the user)');
+      if(m.selfPronoun) lines.push('  - User should address the contact as: ' + m.selfPronoun + ' (the contact\'s established self-reference)');
+      lines.push('Do not switch the pair unless the user\'s English text contains an explicit role shift.');
+    }
+  } else {
+    lines.push('Use this to anchor the relationship reading; it confirms the kinship/intimacy frame the contact has been using.');
+  }
+  return lines.join('\n');
+}
+
+// ─── Cultural-concept learning state ─────────────────────
+// Per-user exposure counts for culturally-loaded Vietnamese terms. After the
+// user has seen the cultural callout for a concept N times (default 3, but
+// the backend dictionary can override per-concept), the backend silently
+// suppresses further callouts: prompt no longer mentions the concept,
+// culturalWarnings response no longer includes it. Translation is unchanged.
+
+function _ccUid(){
+  try{
+    const u = (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) ? currentUser.uid : 'anon';
+    return String(u);
+  }catch(_){ return 'anon'; }
+}
+function _ccKey(){ return 'cc_counts_' + _ccUid(); }
+
+function getCulturalConceptCounts(){
+  try{ return JSON.parse(localStorage.getItem(_ccKey()) || '{}'); }catch(_){ return {}; }
+}
+
+function recordCulturalConceptSeen(term, delta){
+  if(!term) return;
+  const inc = (typeof delta === 'number') ? delta : 1;
+  try{
+    const counts = getCulturalConceptCounts();
+    const next = Math.max(0, (counts[term] || 0) + inc);
+    counts[term] = next;
+    localStorage.setItem(_ccKey(), JSON.stringify(counts));
+  }catch(_){}
+}
+
+// Debug-only escape hatch: clear all cultural learning for this user.
+// Surfaced for support and power-users; not in any UI menu by default.
+window.resetCulturalLearning = function(){
+  try{ localStorage.removeItem(_ccKey()); console.log('Cleared cultural learning for', _ccUid()); }catch(_){}
+};
+
+// ─── Dish-name learning state ────────────────────────────
+// Same shape as cultural-concept counts. Vietnamese dish names (phở,
+// bánh mì, etc.) are proper nouns — preserve in translation, gloss only
+// until the user has seen them N times (per-dish threshold lives in the
+// backend dictionary).
+
+function _dishKey(){ return 'dish_counts_' + _ccUid(); }
+
+function getDishCounts(){
+  try{ return JSON.parse(localStorage.getItem(_dishKey()) || '{}'); }catch(_){ return {}; }
+}
+
+function recordDishSeen(name, delta){
+  if(!name) return;
+  const inc = (typeof delta === 'number') ? delta : 1;
+  try{
+    const counts = getDishCounts();
+    const next = Math.max(0, (counts[name] || 0) + inc);
+    counts[name] = next;
+    localStorage.setItem(_dishKey(), JSON.stringify(counts));
+  }catch(_){}
+}
+
+window.resetDishLearning = function(){
+  try{ localStorage.removeItem(_dishKey()); console.log('Cleared dish learning for', _ccUid()); }catch(_){}
+};
+
 // ─── Pattern error logging ───────────────────────────────
 // Records every time the auto-send pattern was confident but wrong.
 // Stores what the pattern said, how confident it was, and what emotion it chose.
@@ -9534,7 +9653,8 @@ function buildEquivBanner(phraseEntry, phraseKey, scopeKey){
 function buildCulturalWarningsBlock(cws){
   const isVI = appDir === 'vi-en';
   const dismissLabel = isVI ? "Đừng cảnh báo tôi về câu này nữa" : "Don't warn me about this again";
-  const tm = {kinship:'Kinship',face_threat:'Face-threatening',idiom:'Idiom',slang:'Slang',other:'Cultural note'};
+  const showAgainLabel = isVI ? "Hiển thị lại lần sau" : "Show this again next time";
+  const tm = {kinship:'Kinship',face_threat:'Face-threatening',idiom:'Idiom',slang:'Slang',cultural_concept:'Cultural concept',dish_name:'Dish name',other:'Cultural note'};
 
   // Filter out phrases the user has already dismissed
   const visible = cws.filter(w => {
@@ -9548,6 +9668,8 @@ function buildCulturalWarningsBlock(cws){
   cw.innerHTML = '<div class="cwtitle">⚠️ ' + (isVI ? 'Lưu ý văn hóa' : 'Cultural heads-up') + '</div>'
     + visible.map(w => {
       const tk = (w.type||'other').toLowerCase();
+      const isConcept = tk === 'cultural_concept';
+      const isDish = tk === 'dish_name';
       const key = w.term || (pickUi(w.literalMeaning)||'').slice(0,40);
       let rows = '';
       const lit = pickUi(w.literalMeaning), lik = pickUi(w.likelyMeaning), why = pickUi(w.whyRisky);
@@ -9556,7 +9678,17 @@ function buildCulturalWarningsBlock(cws){
       if(why) rows += `<div class="cwrow"><strong>${isVI?'Vì sao':'Why risky'}:</strong> ${esc(why)}</div>`;
       const sug = w.suggestion ? `<div class="cwsug"><strong>${w.suggestionKind==='rewrite'?(isVI?'Cách nói an toàn hơn':'Safer rewrite'):(isVI?'Làm rõ nhanh':'Quick clarify')}:</strong> "${esc(w.suggestion)}"</div>` : '';
       const dismissBtn = key ? `<button class="wp-dismiss-btn" data-term="${esc(key)}">${esc(dismissLabel)}</button>` : '';
-      return `<div class="cwitem"><span class="cwbadge t-${esc(tk)}">${esc(tm[tk]||'Note')}</span>${w.term?` <strong>${esc(w.term)}</strong>`:''}${rows}${sug}${dismissBtn}</div>`;
+      // Cultural-concept and dish-name entries both get an extra "show again"
+      // button — clicking decrements the exposure count so the callout returns
+      // next time. We use distinct CSS classes so the click handlers route to
+      // the right counter.
+      let relearnBtn = '';
+      if (isConcept && w.term) {
+        relearnBtn = ` <button class="cc-relearn-btn" data-term="${esc(w.term)}">${esc(showAgainLabel)}</button>`;
+      } else if (isDish && w.term) {
+        relearnBtn = ` <button class="dish-relearn-btn" data-term="${esc(w.term)}">${esc(showAgainLabel)}</button>`;
+      }
+      return `<div class="cwitem"><span class="cwbadge t-${esc(tk)}">${esc(tm[tk]||'Note')}</span>${w.term?` <strong>${esc(w.term)}</strong>`:''}${rows}${sug}${dismissBtn}${relearnBtn}</div>`;
     }).join('');
 
   // Wire dismiss buttons
@@ -9567,6 +9699,26 @@ function buildCulturalWarningsBlock(cws){
       item.style.display = 'none';
       const anyVisible = [...cw.querySelectorAll('.cwitem')].some(el => el.offsetParent !== null);
       if(!anyVisible) cw.style.display = 'none';
+    });
+  });
+
+  // Wire "show again" buttons — decrement the cultural-concept exposure count.
+  cw.querySelectorAll('.cc-relearn-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const term = btn.dataset.term;
+      if(term) recordCulturalConceptSeen(term, -1);
+      btn.disabled = true;
+      btn.textContent = isVI ? '✓ Đã đặt lại' : '✓ Will show again';
+    });
+  });
+
+  // Same for dish-name entries — decrements the dish-exposure count.
+  cw.querySelectorAll('.dish-relearn-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const term = btn.dataset.term;
+      if(term) recordDishSeen(term, -1);
+      btn.disabled = true;
+      btn.textContent = isVI ? '✓ Đã đặt lại' : '✓ Will show again';
     });
   });
 
@@ -10088,6 +10240,7 @@ async function callOpenAI(payload) {
       promptExtensions += getContactProfileNote(c.id);
       promptExtensions += getConversationContext(c.msgs);
       promptExtensions += getToneConflictNote(c.id, c.msgs.slice(-4));
+      promptExtensions += getPronounMemoryNote(c.id, direction);
     }
     if(payload.text){
       const slangMatches = detectSlang(String(payload.text), direction);
@@ -10113,6 +10266,8 @@ async function callOpenAI(payload) {
       relationship: relKey,
       uiLang,
       promptExtensions,
+      culturalConceptCounts: getCulturalConceptCounts(),
+      dishCounts: getDishCounts(),
       stream: streaming,
     });
 
@@ -10123,6 +10278,22 @@ async function callOpenAI(payload) {
         try { payload.onProgress(full); } catch(_){}
       }
       const result = parseAIJson(full);
+      // Persist pronoun signals from VI→EN translations to the contact profile.
+      if(direction === 'vi-en' && result && result._pronounSignals){
+        const c = activeCont();
+        if(c && c.id) savePronounMemory(c.id, result._pronounSignals);
+      }
+      // Increment exposure counts for cultural concepts shown in this response.
+      if(direction === 'vi-en' && result && Array.isArray(result.culturalWarnings)){
+        result.culturalWarnings.forEach(w => {
+          if(w && (w.type||'').toLowerCase() === 'cultural_concept' && w.term){
+            recordCulturalConceptSeen(w.term, 1);
+          }
+          if(w && (w.type||'').toLowerCase() === 'dish_name' && w.term){
+            recordDishSeen(w.term, 1);
+          }
+        });
+      }
       // Cache the result for future identical messages
       if(payload.text && payload.direction && !payload.skipCache) {
         const c = activeCont();
@@ -10144,6 +10315,20 @@ async function callOpenAI(payload) {
       ? data.choices[0].message.content : '';
     if(!content) throw new Error('Empty response from server.');
     const result = parseAIJson(content);
+    if(direction === 'vi-en' && result && result._pronounSignals){
+      const c = activeCont();
+      if(c && c.id) savePronounMemory(c.id, result._pronounSignals);
+    }
+    if(direction === 'vi-en' && result && Array.isArray(result.culturalWarnings)){
+      result.culturalWarnings.forEach(w => {
+        if(w && (w.type||'').toLowerCase() === 'cultural_concept' && w.term){
+          recordCulturalConceptSeen(w.term, 1);
+        }
+        if(w && (w.type||'').toLowerCase() === 'dish_name' && w.term){
+          recordDishSeen(w.term, 1);
+        }
+      });
+    }
     // Cache the result for future identical messages
     if(payload.text && payload.direction && !payload.skipCache) {
       const c = activeCont();

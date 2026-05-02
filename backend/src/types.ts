@@ -29,6 +29,15 @@ export interface TranslatePayload {
   // Sent as already-formatted strings so we don't have to recreate the
   // dictionaries on the server.
   promptExtensions?: string;
+  // Per-user exposure counts for cultural concepts. When a count reaches the
+  // concept's `learnAfter` threshold, the backend silently suppresses the
+  // concept (no prompt injection, no culturalWarnings entry). Keyed by the
+  // concept's canonical term (e.g., { "duyên": 3, "thương": 1 }).
+  culturalConceptCounts?: Record<string, number>;
+  // Per-user exposure counts for Vietnamese dish names. Same shape as
+  // culturalConceptCounts. Iconic dishes (phở, bánh mì) have a low threshold;
+  // regional dishes (mì quảng, cao lầu) have a higher threshold.
+  dishCounts?: Record<string, number>;
   stream?: boolean;
 }
 

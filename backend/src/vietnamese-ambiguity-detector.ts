@@ -5,6 +5,8 @@
  * to score confidence for each interpretation. Only shows picker if uncertain.
  */
 
+import { VN_LB } from './vn-regex';
+
 /**
  * List of ambiguous Vietnamese verbs with their possible meanings
  */
@@ -15,7 +17,7 @@ export const AMBIGUOUS_VIETNAMESE_VERBS = [
     contextClues: ['is it a question?', 'is there an object following?'],
   },
   {
-    pattern: /\bđể\s+/i,
+    pattern: new RegExp(`${VN_LB}để\\s+`, 'iu'),
     meanings: ['let/allow someone to do something', 'put/place something', 'defer something to later'],
     contextClues: ['is it imperative?', 'are there location words?', 'are there time references?'],
   },
