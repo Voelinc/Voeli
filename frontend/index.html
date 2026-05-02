@@ -2816,6 +2816,43 @@ function getContactPronounMemory(contactId){
   return m;
 }
 
+// One-time migration: the pronoun-resolver word-order heuristic before
+// commit 47077ea could write inverted pronoun pairs to contact profiles
+// (e.g., when a partner who calls themselves "em" sent "Anh nịnh em thôi"
+// the detector incorrectly stored selfPronoun: "anh"). After the fix,
+// stored memory might still be poisoned. This migration clears all
+// pronoun memory once per device so it rebuilds with the corrected
+// detector. Runs at script load, then never again.
+const PRONOUN_MEMORY_SCHEMA_VERSION = 2;
+function migratePronounMemoryV2(){
+  try{
+    const currentVersion = parseInt(localStorage.getItem('pronoun_memory_schema') || '1', 10);
+    if(currentVersion >= PRONOUN_MEMORY_SCHEMA_VERSION) return;
+    // Collect contact-profile keys first to avoid iterator-during-mutation issues.
+    const keys = [];
+    for(let i = 0; i < localStorage.length; i++){
+      const key = localStorage.key(i);
+      if(key && key.startsWith('cp_')) keys.push(key);
+    }
+    let cleared = 0;
+    for(const key of keys){
+      try{
+        const raw = localStorage.getItem(key);
+        if(!raw) continue;
+        const profile = JSON.parse(raw);
+        if(profile && profile.pronounMemory){
+          delete profile.pronounMemory;
+          localStorage.setItem(key, JSON.stringify(profile));
+          cleared++;
+        }
+      }catch(_){}
+    }
+    localStorage.setItem('pronoun_memory_schema', String(PRONOUN_MEMORY_SCHEMA_VERSION));
+    if(cleared > 0) console.log('[pronoun memory migration] cleared', cleared, 'contact(s) to rebuild with bug-fixed detector');
+  }catch(_){}
+}
+migratePronounMemoryV2();
+
 function getPronounMemoryNote(contactId, direction){
   if(!contactId) return '';
   const profile = loadContactProfile(contactId);
