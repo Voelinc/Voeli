@@ -1352,7 +1352,7 @@ body.is-offline::before{
           <div class="shsaid" id="shSaid"></div>
           <p class="shlabel">Choose how to say it</p>
           <div id="optList"></div>
-          <div class="shcancel" onclick="closeSheet()">Cancel</div>
+          <div class="shcancel" onclick="cancelPicker()">Cancel</div>
         </div>
       </div>
     </div>
@@ -9084,6 +9084,8 @@ async function sendWithContextBypass(text, direction, c){
   // a picker option while we're awaiting the API, pickOpt sets it true and
   // the post-await code below bails out cleanly.
   _userPickedDuringBypass = false;
+  _userCancelledSheet = false;
+  _pendingOriginalText = text;
   const now = new Date();
   const isMe = true;
   const msgId = 'cx' + now.getTime() + Math.random().toString(36).slice(2,5);
@@ -9146,6 +9148,11 @@ async function sendWithContextBypass(text, direction, c){
     // manual choice. Otherwise we get duplicate bubbles in the thread.
     if(_userPickedDuringBypass){
       console.log('[sendWithContextBypass] user picked manually during await; skipping auto-send');
+      return;
+    }
+    if(_userCancelledSheet){
+      console.log('[sendWithContextBypass] user cancelled picker during await; aborting');
+      _pendingOriginalText = '';
       return;
     }
 
@@ -10173,6 +10180,13 @@ let _pickOptInProgress = false;
 // pushed their chosen message — the bypass must NOT also push the
 // auto-recommendation, or we get a duplicate bubble in the thread.
 let _userPickedDuringBypass = false;
+// Same idea but for Cancel: if the user dismisses the picker mid-await,
+// the bypass must NOT auto-send or re-open the picker when the API returns.
+let _userCancelledSheet = false;
+// Original text of the in-flight bypass request, captured so cancelPicker()
+// can restore it to the input box even though sendWithContextBypass cleared
+// the textarea before awaiting the API.
+let _pendingOriginalText = '';
 function pickOpt(opt, emoKey, original){
   if(_pickOptInProgress) return; // prevent duplicate calls from double-clicks
   _pickOptInProgress = true;
@@ -10273,6 +10287,26 @@ function pickOpt(opt, emoKey, original){
   _pickOptInProgress = false;
 }
 function closeSheet(){ document.getElementById('optOverlay').style.display='none'; pending=null; }
+// User-triggered dismissal of the picker. Distinct from closeSheet() (which
+// pickOpt also calls internally after a successful pick). cancelPicker sets
+// the abort flag so any in-flight sendWithContextBypass bails out instead
+// of auto-sending or re-opening the picker, and restores the draft text
+// so the user can edit and resend.
+function cancelPicker(){
+  _userCancelledSheet = true;
+  const draft = _pendingOriginalText || (pending && pending.original) || '';
+  closeSheet();
+  if(draft){
+    const ta = document.getElementById('txtInput');
+    if(ta){
+      ta.value = draft;
+      ta.style.height = 'auto';
+      try{ updBtns(); }catch(_){}
+      ta.focus();
+    }
+  }
+  _pendingOriginalText = '';
+}
 
 // ═══════════════════════════════════════════════════════
 // AUTH-AWARE WORKER REQUEST HELPERS
