@@ -56,6 +56,10 @@ import {
   detectEnglishCulturalConcepts,
   buildEnglishCulturalConceptsPrompt,
 } from './english-cultural-concepts';
+import {
+  detectEnglishSofteners,
+  buildEnglishSoftenersPrompt,
+} from './english-softeners';
 import { vnRe } from './vn-regex';
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
@@ -1122,6 +1126,17 @@ export async function handleTranslate(
     }
   }
 
+  // English softeners + tag questions + reassurance phrases (EN→VI only).
+  if (payload.direction === 'en-vi') {
+    const softenerMatches = detectEnglishSofteners(payload.text);
+    if (softenerMatches.length > 0) {
+      console.log('[EN-SOFTENERS]', {
+        items: softenerMatches.map((m) => `${m.category}:${m.display}`),
+      });
+      systemPrompt += buildEnglishSoftenersPrompt(softenerMatches);
+    }
+  }
+
   // Idiom hints (BOTH directions): flag known cross-language idioms so the
   // model picks the right reading and surfaces the original meaning to the
   // user via culturalWarnings.
@@ -1353,6 +1368,17 @@ export async function handleQuick(
         terms: enCulturalMatches.map((m) => m.term),
       });
       systemPrompt += buildEnglishCulturalConceptsPrompt(enCulturalMatches);
+    }
+  }
+
+  // English softeners + tag questions + reassurance phrases (EN→VI).
+  if (payload.direction === 'en-vi') {
+    const softenerMatches = detectEnglishSofteners(payload.text);
+    if (softenerMatches.length > 0) {
+      console.log('[QUICK EN-SOFTENERS]', {
+        items: softenerMatches.map((m) => `${m.category}:${m.display}`),
+      });
+      systemPrompt += buildEnglishSoftenersPrompt(softenerMatches);
     }
   }
 
