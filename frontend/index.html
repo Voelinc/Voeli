@@ -405,6 +405,9 @@ body.is-offline::before{
 .btgl:hover{opacity:.95;}
 .nomsg{text-align:center;color:var(--muted);font-size:14px;padding:40px 20px;}
 .status-banner{text-align:center;color:#d97706;font-size:14px;padding:20px;background:rgba(217,118,6,0.1);border:1px solid rgba(217,118,6,0.3);border-radius:8px;margin:20px;font-weight:500;}
+.msgs-paging-header{text-align:center;font-size:12px;color:var(--muted);padding:10px 16px;}
+.msgs-paging-header.loading{font-style:italic;}
+.msgs-paging-header.start{color:var(--muted);opacity:.7;}
 .btn-request{background:#0066cc;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-top:12px;font-weight:600;}
 .btn-request:hover{background:#0052a3;}
 
@@ -7022,6 +7025,13 @@ async function loadHistoricalMessages(contact){
         msgArray.sort((a,b) => a.ts - b.ts);
         // Replace empty msgs array with historical messages
         contact.msgs = msgArray;
+        // Pagination anchor: the Firebase key of the oldest loaded message.
+        // loadOlderMessages uses this to fetch the chunk before. fullyLoaded
+        // is true when the initial load returned fewer than the limit, which
+        // means there's nothing older to fetch.
+        contact.oldestLoadedMsgId = msgArray.length ? msgArray[0].id : null;
+        contact.fullyLoaded = entries.length < 50;
+        contact.loadingOlder = false;
         if(activeId === contact.id) renderMsgs();
 
         // Backfill deliveredTo for received messages we just loaded but
@@ -7049,6 +7059,130 @@ async function loadHistoricalMessages(contact){
   } catch(e){
     console.error('Error loading historical messages:', e);
   }
+}
+
+// Pagination — fetch the next chunk of older messages when the user scrolls
+// to the top of the chat. The anchor is contact.oldestLoadedMsgId (the key
+// of the oldest message currently loaded). fullyLoaded short-circuits once
+// we've reached the start of history.
+async function loadOlderMessages(contact){
+  if(!firebaseDb || !currentUser || !contact || !contact.dmRoomId) return;
+  if(contact.fullyLoaded || contact.loadingOlder) return;
+  if(!contact.oldestLoadedMsgId) return;
+  contact.loadingOlder = true;
+  if(activeId === contact.id) renderMsgs(); // shows spinner
+
+  try {
+    // endAt is inclusive in RTDB, so we fetch 51 to get up to 50 truly older
+    // messages plus the anchor (which we filter out).
+    const snap = await firebaseDb.ref(`dms/${contact.dmRoomId}/messages`)
+      .orderByKey()
+      .endAt(contact.oldestLoadedMsgId)
+      .limitToLast(51)
+      .once('value');
+    const messages = snap.val() || {};
+    const existingIds = new Set(contact.msgs.map(m => m.id));
+    const newEntries = Object.entries(messages).filter(([key]) => !existingIds.has(key));
+
+    if(newEntries.length === 0){
+      contact.fullyLoaded = true;
+      contact.loadingOlder = false;
+      if(activeId === contact.id) renderMsgs();
+      return;
+    }
+
+    const rawList = newEntries.map(([, m]) => m);
+    const decryptedList = await decryptMessageDataBatch(rawList);
+    const olderMsgs = [];
+    newEntries.forEach(([key], i) => {
+      const m = decryptedList[i];
+      if(!m) return;
+      const d = new Date(m.ts);
+      const isMe = m.senderId === currentUser.uid;
+      let deliveredAt, readAt;
+      if(isMe){
+        const dt = m.deliveredTo || {};
+        const otherD = Object.keys(dt).filter(uid => uid !== currentUser.uid);
+        if(otherD.length) deliveredAt = dt[otherD[0]];
+        const rb = m.readBy || {};
+        const otherR = Object.keys(rb).filter(uid => uid !== currentUser.uid);
+        if(otherR.length) readAt = rb[otherR[0]];
+      }
+      olderMsgs.push({
+        id: key,
+        text: m.text, translated: m.text, original: m.original||m.text,
+        emotion: m.emotion||'', isMe, mode: 'text',
+        direction: m.direction||'en-vi', ts: m.ts,
+        delivered: true,
+        deliveredAt, readAt,
+        readBy: m.readBy || {},
+        deliveredTo: m.deliveredTo || {},
+        time: d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+        day: d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'})
+      });
+    });
+    olderMsgs.sort((a,b) => a.ts - b.ts);
+
+    // We requested 51, anchor was 1, so anything < 50 truly older means we
+    // hit the start of the conversation.
+    if(newEntries.length < 50) contact.fullyLoaded = true;
+
+    // Capture scroll height before mutation so we can restore the user's
+    // visual position after prepending. Without this they jump to the top.
+    const area = document.getElementById('msgsArea');
+    const prevScrollHeight = area ? area.scrollHeight : 0;
+    const prevScrollTop = area ? area.scrollTop : 0;
+
+    contact.msgs = [...olderMsgs, ...contact.msgs];
+    contact.oldestLoadedMsgId = contact.msgs[0].id;
+    contact.loadingOlder = false;
+
+    if(activeId === contact.id){
+      renderMsgs();
+      // Restore: keep the user pinned to the same content boundary they were
+      // reading, so the prepend appears as content "above" them.
+      if(area){
+        const newScrollHeight = area.scrollHeight;
+        area.scrollTop = newScrollHeight - prevScrollHeight + prevScrollTop;
+      }
+    }
+
+    // Backfill deliveredTo for any received older messages that don't have
+    // our entry — same logic as in loadHistoricalMessages.
+    const profile = loadContactProfile(contact.id);
+    const optedOut = profile && profile.readReceiptsEnabled === false;
+    if(!optedOut){
+      newEntries.forEach(([key], i) => {
+        const m = decryptedList[i];
+        if(!m || m.senderId === currentUser.uid) return;
+        const dt = m.deliveredTo || {};
+        if(!dt[currentUser.uid]){
+          firebaseDb.ref(`dms/${contact.dmRoomId}/messages/${key}/deliveredTo/${currentUser.uid}`)
+            .set(Date.now())
+            .catch(()=>{});
+        }
+      });
+    }
+  } catch(e){
+    console.error('[loadOlderMessages] error:', e);
+    contact.loadingOlder = false;
+    if(activeId === contact.id) renderMsgs();
+  }
+}
+
+// Attach the scroll-to-top trigger once. Same div is reused across chats so
+// we guard against double-attach with a flag on the element.
+function setupPaginationScroll(){
+  const area = document.getElementById('msgsArea');
+  if(!area || area._paginationAttached) return;
+  area._paginationAttached = true;
+  const SCROLL_THRESHOLD = 80;
+  area.addEventListener('scroll', () => {
+    if(area.scrollTop > SCROLL_THRESHOLD) return;
+    const c = activeCont();
+    if(!c || !c.dmRoomId) return;
+    loadOlderMessages(c);
+  });
 }
 
 function setupDMListener(dmRoomId){
@@ -7226,8 +7360,12 @@ function openChat(id){
   // For DM contacts, clear messages before refresh so we don't show stale cached messages
   if(c.dmRoomId){
     c.msgs = [];
+    c.oldestLoadedMsgId = null;
+    c.fullyLoaded = false;
+    c.loadingOlder = false;
   }
   renderMsgs(); renderSidebar();
+  setupPaginationScroll();
   // If this is a DM contact, ensure participation FIRST so the loads and
   // listeners below have read permission under the tightened rules
   // (messages.read and blockedSenders.read are participant-only). The
@@ -8036,7 +8174,17 @@ function renderMsgs(){
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-left:-9px;"><polyline points="20 6 9 17 4 12"/></svg>
     </span>`;
   const statusBanner = c && c.status === 'pending_acceptance' ? `<div class="status-banner">${isVI?'⚠️ Tin nhắn đang chờ xử lý, chờ chấp nhận':'⚠️ Messages pending, waiting for acceptance'}</div>` : '';
-  area.innerHTML=statusBanner + c.msgs.map((m,i)=>{
+  // Pagination header: spinner while fetching older, "start of conversation"
+  // marker once we've reached the beginning of history.
+  let paginationHeader = '';
+  if(c && c.dmRoomId){
+    if(c.loadingOlder){
+      paginationHeader = `<div class="msgs-paging-header loading">${isVI?'Đang tải tin nhắn cũ…':'Loading older messages…'}</div>`;
+    } else if(c.fullyLoaded && c.msgs && c.msgs.length){
+      paginationHeader = `<div class="msgs-paging-header start">${isVI?'Đầu cuộc trò chuyện':'Start of conversation'}</div>`;
+    }
+  }
+  area.innerHTML=paginationHeader + statusBanner + c.msgs.map((m,i)=>{
     let h='';
     const d=fmtDay(m.ts)||todayLbl;
     const prevD=i>0?fmtDay(c.msgs[i-1].ts):'';
