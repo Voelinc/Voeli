@@ -82,18 +82,78 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:v
 .sidebar,.cpanel,.msgs,.sb-list{will-change:transform;transform:translateZ(0);}
 
 /* SETUP */
-#setupScreen{position:fixed;inset:0;background:var(--bg);z-index:999;
-  display:flex;align-items:center;justify-content:center;padding:20px;
-  overflow-y:auto;}
-.setup-box{background:var(--panel);border:1px solid var(--line);border-radius:16px;
-  padding:32px 28px;max-width:460px;width:100%;box-shadow:var(--shadow-md);position:relative;}
-.setup-box .lang-tog{position:absolute;top:18px;right:18px;}
-/* Mobile: full-bleed auth, no nested-card look, respect notch/dynamic island */
-@media (max-width: 540px){
-  #setupScreen{padding:0;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;}
-  .setup-box{max-width:none;border:none;border-radius:0;box-shadow:none;
-    padding:24px 22px calc(env(safe-area-inset-bottom, 0px) + 24px);width:100%;}
-  .setup-box .lang-tog{top:calc(env(safe-area-inset-top, 0px) + 14px);right:18px;}
+#setupScreen{position:fixed;inset:0;background:var(--panel);z-index:999;
+  display:flex;flex-direction:column;align-items:stretch;justify-content:stretch;
+  padding:0;overflow:hidden;}
+.setup-box{display:none;}
+
+/* ── Onboarding screens (new) ── */
+.ob-stage{flex:1;display:flex;flex-direction:column;width:100%;max-width:460px;
+  margin:0 auto;background:var(--panel);position:relative;overflow:hidden;}
+.ob-screen-v2{flex:1;display:none;flex-direction:column;width:100%;height:100%;
+  padding-top:env(safe-area-inset-top, 0px);
+  padding-bottom:env(safe-area-inset-bottom, 0px);
+  animation:obFadeIn .25s ease-out;}
+.ob-screen-v2.active{display:flex;}
+@keyframes obFadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+.ob-nav-v2{padding:14px 18px 4px;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.ob-back-v2{background:none;border:none;color:var(--ink);cursor:pointer;
+  width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;padding:0;}
+.ob-back-v2:hover{background:var(--panel-2);}
+.ob-nav-title-v2{font-size:15px;font-weight:600;flex:1;text-align:center;
+  margin-right:36px;}
+.ob-body-v2{flex:1;display:flex;flex-direction:column;padding:0 28px;min-height:0;}
+.ob-h1-v2{font-size:32px;font-weight:600;letter-spacing:-.02em;line-height:1.15;
+  margin:0 0 8px;color:var(--ink);}
+.ob-h2-v2{font-size:24px;font-weight:600;letter-spacing:-.01em;line-height:1.2;
+  margin:0 0 6px;color:var(--ink);}
+.ob-tagline-v2{font-size:15px;color:var(--ink);margin:6px 0 0;line-height:1.4;}
+.ob-tagline-vi-v2{font-size:13px;color:var(--muted);margin:2px 0 0;line-height:1.4;}
+.ob-sub-v2{font-size:14px;color:var(--muted);margin:0 0 0;line-height:1.45;}
+.ob-label-v2{font-size:11.5px;font-weight:600;color:var(--muted-2);
+  letter-spacing:.06em;text-transform:uppercase;margin:18px 0 6px;display:block;}
+.ob-input-v2{width:100%;padding:11px 14px;border:1px solid var(--line);
+  border-radius:10px;font-size:15px;outline:none;font-family:inherit;
+  background:var(--panel);color:var(--ink);box-sizing:border-box;}
+.ob-input-v2:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,104,255,.12);}
+.ob-hint-v2{font-size:12px;color:var(--muted);margin:6px 0 0;line-height:1.4;}
+.ob-btn-v2{width:100%;padding:13px 18px;border-radius:12px;font-size:15px;
+  font-weight:600;cursor:pointer;font-family:inherit;border:none;
+  transition:transform .1s, opacity .15s, background .15s;}
+.ob-btn-v2:active{transform:scale(.98);}
+.ob-btn-v2:disabled{opacity:.55;cursor:default;}
+.ob-btn-primary-v2{background:var(--blue);color:#fff;}
+.ob-btn-primary-v2:hover:not(:disabled){background:#0058d6;}
+.ob-btn-ghost-v2{background:transparent;color:var(--blue);font-weight:500;}
+.ob-btn-ghost-v2:hover:not(:disabled){background:var(--panel-2);}
+.ob-btn-google-v2{background:var(--panel);color:var(--ink);border:1.5px solid var(--line);
+  display:flex;align-items:center;justify-content:center;gap:10px;}
+.ob-btn-google-v2:hover:not(:disabled){background:var(--panel-2);}
+.ob-divider-v2{display:flex;align-items:center;gap:10px;margin:18px 0;}
+.ob-divider-v2::before,.ob-divider-v2::after{content:'';flex:1;height:1px;background:var(--line);}
+.ob-divider-v2 span{font-size:12px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.1em;}
+.ob-foot-v2{font-size:11.5px;color:var(--muted-2);text-align:center;margin:12px 0 0;
+  line-height:1.5;}
+.ob-foot-v2 a{color:var(--blue);text-decoration:none;}
+.ob-error-v2{display:none;background:rgba(220,38,38,.08);color:#dc2626;
+  border:1px solid rgba(220,38,38,.22);border-radius:10px;padding:10px 12px;
+  font-size:13px;line-height:1.4;margin-top:14px;}
+.ob-error-v2.show{display:block;}
+.ob-actions-v2{padding:0 28px 24px;padding-bottom:calc(24px + env(safe-area-inset-bottom, 0px));
+  display:flex;flex-direction:column;gap:10px;flex-shrink:0;}
+.ob-langtog-v2{position:absolute;top:calc(env(safe-area-inset-top, 0px) + 14px);
+  right:18px;z-index:1;}
+.ob-brand{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  flex:1;padding:0 28px;text-align:center;}
+.ob-brand-mark{margin-bottom:24px;}
+.ob-brand-name{font-size:36px;font-weight:600;letter-spacing:-.02em;color:var(--ink);
+  margin:0;}
+
+@media (min-width: 541px){
+  .ob-stage{margin:40px auto;max-height:calc(100vh - 80px);
+    border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow-md);
+    overflow:hidden;}
 }
 .setup-box h1{font-size:22px;margin-bottom:6px;}
 .setup-box p{color:var(--muted);font-size:14px;line-height:1.55;margin-bottom:16px;}
@@ -298,6 +358,30 @@ body.is-offline::before{
   color:var(--muted-2);font-size:16px;flex-shrink:0;padding:0 2px;}
 .bridge-shared{text-align:center;font-size:11.5px;color:var(--muted);margin-top:9px;
   line-height:1.45;font-style:italic;padding:0 4px;}
+
+/* ── Bridges Library (Profile) ── */
+.bridge-lib-empty{padding:18px 18px 16px;text-align:center;background:var(--panel-2);
+  border:1px solid var(--line);border-radius:16px;position:relative;}
+.bridge-lib-empty-body{font-size:13px;color:var(--muted);line-height:1.55;margin:0;
+  max-width:280px;margin-left:auto;margin-right:auto;}
+.bridge-lib-empty-preview{position:relative;background:linear-gradient(135deg,#fffbeb 0%,#fff8f0 100%);
+  border:1px solid rgba(245,158,11,.22);border-radius:14px;padding:12px 12px 11px;
+  text-align:left;opacity:.92;}
+.bridge-lib-empty-preview .bridge-side{background:#fff;}
+.bridge-lib-empty-tag{display:inline-block;margin-top:10px;font-size:10px;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);
+  background:var(--panel);padding:3px 9px;border-radius:999px;border:1px solid var(--line);}
+.bridge-lib-item{background:linear-gradient(135deg,#fffbeb 0%,#fff8f0 100%);
+  border:1px solid rgba(245,158,11,.22);border-radius:14px;padding:12px 13px;
+  margin-bottom:10px;cursor:pointer;transition:transform .15s,box-shadow .15s;}
+.bridge-lib-item:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(245,158,11,.12);}
+.bridge-lib-pair{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.bridge-lib-phrase{font-size:13px;font-weight:600;color:var(--ink);flex:1;line-height:1.3;}
+.bridge-lib-tilde{color:var(--muted-2);font-size:13px;flex-shrink:0;}
+.bridge-lib-meta{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:8px;
+  flex-wrap:wrap;}
+.bridge-lib-meta-dot{width:2px;height:2px;border-radius:50%;background:var(--muted);
+  display:inline-block;flex-shrink:0;}
 
 /* ── Learn Chip — shown on received bubbles when slang is detected ── */
 .learn-chip{display:flex;align-items:flex-start;flex-wrap:wrap;gap:5px;
@@ -1001,66 +1085,141 @@ body.is-offline::before{
 .cact-ico{font-size:20px;line-height:1;}
 .cact-lbl{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.02em;}
 </style>
-<link rel="stylesheet" href="voeli-redesign.css">
 </head>
 <body>
 
-<!-- SETUP — sign in (or demo mode) -->
+<!-- SETUP — onboarding flow (welcome → sign up / sign in → name → app) -->
 <div id="setupScreen">
-  <div class="setup-box">
-    <div class="lang-tog" id="langTogAuth">
-      <button data-dir="en-vi" onclick="setAppDir('en-vi')">EN</button>
-      <button data-dir="vi-en" onclick="setAppDir('vi-en')">VI</button>
-    </div>
-    <h1 id="setupTitle">Voeli</h1>
-    <p id="setupTagline">English ↔ Vietnamese translation chat. Sign in to start.</p>
+  <div class="ob-stage">
 
-    <!-- Mode tabs: Sign in / Create account -->
-    <div id="authTabs" style="display:flex;background:var(--panel-2);border-radius:10px;padding:3px;margin-bottom:14px;">
-      <button id="tabSignIn"  class="auth-tab active" type="button">Sign in</button>
-      <button id="tabSignUp"  class="auth-tab"        type="button">Create account</button>
-    </div>
-
-    <!-- Email + password fields (shared by both tabs) -->
-    <input type="email"    id="authEmail" class="finput" placeholder="you@example.com" autocomplete="email" spellcheck="false" style="margin-bottom:8px;">
-    <input type="password" id="authPwd"   class="finput" placeholder="Password (8+ chars)" autocomplete="current-password" style="margin-bottom:6px;">
-    <!-- Birthday — only visible on Create Account tab; tunes which slang shows the picker -->
-    <div id="authBirthdayWrap" style="display:none;margin-bottom:8px;">
-      <label id="authBirthdayLabel" for="authBirthday" style="display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px;">Birthday</label>
-      <input type="date" id="authBirthday" class="finput" max="" style="font-family:inherit;">
-    </div>
-    <div id="authError" style="display:none;color:var(--red);font-size:12.5px;margin-bottom:10px;line-height:1.4;"></div>
-
-    <!-- Turnstile widget — only visible on the Create Account tab. -->
-    <div id="turnstileWrap" style="display:none;margin-bottom:10px;">
-      <div id="turnstileWidget"></div>
+    <!-- ── 01 · WELCOME ─────────────────────────────────── -->
+    <div class="ob-screen-v2 active" id="obWelcome">
+      <div class="lang-tog ob-langtog-v2" id="langTogAuth">
+        <button data-dir="en-vi" onclick="setAppDir('en-vi')">EN</button>
+        <button data-dir="vi-en" onclick="setAppDir('vi-en')">VI</button>
+      </div>
+      <div class="ob-brand">
+        <svg class="ob-brand-mark" width="104" height="104" viewBox="0 0 120 120" fill="none" aria-hidden="true">
+          <path d="M22 38 Q22 26 34 26 H72 Q84 26 84 38 V60 Q84 72 72 72 H50 L36 84 V72 H34 Q22 72 22 60 Z" fill="#38BDF8"/>
+          <path d="M40 56 Q40 44 52 44 H92 Q104 44 104 56 V78 Q104 90 92 90 H68 L82 102 V90 H92 Q104 90 104 78 Z" fill="#0068FF"/>
+        </svg>
+        <h1 class="ob-brand-name" id="obWelcomeName">Voeli</h1>
+        <p class="ob-tagline-v2" id="obWelcomeTagline">English ↔ Vietnamese.</p>
+        <p class="ob-tagline-vi-v2" id="obWelcomeTaglineVi">Tiếng Anh ↔ Tiếng Việt.</p>
+      </div>
+      <div class="ob-actions-v2">
+        <button class="ob-btn-v2 ob-btn-primary-v2" id="obStartBtn" onclick="obGoTo('signup')">Get started</button>
+        <button class="ob-btn-v2 ob-btn-ghost-v2"   id="obHaveAcctBtn" onclick="obGoTo('signin')">I have an account</button>
+      </div>
     </div>
 
-    <button class="btnsave" id="authPrimaryBtn" style="width:100%;margin-top:6px;">Sign in →</button>
-    <button id="authResetBtn" type="button" style="width:100%;margin-top:8px;background:none;border:none;color:var(--blue);font-size:12.5px;cursor:pointer;text-align:center;padding:4px;">Forgot password?</button>
+    <!-- ── 02 · SIGN UP ─────────────────────────────────── -->
+    <div class="ob-screen-v2" id="obSignup">
+      <div class="ob-nav-v2">
+        <button class="ob-back-v2" onclick="obGoTo('welcome')" aria-label="Back">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+      </div>
+      <div class="ob-body-v2">
+        <h2 class="ob-h2-v2" id="obSignupTitle">Create your account</h2>
+        <p class="ob-sub-v2" id="obSignupSub">It only takes a minute.</p>
 
-    <div style="display:flex;align-items:center;gap:10px;margin-top:14px;">
-      <div style="flex:1;height:1px;background:var(--line);"></div>
-      <span class="auth-or" style="font-size:12px;color:var(--muted);">or</span>
-      <div style="flex:1;height:1px;background:var(--line);"></div>
+        <button class="ob-btn-v2 ob-btn-google-v2" id="obSignupGoogleBtn" style="margin-top:24px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/>
+            <path fill="#FBBC04" d="M5.84 14.09a6.6 6.6 0 0 1 0-4.18V7.07H2.18a11 11 0 0 0 0 9.86l3.66-2.84z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.46 2.09 14.97 1 12 1A11 11 0 0 0 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/>
+          </svg>
+          <span id="obSignupGoogleLabel">Continue with Google</span>
+        </button>
+
+        <div class="ob-divider-v2"><span id="obSignupOr">or</span></div>
+
+        <label class="ob-label-v2" id="obEmailLabel" for="authEmail">Email</label>
+        <input type="email" id="authEmail" class="ob-input-v2" placeholder="you@example.com" autocomplete="email" spellcheck="false">
+
+        <label class="ob-label-v2" id="obPwdLabel" for="authPwd">Password</label>
+        <input type="password" id="authPwd" class="ob-input-v2" placeholder="••••••••" autocomplete="new-password">
+        <p class="ob-hint-v2" id="obPwdHint">8+ characters, with a number or symbol.</p>
+
+        <div id="authBirthdayWrap" style="display:block;">
+          <label class="ob-label-v2" id="authBirthdayLabel" for="authBirthday">Birthday</label>
+          <input type="date" id="authBirthday" class="ob-input-v2" max="" style="font-family:inherit;">
+        </div>
+
+        <div id="turnstileWrap" style="display:none;margin-top:14px;">
+          <div id="turnstileWidget"></div>
+        </div>
+
+        <div id="authError" class="ob-error-v2"></div>
+      </div>
+      <div class="ob-actions-v2">
+        <button class="ob-btn-v2 ob-btn-primary-v2" id="authPrimaryBtn">Create account</button>
+        <p class="ob-foot-v2" id="obSignupTerms">
+          By continuing you agree to our
+          <a href="/terms.html" target="_blank">Terms</a>
+          and <a href="/privacy.html" target="_blank">Privacy Policy</a>.
+        </p>
+      </div>
     </div>
 
-    <button id="googleBtn" type="button" style="width:100%;margin-top:12px;padding:10px 16px;border-radius:10px;border:1.5px solid var(--line);background:var(--panel);color:var(--ink);font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;">
-      <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-        <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/>
-        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"/>
-        <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.4-4.5 2.3-7.2 2.3-5.2 0-9.6-3.3-11.3-8L6.2 33C9.5 39.3 16.2 44 24 44z"/>
-        <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.6l6.2 5.2C42.1 35.8 44 30.3 44 24c0-1.3-.1-2.4-.4-3.5z"/>
-      </svg>
-      <span id="googleBtnLabel">Continue with Google</span>
-    </button>
+    <!-- ── 02s · SIGN IN ────────────────────────────────── -->
+    <div class="ob-screen-v2" id="obSignin">
+      <div class="ob-nav-v2">
+        <button class="ob-back-v2" onclick="obGoTo('welcome')" aria-label="Back">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+      </div>
+      <div class="ob-body-v2">
+        <h2 class="ob-h2-v2" id="obSigninTitle">Welcome back</h2>
+        <p class="ob-sub-v2" id="obSigninSub">Sign in to continue.</p>
 
-    <p id="termsLine" style="text-align:center;font-size:11.5px;color:var(--muted-2);margin-top:14px;line-height:1.5;">
-      By continuing you agree to our
-      <a href="/terms.html" target="_blank" style="color:var(--blue);text-decoration:none;">Terms</a>
-      and
-      <a href="/privacy.html" target="_blank" style="color:var(--blue);text-decoration:none;">Privacy Policy</a>.
-    </p>
+        <button class="ob-btn-v2 ob-btn-google-v2" id="obSigninGoogleBtn" style="margin-top:24px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/>
+            <path fill="#FBBC04" d="M5.84 14.09a6.6 6.6 0 0 1 0-4.18V7.07H2.18a11 11 0 0 0 0 9.86l3.66-2.84z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.46 2.09 14.97 1 12 1A11 11 0 0 0 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/>
+          </svg>
+          <span id="obSigninGoogleLabel">Continue with Google</span>
+        </button>
+
+        <div class="ob-divider-v2"><span id="obSigninOr">or</span></div>
+
+        <label class="ob-label-v2" id="obSigninEmailLabel" for="authEmailSI">Email</label>
+        <input type="email" id="authEmailSI" class="ob-input-v2" placeholder="you@example.com" autocomplete="email" spellcheck="false">
+
+        <label class="ob-label-v2" id="obSigninPwdLabel" for="authPwdSI">Password</label>
+        <input type="password" id="authPwdSI" class="ob-input-v2" placeholder="••••••••" autocomplete="current-password">
+
+        <button id="authResetBtn" type="button" style="background:none;border:none;color:var(--blue);font-size:13px;cursor:pointer;padding:8px 0 0;text-align:left;font-family:inherit;">Forgot password?</button>
+
+        <div id="authErrorSI" class="ob-error-v2"></div>
+      </div>
+      <div class="ob-actions-v2">
+        <button class="ob-btn-v2 ob-btn-primary-v2" id="authSigninBtn">Sign in</button>
+      </div>
+    </div>
+
+    <!-- ── 03 · DISPLAY NAME ────────────────────────────── -->
+    <div class="ob-screen-v2" id="obName">
+      <div class="ob-nav-v2"></div>
+      <div class="ob-body-v2">
+        <h2 class="ob-h2-v2" id="obNameTitle">What should we call you?</h2>
+        <p class="ob-sub-v2" id="obNameSub">This is the name your contacts will see.</p>
+
+        <label class="ob-label-v2" id="obNameLabel" for="obNameInput">Display name</label>
+        <input type="text" id="obNameInput" class="ob-input-v2" placeholder="e.g. Ngọc" autocomplete="given-name">
+        <p class="ob-hint-v2" id="obNameHint">You can change this later in Settings.</p>
+
+        <div id="obNameError" class="ob-error-v2"></div>
+      </div>
+      <div class="ob-actions-v2">
+        <button class="ob-btn-v2 ob-btn-primary-v2" id="obNameContinueBtn" onclick="obFinishName()">Continue</button>
+      </div>
+    </div>
+
   </div>
 </div>
 <style>
@@ -1072,18 +1231,6 @@ body.is-offline::before{
   #profilePanel { position: absolute !important; inset: 0 !important; width: 100% !important; flex-direction: column !important; }
   #bottomNav { flex-shrink: 0 !important; height: calc(60px + env(safe-area-inset-bottom)) !important; border-top: 1px solid var(--line) !important; background: var(--panel) !important; display: flex !important; width: 100% !important; padding: 0 calc(18px + env(safe-area-inset-right)) env(safe-area-inset-bottom) calc(18px + env(safe-area-inset-left)) !important; box-sizing: border-box !important; }
 
-  /* Auth tab pills */
-  #authTabs .auth-tab{flex:1;background:none;border:none;padding:7px 12px;border-radius:8px;
-    font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;
-    font-family:inherit;}
-  #authTabs .auth-tab.active{background:var(--panel);color:var(--ink);box-shadow:var(--shadow-sm);}
-  #authTabs .auth-tab:not(.active):hover{color:var(--ink);}
-  /* Sign-in screen utility class */
-  .setup-box .finput{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
-    font-size:14px;outline:none;font-family:inherit;background:var(--panel);}
-  .setup-box .finput:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,104,255,.12);}
-  /* Disabled state during async auth */
-  .setup-box button:disabled{opacity:.55;cursor:default;}
   /* Top-right "signed in as" pill once authed */
   .auth-pill{display:flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;
     background:var(--panel-2);border-radius:999px;font-size:11.5px;color:var(--muted);
@@ -1091,6 +1238,7 @@ body.is-offline::before{
   .auth-pill:hover{background:var(--chip);color:var(--ink);}
   .auth-pill .auth-pill-av{width:22px;height:22px;border-radius:50%;background:var(--blue);
     color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;}
+
 </style>
 
 <!-- LIVE SESSION SETUP -->
@@ -1397,7 +1545,7 @@ body.is-offline::before{
         <h3 id="profileName" style="font-size:22px;font-weight:600;margin-bottom:6px;margin-top:0;cursor:pointer;padding:4px 8px;border-radius:6px;transition:background 0.2s;"
             onmouseover="this.style.background='var(--panel-2)'" onmouseout="this.style.background='transparent'"
             onclick="editProfileName(this)">Your Name</h3>
-        <p id="profileEmail" style="font-size:14px;color:var(--muted);margin:0;">email@example.com</p>
+        <p id="profileEmail" style="font-size:14px;color:var(--muted);margin:0;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="fa9f979b9396ba9f829b978a969fd4999597">[email&#160;protected]</a></p>
       </div>
 
       <!-- Learning Dashboard Section (Collapsible) -->
@@ -1412,6 +1560,22 @@ body.is-offline::before{
           <input type="text" id="dictSearchProfile" placeholder="Search phrases..." style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;box-sizing:border-box;margin-bottom:12px;background:var(--panel-2);">
           <div id="dictContentProfile" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:12px;"></div>
           <div id="emptyDictProfile" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Bridges Library Section (Collapsible) -->
+      <div style="margin-bottom:28px;">
+        <button id="bridgesToggle" style="background:none;border:none;padding:0;cursor:pointer;width:100%;text-align:left;display:flex;align-items:center;gap:8px;transition:all 0.2s;"
+                onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'"
+                onclick="toggleBridgesSection()">
+          <span style="font-size:18px;">🌉</span>
+          <h3 style="font-size:16px;font-weight:600;margin:0;flex:1;">Bridges</h3>
+          <span id="bridgesCount" style="font-size:12px;color:var(--muted);font-weight:500;"></span>
+          <span id="bridgesArrow" style="color:var(--muted);font-size:14px;font-weight:600;">▼</span>
+        </button>
+        <div id="bridgesContent" style="margin-top:12px;display:none;">
+          <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 14px;">Moments where you and someone you talk to reached for the same idea — each from your own language.</p>
+          <div id="bridgesList"></div>
         </div>
       </div>
 
@@ -1513,7 +1677,7 @@ body.is-offline::before{
   </div>
 </div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 'use strict';
 
 // ═══════════════════════════════════════════════════════
@@ -2307,7 +2471,47 @@ function detectBridgeMoment(msgs){
   return null;
 }
 
-// ─── Auto-learning dictionary ────────────────────────────
+// ─── Bridge encounter log ────────────────────────────────
+// Each time a bridge card fires in a thread, we log it (deduped per phrase pair
+// per contact) so the user can revisit them all from Profile → Bridges.
+const BRIDGE_LOG_KEY = 'bridgeEncounterLog';
+function loadBridgeLog(){
+  try { return JSON.parse(localStorage.getItem(BRIDGE_LOG_KEY) || '[]'); }
+  catch(e){ return []; }
+}
+function saveBridgeLog(log){
+  try { localStorage.setItem(BRIDGE_LOG_KEY, JSON.stringify(log)); } catch(e){}
+}
+function bridgeKey(bridge){
+  return (bridge.vi.phrase || '') + '||' + (bridge.en.phrase || '');
+}
+function recordBridgeEncounter(bridge, contact){
+  if(!bridge) return;
+  const log = loadBridgeLog();
+  const key = bridgeKey(bridge);
+  const contactId = contact ? (contact.id || contact.email || contact.name) : null;
+  const contactName = contact ? (contact.name || 'Someone') : 'Someone';
+  const existing = log.find(e => e.key === key);
+  if(existing){
+    existing.count = (existing.count || 1) + 1;
+    existing.lastSeen = Date.now();
+    if(contactId && !existing.contacts.some(c => c.id === contactId)){
+      existing.contacts.push({ id: contactId, name: contactName });
+    }
+  } else {
+    log.unshift({
+      key,
+      vi: { phrase: bridge.vi.phrase, meaning: bridge.vi.meaning },
+      en: { phrase: bridge.en.phrase, meaning: bridge.en.meaning },
+      shared: bridge.shared,
+      firstSeen: Date.now(),
+      lastSeen: Date.now(),
+      count: 1,
+      contacts: contactId ? [{ id: contactId, name: contactName }] : []
+    });
+  }
+  saveBridgeLog(log);
+}
 // Phrases the AI flags but our hardcoded dict doesn't cover are logged.
 // Once a phrase is seen LEARN_THRESHOLD times, its full AI result is saved
 // to learned_dictionary and served directly on future matches — no API call needed.
@@ -3157,36 +3361,58 @@ function updateButtonStates(){
 // actually translates the words a Vietnamese user would otherwise have to read in English.
 const AUTH_STRINGS = {
   'en-vi': {
-    tagline: 'English ↔ Vietnamese translation chat. Sign in to start.',
-    signIn: 'Sign in',
-    createAccount: 'Create account',
+    tagline: 'English ↔ Vietnamese.',
+    taglineVi: 'Tiếng Anh ↔ Tiếng Việt.',
+    getStarted: 'Get started',
+    haveAccount: 'I have an account',
+    signupTitle: 'Create your account',
+    signupSub: 'It only takes a minute.',
+    signinTitle: 'Welcome back',
+    signinSub: 'Sign in to continue.',
+    nameTitle: 'What should we call you?',
+    nameSub: 'This is the name your contacts will see.',
+    nameLabel: 'Display name',
+    nameHint: 'You can change this later in Settings.',
+    nameContinue: 'Continue',
+    emailLabel: 'Email',
+    pwdLabel: 'Password',
+    pwdHint: '8+ characters, with a number or symbol.',
     emailPh: 'you@example.com',
-    pwdPh: 'Password (8+ chars)',
+    pwdPh: '••••••••',
     birthday: 'Birthday',
-    signInBtn: 'Sign in →',
-    createAccountBtn: 'Create account →',
+    signInBtn: 'Sign in',
+    createAccountBtn: 'Create account',
     forgot: 'Forgot password?',
     or: 'or',
     google: 'Continue with Google',
-    demo: '🧪 Try Demo Mode (no account needed)',
-    demoHelp: 'Demo returns fake translations so you can explore the UI without signing up.',
-    termsHTML: 'By continuing you agree to our <a href="/terms.html" target="_blank" style="color:var(--blue);text-decoration:none;">Terms</a> and <a href="/privacy.html" target="_blank" style="color:var(--blue);text-decoration:none;">Privacy Policy</a>.'
+    termsHTML: 'By continuing you agree to our <a href="/terms.html" target="_blank">Terms</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a>.'
   },
   'vi-en': {
-    tagline: 'Trò chuyện dịch Anh ↔ Việt. Đăng nhập để bắt đầu.',
-    signIn: 'Đăng nhập',
-    createAccount: 'Tạo tài khoản',
+    tagline: 'Tiếng Anh ↔ Tiếng Việt.',
+    taglineVi: 'English ↔ Vietnamese.',
+    getStarted: 'Bắt đầu',
+    haveAccount: 'Tôi đã có tài khoản',
+    signupTitle: 'Tạo tài khoản',
+    signupSub: 'Chỉ mất một phút.',
+    signinTitle: 'Chào mừng trở lại',
+    signinSub: 'Đăng nhập để tiếp tục.',
+    nameTitle: 'Chúng tôi nên gọi bạn là gì?',
+    nameSub: 'Đây là tên bạn bè sẽ thấy.',
+    nameLabel: 'Tên hiển thị',
+    nameHint: 'Bạn có thể đổi sau trong Cài đặt.',
+    nameContinue: 'Tiếp tục',
+    emailLabel: 'Email',
+    pwdLabel: 'Mật khẩu',
+    pwdHint: 'Tối thiểu 8 ký tự, có số hoặc ký hiệu.',
     emailPh: 'ban@vidu.com',
-    pwdPh: 'Mật khẩu (8+ ký tự)',
+    pwdPh: '••••••••',
     birthday: 'Ngày sinh',
-    signInBtn: 'Đăng nhập →',
-    createAccountBtn: 'Tạo tài khoản →',
+    signInBtn: 'Đăng nhập',
+    createAccountBtn: 'Tạo tài khoản',
     forgot: 'Quên mật khẩu?',
     or: 'hoặc',
     google: 'Tiếp tục với Google',
-    demo: '🧪 Thử Chế độ Demo (không cần tài khoản)',
-    demoHelp: 'Demo trả về bản dịch giả để bạn có thể khám phá giao diện mà không cần đăng ký.',
-    termsHTML: 'Bằng cách tiếp tục, bạn đồng ý với <a href="/terms.html" target="_blank" style="color:var(--blue);text-decoration:none;">Điều khoản</a> và <a href="/privacy.html" target="_blank" style="color:var(--blue);text-decoration:none;">Chính sách bảo mật</a> của chúng tôi.'
+    termsHTML: 'Bằng cách tiếp tục, bạn đồng ý với <a href="/terms.html" target="_blank">Điều khoản</a> và <a href="/privacy.html" target="_blank">Chính sách bảo mật</a> của chúng tôi.'
   }
 };
 
@@ -3374,20 +3600,43 @@ function applyAuthLang(){
   const s = AUTH_STRINGS[appDir] || AUTH_STRINGS['en-vi'];
   const set = (id, txt) => { const el=document.getElementById(id); if(el) el.textContent=txt; };
   const setHTML = (id, html) => { const el=document.getElementById(id); if(el) el.innerHTML=html; };
-  set('setupTagline', s.tagline);
-  set('tabSignIn', s.signIn);
-  set('tabSignUp', s.createAccount);
-  const email = document.getElementById('authEmail'); if(email) email.placeholder = s.emailPh;
-  const pwd = document.getElementById('authPwd'); if(pwd) pwd.placeholder = s.pwdPh;
-  set('authBirthdayLabel', s.birthday);
-  const btn = document.getElementById('authPrimaryBtn');
-  if(btn) btn.textContent = (typeof authMode!=='undefined' && authMode==='signUp') ? s.createAccountBtn : s.signInBtn;
-  set('authResetBtn', s.forgot);
-  document.querySelectorAll('.auth-or').forEach(el => el.textContent = s.or);
-  set('googleBtnLabel', s.google);
-  const demoBtn = document.getElementById('demoBtn'); if(demoBtn) demoBtn.textContent = s.demo;
-  set('demoHelp', s.demoHelp);
-  setHTML('termsLine', s.termsHTML);
+  const setPh = (id, ph) => { const el=document.getElementById(id); if(el) el.placeholder=ph; };
+  // Welcome
+  set('obWelcomeTagline',   s.tagline);
+  set('obWelcomeTaglineVi', s.taglineVi);
+  set('obStartBtn',         s.getStarted);
+  set('obHaveAcctBtn',      s.haveAccount);
+  // Sign up
+  set('obSignupTitle',      s.signupTitle);
+  set('obSignupSub',        s.signupSub);
+  set('obSignupGoogleLabel',s.google);
+  set('obSignupOr',         s.or);
+  set('obEmailLabel',       s.emailLabel);
+  set('obPwdLabel',         s.pwdLabel);
+  set('obPwdHint',          s.pwdHint);
+  set('authBirthdayLabel',  s.birthday);
+  set('authPrimaryBtn',     s.createAccountBtn);
+  setPh('authEmail',        s.emailPh);
+  setPh('authPwd',          s.pwdPh);
+  setHTML('obSignupTerms',  'By continuing you agree to our <a href="/terms.html" target="_blank">Terms</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a>.');
+  setHTML('obSignupTerms',  s.termsHTML);
+  // Sign in
+  set('obSigninTitle',      s.signinTitle);
+  set('obSigninSub',        s.signinSub);
+  set('obSigninGoogleLabel',s.google);
+  set('obSigninOr',         s.or);
+  set('obSigninEmailLabel', s.emailLabel);
+  set('obSigninPwdLabel',   s.pwdLabel);
+  set('authResetBtn',       s.forgot);
+  set('authSigninBtn',      s.signInBtn);
+  setPh('authEmailSI',      s.emailPh);
+  setPh('authPwdSI',        s.pwdPh);
+  // Name
+  set('obNameTitle',        s.nameTitle);
+  set('obNameSub',           s.nameSub);
+  set('obNameLabel',         s.nameLabel);
+  set('obNameHint',          s.nameHint);
+  set('obNameContinueBtn',   s.nameContinue);
   applyAppLang();
 }
 
@@ -4540,52 +4789,97 @@ function resetTurnstile(){
 function updateAuthButtonState(){
   const btn = document.getElementById('authPrimaryBtn');
   if (!btn) return;
-  // On Sign In: button is always available.
-  // On Create Account: only enable once Turnstile has issued a fresh token.
-  btn.disabled = (authMode === 'signUp' && !_turnstileToken);
+  // Create Account button: only enable once Turnstile has issued a fresh token.
+  btn.disabled = !_turnstileToken;
 }
 
-function setAuthMode(mode){
-  authMode = mode;
-  document.getElementById('tabSignIn').classList.toggle('active', mode==='signIn');
-  document.getElementById('tabSignUp').classList.toggle('active', mode==='signUp');
-  const _s = (typeof AUTH_STRINGS!=='undefined' && AUTH_STRINGS[appDir]) ? AUTH_STRINGS[appDir] : null;
-  document.getElementById('authPrimaryBtn').textContent = _s
-    ? (mode==='signIn' ? _s.signInBtn : _s.createAccountBtn)
-    : (mode==='signIn' ? 'Sign in →' : 'Create account →');
-  document.getElementById('authResetBtn').style.display = mode==='signIn' ? 'block' : 'none';
-  document.getElementById('authPwd').setAttribute(
-    'autocomplete', mode==='signIn' ? 'current-password' : 'new-password'
-  );
-  // Birthday only shown on Create Account
-  const bWrap = document.getElementById('authBirthdayWrap');
-  if(bWrap){
-    bWrap.style.display = mode==='signUp' ? 'block' : 'none';
-    const today = new Date().toISOString().slice(0,10);
-    document.getElementById('authBirthday').setAttribute('max', today);
-  }
-  showAuthError('');
+// ── Screen-based onboarding navigation ───────────────────────────────
+// Screens: 'welcome' | 'signup' | 'signin' | 'name'
+let _obCurrentScreen = 'welcome';
+let _pendingNewSignup = false; // flag: route to Name screen on next auth-state event
 
-  // Show Turnstile only on the Create Account tab. Reset between switches
-  // so a stale token can't hang around when the user comes back.
-  const wrap = document.getElementById('turnstileWrap');
-  if (mode === 'signUp') {
-    wrap.style.display = 'block';
+function obGoTo(screen){
+  const ids = { welcome:'obWelcome', signup:'obSignup', signin:'obSignin', name:'obName' };
+  const toEl = document.getElementById(ids[screen]);
+  if(!toEl) return;
+  if(screen === _obCurrentScreen) return;
+
+  // Hide all, show target. Head CSS: .ob-screen-v2 hidden, .active visible.
+  Object.values(ids).forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.classList.remove('active');
+  });
+  toEl.classList.add('active');
+
+  _obCurrentScreen = screen;
+
+  // Reset stale state when entering a screen.
+  if(screen === 'signup'){
+    authMode = 'signUp';
+    showAuthError('');
+    const today = new Date().toISOString().slice(0,10);
+    const bday = document.getElementById('authBirthday');
+    if(bday) bday.setAttribute('max', today);
     renderTurnstileIfNeeded();
-  } else {
-    wrap.style.display = 'none';
+    document.getElementById('turnstileWrap').style.display = 'block';
+    updateAuthButtonState();
+    setTimeout(()=>{ const e=document.getElementById('authEmail'); if(e) e.focus(); }, 320);
+  } else if(screen === 'signin'){
+    authMode = 'signIn';
+    showAuthErrorSI('');
+    setTimeout(()=>{ const e=document.getElementById('authEmailSI'); if(e) e.focus(); }, 320);
+  } else if(screen === 'name'){
+    showObNameError('');
+    setTimeout(()=>{ const e=document.getElementById('obNameInput'); if(e) e.focus(); }, 320);
+  } else if(screen === 'welcome'){
     resetTurnstile();
   }
-  updateAuthButtonState();
 }
+
 function showAuthError(msg){
   const el = document.getElementById('authError');
-  if(!msg){ el.style.display='none'; el.textContent=''; return; }
-  el.textContent = msg; el.style.display='block';
+  if(!el) return;
+  if(!msg){ el.classList.remove('show'); el.textContent=''; return; }
+  el.textContent = msg; el.classList.add('show');
+}
+function showAuthErrorSI(msg){
+  const el = document.getElementById('authErrorSI');
+  if(!el) return;
+  if(!msg){ el.classList.remove('show'); el.textContent=''; return; }
+  el.textContent = msg; el.classList.add('show');
+}
+function showObNameError(msg){
+  const el = document.getElementById('obNameError');
+  if(!el) return;
+  if(!msg){ el.classList.remove('show'); el.textContent=''; return; }
+  el.textContent = msg; el.classList.add('show');
 }
 function setAuthLoading(on){
-  ['authPrimaryBtn','googleBtn','demoBtn','tabSignIn','tabSignUp','authResetBtn']
+  ['authPrimaryBtn','authSigninBtn','obSignupGoogleBtn','obSigninGoogleBtn','authResetBtn','obStartBtn','obHaveAcctBtn','obNameContinueBtn']
     .forEach(id => { const b = document.getElementById(id); if(b) b.disabled = on; });
+}
+
+// Final step of new-account signup: save display name, then enter the app.
+async function obFinishName(){
+  const input = document.getElementById('obNameInput');
+  const name = (input && input.value || '').trim();
+  if(!name){ showObNameError('Please enter a name.'); return; }
+  if(name.length > 40){ showObNameError('Keep it under 40 characters.'); return; }
+  if(!currentUser){ showObNameError('Something went wrong. Please sign in again.'); return; }
+  setAuthLoading(true); showObNameError('');
+  try{
+    try{ await fbAuth.currentUser.updateProfile({ displayName: name }); }catch(_){}
+    try{ localStorage.setItem('user_displayName_'+currentUser.uid, name); }catch(_){}
+    if(!firebaseDb) firebaseDb = firebase.database();
+    try{ await firebaseDb.ref(`users/${currentUser.uid}/displayName`).set(name); }catch(_){}
+    _pendingNewSignup = false;
+    document.getElementById('setupScreen').style.display='none';
+    launchApp();
+  }catch(err){
+    showObNameError('Could not save your name. Try again.');
+  }finally{
+    setAuthLoading(false);
+  }
 }
 
 function initApp(){
@@ -4596,114 +4890,110 @@ function initApp(){
   showOnboarding();
   updateButtonStates();
   initSignOutBtn();
-  const tabSignIn = document.getElementById('tabSignIn');
-  const tabSignUp = document.getElementById('tabSignUp');
-  const authPrimaryBtn = document.getElementById('authPrimaryBtn');
-  const authPwd = document.getElementById('authPwd');
-  const authEmail = document.getElementById('authEmail');
-  const googleBtn = document.getElementById('googleBtn');
-  const authResetBtn = document.getElementById('authResetBtn');
-  const demoBtn = document.getElementById('demoBtn');
-  const signOutBtn = document.getElementById('signOutBtn');
 
-  if(tabSignIn) tabSignIn.addEventListener('click', ()=>setAuthMode('signIn'));
-  if(tabSignUp) tabSignUp.addEventListener('click', ()=>setAuthMode('signUp'));
+  const authPrimaryBtn  = document.getElementById('authPrimaryBtn');
+  const authSigninBtn   = document.getElementById('authSigninBtn');
+  const authPwd         = document.getElementById('authPwd');
+  const authEmail       = document.getElementById('authEmail');
+  const authPwdSI       = document.getElementById('authPwdSI');
+  const authEmailSI     = document.getElementById('authEmailSI');
+  const obSignupGoogle  = document.getElementById('obSignupGoogleBtn');
+  const obSigninGoogle  = document.getElementById('obSigninGoogleBtn');
+  const authResetBtn    = document.getElementById('authResetBtn');
+  const obNameContinue  = document.getElementById('obNameContinueBtn');
+  const obNameInput     = document.getElementById('obNameInput');
+  const signOutBtn      = document.getElementById('signOutBtn');
 
+  // ── SIGN UP (creates new account → routes to Name screen) ─────────
   if(authPrimaryBtn) authPrimaryBtn.addEventListener('click', async ()=>{
     const email = (document.getElementById('authEmail').value||'').trim();
     const pwd   = (document.getElementById('authPwd').value||'');
     if(!email || !pwd){ showAuthError('Email and password are required.'); return; }
-    if(authMode==='signUp' && pwd.length < 8){ showAuthError('Password must be at least 8 characters.'); return; }
-    let signupBirthday = '';
-    if(authMode==='signUp'){
-      signupBirthday = (document.getElementById('authBirthday').value||'').trim();
-      if(!signupBirthday){ showAuthError('Please enter your birthday.'); return; }
-      const ageNow = computeAgeFromBirthday(signupBirthday);
-      if(ageNow == null || ageNow < 13){ showAuthError('You must be at least 13 to create an account.'); return; }
-      if(ageNow > 120){ showAuthError('That birthday doesn\'t look right.'); return; }
-    }
-    if(authMode==='signUp' && !_turnstileToken){
+    if(pwd.length < 8){ showAuthError('Password must be at least 8 characters.'); return; }
+    const signupBirthday = (document.getElementById('authBirthday').value||'').trim();
+    if(!signupBirthday){ showAuthError('Please enter your birthday.'); return; }
+    const ageNow = computeAgeFromBirthday(signupBirthday);
+    if(ageNow == null || ageNow < 13){ showAuthError('You must be at least 13 to create an account.'); return; }
+    if(ageNow > 120){ showAuthError('That birthday doesn\'t look right.'); return; }
+    if(!_turnstileToken){
       showAuthError('Please complete the captcha to create an account.');
       return;
     }
     setAuthLoading(true); showAuthError('');
+    _pendingNewSignup = true;  // tell auth-state listener: route to Name, not app
     try{
-      let cred;
-      if(authMode==='signIn'){
-        cred = await fbAuth.signInWithEmailAndPassword(email, pwd);
-      } else {
-        // New user signup — fresh account with no contacts
-        cred = await fbAuth.createUserWithEmailAndPassword(email, pwd);
-        if(cred && cred.user && cred.user.uid && signupBirthday){
-          try{ localStorage.setItem('user_birthday_'+cred.user.uid, signupBirthday); }catch(_){}
-        }
-        // Initialize firebaseDb if needed, then save the new user's email
-        if(cred && cred.user && cred.user.email){
-          if(!firebaseDb) firebaseDb = firebase.database();
-          try {
-            await firebaseDb.ref(`users/${cred.user.uid}/email`).set(cred.user.email);
-          } catch(e){
-            console.error('Error saving user email:', e);
-          }
-        }
+      const cred = await fbAuth.createUserWithEmailAndPassword(email, pwd);
+      if(cred && cred.user && cred.user.uid && signupBirthday){
+        try{ localStorage.setItem('user_birthday_'+cred.user.uid, signupBirthday); }catch(_){}
       }
-      setTimeout(()=>{
-        if(cred && cred.user && document.getElementById('setupScreen').style.display !== 'none'){
-          currentUser = cred.user;
-          if(cred.user.email) sessionStorage.setItem('mta_user_email', cred.user.email.toLowerCase());
-          // (Demo mode flags already set above, before auth call)
-          launchApp();
-        }
-      }, 800);
+      if(cred && cred.user && cred.user.email){
+        if(!firebaseDb) firebaseDb = firebase.database();
+        try { await firebaseDb.ref(`users/${cred.user.uid}/email`).set(cred.user.email); }
+        catch(e){ console.error('Error saving user email:', e); }
+      }
+      // Move to Name screen — onAuthStateChanged sees _pendingNewSignup and won't launchApp.
+      obGoTo('name');
     }catch(err){
+      _pendingNewSignup = false;
       showAuthError(friendlyAuthError(err));
-      if(authMode==='signUp') resetTurnstile();
+      resetTurnstile();
     }finally{
       setAuthLoading(false);
       updateAuthButtonState();
     }
   });
 
-  if(authPwd) authPwd.addEventListener('keydown', e=>{
-    if(e.key==='Enter') document.getElementById('authPrimaryBtn').click();
+  // ── SIGN IN (existing account → straight into app) ────────────────
+  if(authSigninBtn) authSigninBtn.addEventListener('click', async ()=>{
+    const email = (authEmailSI && authEmailSI.value || '').trim();
+    const pwd   = (authPwdSI && authPwdSI.value || '');
+    if(!email || !pwd){ showAuthErrorSI('Email and password are required.'); return; }
+    setAuthLoading(true); showAuthErrorSI('');
+    try{
+      await fbAuth.signInWithEmailAndPassword(email, pwd);
+      // onAuthStateChanged will launchApp().
+    }catch(err){
+      showAuthErrorSI(friendlyAuthError(err));
+    }finally{
+      setAuthLoading(false);
+    }
   });
 
-  if(authEmail) authEmail.addEventListener('keydown', e=>{
-    if(e.key==='Enter') document.getElementById('authPwd').focus();
-  });
+  // Enter-to-advance keyboard helpers
+  if(authEmail)   authEmail.addEventListener('keydown',   e=>{ if(e.key==='Enter') authPwd && authPwd.focus(); });
+  if(authPwd)     authPwd.addEventListener('keydown',     e=>{ if(e.key==='Enter') document.getElementById('authBirthday').focus(); });
+  if(authEmailSI) authEmailSI.addEventListener('keydown', e=>{ if(e.key==='Enter') authPwdSI && authPwdSI.focus(); });
+  if(authPwdSI)   authPwdSI.addEventListener('keydown',   e=>{ if(e.key==='Enter') authSigninBtn && authSigninBtn.click(); });
+  if(obNameInput) obNameInput.addEventListener('keydown', e=>{ if(e.key==='Enter') obNameContinue && obNameContinue.click(); });
 
-  if(googleBtn) googleBtn.addEventListener('click', async ()=>{
-    setAuthLoading(true); showAuthError('');
+  // Google sign-in (both screens) — Google users skip the Name step (display name comes from Google)
+  const handleGoogle = async (errFn) => {
+    setAuthLoading(true); errFn('');
     try{
       const provider = new firebase.auth.GoogleAuthProvider();
       await fbAuth.signInWithPopup(provider);
     }catch(err){
-      if(err.code !== 'auth/popup-closed-by-user') showAuthError(friendlyAuthError(err));
+      if(err.code !== 'auth/popup-closed-by-user') errFn(friendlyAuthError(err));
     }finally{
       setAuthLoading(false);
     }
-  });
+  };
+  if(obSignupGoogle) obSignupGoogle.addEventListener('click', ()=>handleGoogle(showAuthError));
+  if(obSigninGoogle) obSigninGoogle.addEventListener('click', ()=>handleGoogle(showAuthErrorSI));
 
+  // Forgot password — uses the email field on the sign-in screen
   if(authResetBtn) authResetBtn.addEventListener('click', async ()=>{
-    const email = (document.getElementById('authEmail').value||'').trim();
-    if(!email){ showAuthError('Type your email first, then tap Forgot password.'); return; }
-    setAuthLoading(true); showAuthError('');
+    const email = (authEmailSI && authEmailSI.value || '').trim();
+    if(!email){ showAuthErrorSI('Type your email first, then tap Forgot password.'); return; }
+    setAuthLoading(true); showAuthErrorSI('');
     try{
       await fbAuth.sendPasswordResetEmail(email);
-      showAuthError(''); alert('Reset link sent to ' + email + '. Check your inbox.');
+      showAuthErrorSI(''); alert('Reset link sent to ' + email + '. Check your inbox.');
     }catch(err){
-      showAuthError(friendlyAuthError(err));
+      showAuthErrorSI(friendlyAuthError(err));
     }finally{
       setAuthLoading(false);
     }
-  });
-
-  if(demoBtn) demoBtn.addEventListener('click',()=>{
-    demoMode=true; apiKey='demo';
-    document.getElementById('setupScreen').style.display='none';
-    loadDemoContacts();
-    launchApp();
-    setTimeout(()=>openChat('demo_linh'), 50);
   });
 
   if(signOutBtn) signOutBtn.addEventListener('click', async ()=>{
@@ -5064,6 +5354,13 @@ fbAuth.onAuthStateChanged(async (user)=>{
       document.getElementById('setupScreen').style.display='flex';
       document.getElementById('liveSetupScreen').style.display='none';
       document.getElementById('app').style.display='none';
+      // Reset onboarding to the welcome screen.
+      _pendingNewSignup = false;
+      ['obSignup','obSignin','obName'].forEach(id=>{
+        const el=document.getElementById(id); if(el){ el.classList.remove('active'); }
+      });
+      const w = document.getElementById('obWelcome'); if(w){ w.classList.add('active'); }
+      _obCurrentScreen = 'welcome';
     }
     // Reset the listener flags so they will be set up again on next login
     friendRequestListenerActive = false;
@@ -5081,7 +5378,13 @@ fbAuth.onAuthStateChanged(async (user)=>{
   // Signed in — surface email in session storage so the existing friend-request
   // / Live-session features (which look for mta_user_email) keep working.
   if(user.email) sessionStorage.setItem('mta_user_email', user.email.toLowerCase());
-  // Skip the mode picker — go straight into the messenger.
+  // If a brand-new email/password signup just happened, the Name screen
+  // is already showing — let the user finish that step before launching.
+  if(_pendingNewSignup){
+    document.getElementById('liveSetupScreen').style.display='none';
+    return;
+  }
+  // Otherwise (sign-in, Google, returning user) — straight into the messenger.
   document.getElementById('setupScreen').style.display='none';
   document.getElementById('liveSetupScreen').style.display='none';
   launchApp();
@@ -6115,6 +6418,7 @@ function switchTab(tab){
     navProfile.style.color = 'var(--primary)';
     navProfile.style.opacity = '1';
     renderProfileDictionary();
+    if(typeof renderBridgesLibrary === 'function') renderBridgesLibrary();
   }
 }
 
@@ -6336,6 +6640,131 @@ function renderProfileDictionary(){
       }
     });
   }
+
+  // Setup bridges section toggle
+  const bridgesToggle = document.getElementById('bridgesToggle');
+  const bridgesContent = document.getElementById('bridgesContent');
+  const bridgesArrow = document.getElementById('bridgesArrow');
+  if(bridgesToggle){
+    window._bridgesExpanded = window._bridgesExpanded === true; // default collapsed
+    if(window._bridgesExpanded){
+      bridgesContent.style.display = 'block';
+      bridgesArrow.textContent = '▼';
+    } else {
+      bridgesContent.style.display = 'none';
+      bridgesArrow.textContent = '▶';
+    }
+    renderBridgesLibrary();
+  }
+}
+
+// ─── Bridges library rendering ───────────────────────────
+function toggleBridgesSection(){
+  const content = document.getElementById('bridgesContent');
+  const arrow = document.getElementById('bridgesArrow');
+  if(!content || !arrow) return;
+  window._bridgesExpanded = !window._bridgesExpanded;
+  if(window._bridgesExpanded){
+    content.style.display = 'block';
+    arrow.textContent = '▼';
+    renderBridgesLibrary();
+  } else {
+    content.style.display = 'none';
+    arrow.textContent = '▶';
+  }
+}
+
+function renderBridgesLibrary(){
+  const list = document.getElementById('bridgesList');
+  const counter = document.getElementById('bridgesCount');
+  if(!list) return;
+  const log = loadBridgeLog();
+  if(counter) counter.textContent = log.length ? String(log.length) : '';
+
+  if(!log.length){
+    list.innerHTML = `
+      <div class="bridge-lib-empty">
+        <p class="bridge-lib-empty-body" style="margin-bottom:14px;">
+          When you and someone you talk to reach for the same idea — each from your own language — we'll save the moment here. Like this:
+        </p>
+        <div class="bridge-lib-empty-preview" aria-hidden="true">
+          <div class="bridge-pair">
+            <div class="bridge-side">
+              <div class="bridge-lang">English</div>
+              <div class="bridge-phrase">have you eaten?</div>
+              <div class="bridge-meaning">small talk · checking in</div>
+            </div>
+            <div class="bridge-connector">~</div>
+            <div class="bridge-side">
+              <div class="bridge-lang">Tiếng Việt</div>
+              <div class="bridge-phrase">cơm chưa?</div>
+              <div class="bridge-meaning">"I care about you"</div>
+            </div>
+          </div>
+          <div class="bridge-shared">A small, daily way of caring — in both languages.</div>
+        </div>
+        <div class="bridge-lib-empty-tag">Example</div>
+      </div>`;
+    return;
+  }
+  // Sort most recent first
+  const sorted = log.slice().sort((a,b) => (b.lastSeen||0) - (a.lastSeen||0));
+  list.innerHTML = sorted.map(entry => {
+    const contactsLine = entry.contacts && entry.contacts.length
+      ? `with ${esc(entry.contacts.map(c => c.name).join(', '))}`
+      : '';
+    const timeLabel = formatBridgeTime(entry.lastSeen);
+    const countLabel = entry.count > 1 ? `${entry.count}×` : '';
+    const metaParts = [timeLabel, contactsLine, countLabel].filter(Boolean);
+    const meta = metaParts.map((p,i) =>
+      (i>0 ? '<span class="bridge-lib-meta-dot"></span>' : '') + `<span>${p}</span>`
+    ).join('');
+    return `
+      <div class="bridge-lib-item" data-key="${esc(entry.key)}" onclick="openBridgeDetail('${esc(entry.key)}')">
+        <div class="bridge-lib-pair">
+          <div class="bridge-lib-phrase">${esc(entry.vi.phrase)}</div>
+          <span class="bridge-lib-tilde">≈</span>
+          <div class="bridge-lib-phrase">${esc(entry.en.phrase)}</div>
+        </div>
+        <div class="bridge-lib-meta">${meta}</div>
+      </div>`;
+  }).join('');
+}
+
+function formatBridgeTime(ts){
+  if(!ts) return '';
+  const diff = Date.now() - ts;
+  const min = Math.floor(diff / 60000);
+  if(min < 1) return 'just now';
+  if(min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if(hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if(day < 7) return `${day}d ago`;
+  const wk = Math.floor(day / 7);
+  if(wk < 4) return `${wk}w ago`;
+  return new Date(ts).toLocaleDateString(undefined, { month:'short', day:'numeric' });
+}
+
+function openBridgeDetail(key){
+  const log = loadBridgeLog();
+  const entry = log.find(e => e.key === key);
+  if(!entry) return;
+  // Reuse the same card design as the inline bridge — render in a modal overlay
+  const isVI = appDir === 'vi-en';
+  const cardHtml = buildBridgeCardHtml({
+    vi: entry.vi, en: entry.en, shared: entry.shared || ''
+  }, isVI);
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div style="background:var(--panel);border-radius:16px;padding:8px 4px 16px;max-width:380px;width:100%;position:relative;">
+      <button onclick="this.closest('div[style*=\\'position:fixed\\']').remove()"
+        style="position:absolute;top:10px;right:10px;background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1;padding:4px 8px;z-index:1;">✕</button>
+      ${cardHtml}
+    </div>`;
+  document.body.appendChild(overlay);
 }
 
 function renderSidebar(list){
@@ -8296,6 +8725,7 @@ function renderMsgs(){
     // Bridge card — inject immediately after the trigger message
     if(bridgeTriggerMsgId && m.id === bridgeTriggerMsgId){
       h += buildBridgeCardHtml(bridgeResult.bridge, isVI);
+      recordBridgeEncounter(bridgeResult.bridge, c);
     }
     return h;
   }).join('');
