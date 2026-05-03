@@ -9,6 +9,10 @@ export interface Env {
   DAILY_VOICE_QUOTA: string;
   DAILY_GRAMMAR_QUOTA: string;
   SENTRY_DSN: string;
+  // 32-byte AES-256 key, base64-encoded. Used by crypto.ts to encrypt message
+  // content before it lands in Firebase, so an operator browsing the database
+  // sees only ciphertext.
+  MESSAGE_ENCRYPTION_KEY: string;
 }
 
 // What a verified Firebase user looks like once auth.ts has done its job.

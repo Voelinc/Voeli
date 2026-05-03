@@ -29,6 +29,7 @@ import {
   handleVoice,
   handleGrammar,
 } from './openai';
+import { encryptText, decryptText, type EncryptedBlob } from './crypto';
 import type {
   Env,
   AuthedUser,
@@ -124,6 +125,14 @@ const handler = {
           env
         );
       }
+      if (route === '/api/encrypt') {
+        const body = await readJson<{ texts: string[] }>(request);
+        return withCors(await handleEncrypt(body, env), request, env);
+      }
+      if (route === '/api/decrypt') {
+        const body = await readJson<{ blobs: EncryptedBlob[] }>(request);
+        return withCors(await handleDecrypt(body, env), request, env);
+      }
 
       return withCors(notFound(), request, env);
     } catch (err) {
@@ -217,6 +226,61 @@ async function handleQuotaStatus(
     readQuota(env, user.uid, 'grammar'),
   ]);
   return Response.json({ uid: user.uid, translate, voice, grammar });
+}
+
+// --- encryption handlers ---------------------------------------------------
+//
+// These bypass the quota system: they're local CPU work, not OpenAI calls,
+// and the client may need to call /api/decrypt many times when loading
+// message history. Auth alone is enough to prevent abuse.
+
+const MAX_BATCH = 200;
+const MAX_TEXT_BYTES = 16 * 1024;
+
+async function handleEncrypt(
+  body: { texts: string[] },
+  env: Env
+): Promise<Response> {
+  if (!body || !Array.isArray(body.texts)) {
+    return Response.json({ error: 'texts[] required' }, { status: 400 });
+  }
+  if (body.texts.length > MAX_BATCH) {
+    return Response.json({ error: `texts[] exceeds ${MAX_BATCH}` }, { status: 400 });
+  }
+  const out: EncryptedBlob[] = [];
+  for (const t of body.texts) {
+    if (typeof t !== 'string') {
+      return Response.json({ error: 'texts[] must be strings' }, { status: 400 });
+    }
+    if (t.length > MAX_TEXT_BYTES) {
+      return Response.json({ error: 'text too large' }, { status: 400 });
+    }
+    out.push(await encryptText(t, env));
+  }
+  return Response.json({ encrypted: out });
+}
+
+async function handleDecrypt(
+  body: { blobs: EncryptedBlob[] },
+  env: Env
+): Promise<Response> {
+  if (!body || !Array.isArray(body.blobs)) {
+    return Response.json({ error: 'blobs[] required' }, { status: 400 });
+  }
+  if (body.blobs.length > MAX_BATCH) {
+    return Response.json({ error: `blobs[] exceeds ${MAX_BATCH}` }, { status: 400 });
+  }
+  const out: { ok: boolean; text: string }[] = [];
+  for (const b of body.blobs) {
+    try {
+      out.push({ ok: true, text: await decryptText(b, env) });
+    } catch {
+      // Tampered or wrong-key ciphertext. Surface a per-item failure rather
+      // than blowing up the whole batch.
+      out.push({ ok: false, text: '' });
+    }
+  }
+  return Response.json({ decrypted: out });
 }
 
 function notFound(): Response {
