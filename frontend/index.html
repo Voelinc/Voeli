@@ -1548,8 +1548,9 @@ body.is-offline::before{
         <p id="profileEmail" style="font-size:14px;color:var(--muted);margin:0;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="fa9f979b9396ba9f829b978a969fd4999597">[email&#160;protected]</a></p>
       </div>
 
-      <!-- Learning Dashboard Section (Collapsible) -->
-      <div style="margin-bottom:28px;">
+      <!-- Learning Dashboard Section (Collapsible) — hidden from UI for now;
+           code retained so it can be re-enabled by removing the display:none. -->
+      <div style="margin-bottom:28px;display:none;">
         <button id="dashboardToggle" style="background:none;border:none;padding:0;cursor:pointer;width:100%;text-align:left;display:flex;align-items:center;gap:8px;transition:all 0.2s;"
                 onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
           <span style="font-size:18px;">📚</span>
@@ -1563,8 +1564,9 @@ body.is-offline::before{
         </div>
       </div>
 
-      <!-- Bridges Library Section (Collapsible) -->
-      <div style="margin-bottom:28px;">
+      <!-- Bridges Library Section (Collapsible) — hidden from UI for now;
+           code retained so it can be re-enabled by removing the display:none. -->
+      <div style="margin-bottom:28px;display:none;">
         <button id="bridgesToggle" style="background:none;border:none;padding:0;cursor:pointer;width:100%;text-align:left;display:flex;align-items:center;gap:8px;transition:all 0.2s;"
                 onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'"
                 onclick="toggleBridgesSection()">
