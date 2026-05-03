@@ -4745,6 +4745,134 @@ function initSignOutBtn(){
   if(delBtn) delBtn.addEventListener('click', deleteMyAccount);
 }
 
+// ─── Message encryption ───────────────────────────────────────────────
+//
+// Worker holds a master AES-256-GCM key. We send plaintext to the Worker over
+// HTTPS, get back ciphertext, and write only ciphertext to Firebase. On read,
+// we batch ciphertexts and round-trip through the Worker's decrypt endpoint.
+// Plaintext only exists in three places: the sender's device (briefly), the
+// Worker (briefly, while translating + encrypting), and the recipient's
+// device (after decrypting). It never lives at rest in our database.
+//
+// Messages are tagged enc: 1 once encrypted. Pre-encryption messages still in
+// the database have no enc flag and are rendered as-is, so the rollout is
+// non-breaking.
+
+async function _authBearer(){
+  if(!currentUser || !fbAuth.currentUser) return null;
+  try { return await fbAuth.currentUser.getIdToken(); } catch(_){ return null; }
+}
+
+// Encrypt the user-content fields of a Firebase message payload. Metadata
+// (senderId, direction, ts, etc.) stays plaintext so the existing rules and
+// listeners keep working.
+async function encryptMessageData(msgData){
+  if(!msgData) return msgData;
+  const items = []; // [{path, value}]
+  if(msgData.text)     items.push({ path:['text'],     value: msgData.text });
+  if(msgData.original) items.push({ path:['original'], value: msgData.original });
+  if(msgData.gifUrl)   items.push({ path:['gifUrl'],   value: msgData.gifUrl });
+  if(msgData.replyTo && msgData.replyTo.text){
+    items.push({ path:['replyTo','text'], value: msgData.replyTo.text });
+  }
+  if(!items.length) return { ...msgData, enc: 1 };
+  const token = await _authBearer();
+  if(!token){
+    console.warn('[encrypt] no auth token, falling back to plaintext write');
+    return msgData;
+  }
+  try {
+    const res = await fetch(WORKER_URL + '/api/encrypt', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+      body: JSON.stringify({ texts: items.map(i => i.value) })
+    });
+    if(!res.ok) throw new Error('encrypt http ' + res.status);
+    const { encrypted } = await res.json();
+    const out = { ...msgData, enc: 1 };
+    items.forEach((it, i) => {
+      const blob = encrypted[i];
+      if(it.path.length === 1){
+        out[it.path[0]] = blob;
+      } else {
+        // replyTo.text — preserve the rest of replyTo
+        out.replyTo = { ...msgData.replyTo, text: blob };
+      }
+    });
+    return out;
+  } catch(err){
+    if(window.Sentry) Sentry.captureException(err);
+    console.error('[encrypt] failed, writing plaintext:', err);
+    return msgData;
+  }
+}
+
+// Decrypt encrypted fields of one or more incoming Firebase message snapshots.
+// Pre-encryption messages (no enc flag) pass through unchanged. Returns clones
+// with plaintext substituted in place of EncryptedBlob objects.
+async function decryptMessageDataBatch(rawMsgs){
+  const list = Array.isArray(rawMsgs) ? rawMsgs : [rawMsgs];
+  const blobs = [];
+  const owners = []; // [{idx, path}]
+  list.forEach((m, idx) => {
+    if(!m || m.enc !== 1) return;
+    const collect = (path, val) => {
+      if(val && typeof val === 'object' && typeof val.c === 'string'){
+        blobs.push(val);
+        owners.push({ idx, path });
+      }
+    };
+    collect(['text'],     m.text);
+    collect(['original'], m.original);
+    collect(['gifUrl'],   m.gifUrl);
+    if(m.replyTo) collect(['replyTo','text'], m.replyTo.text);
+  });
+  if(!blobs.length) return Array.isArray(rawMsgs) ? list : list[0];
+
+  const token = await _authBearer();
+  if(!token){
+    return _markUndecryptable(list, owners);
+  }
+  const decrypted = new Array(blobs.length);
+  try {
+    for(let i = 0; i < blobs.length; i += 200){
+      const chunk = blobs.slice(i, i + 200);
+      const res = await fetch(WORKER_URL + '/api/decrypt', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+        body: JSON.stringify({ blobs: chunk })
+      });
+      if(!res.ok) throw new Error('decrypt http ' + res.status);
+      const { decrypted: out } = await res.json();
+      out.forEach((d, j) => decrypted[i + j] = d);
+    }
+  } catch(err){
+    if(window.Sentry) Sentry.captureException(err);
+    console.error('[decrypt] failed:', err);
+    return _markUndecryptable(list, owners);
+  }
+  // Build clones with substitutions
+  const clones = list.map(m => m ? { ...m, replyTo: m.replyTo ? { ...m.replyTo } : m.replyTo } : m);
+  owners.forEach((o, i) => {
+    const text = decrypted[i] && decrypted[i].ok ? decrypted[i].text : '[encrypted]';
+    const m = clones[o.idx];
+    if(o.path.length === 1) m[o.path[0]] = text;
+    else m.replyTo = { ...m.replyTo, text };
+  });
+  return Array.isArray(rawMsgs) ? clones : clones[0];
+}
+
+function _markUndecryptable(list, owners){
+  const placeholder = '[encrypted]';
+  const clones = list.map(m => m ? { ...m, replyTo: m.replyTo ? { ...m.replyTo } : m.replyTo } : m);
+  owners.forEach(o => {
+    const m = clones[o.idx];
+    if(o.path.length === 1) m[o.path[0]] = placeholder;
+    else m.replyTo = { ...m.replyTo, text: placeholder };
+  });
+  return clones;
+}
+
 // Register this device with FCM and store the token under the user's uid so
 // the Cloud Function can look it up and push to all of the user's devices.
 // Failure modes (no VAPID key, browser unsupported, permission denied,
@@ -4795,11 +4923,16 @@ async function exportMyData(){
       seenRoomIds.add(c.dmRoomId);
       try{
         const msgsSnap = await firebaseDb.ref(`dms/${c.dmRoomId}/messages`).once('value');
+        const raw = msgsSnap.val() || {};
+        const entries = Object.entries(raw);
+        const decryptedList = await decryptMessageDataBatch(entries.map(([, m]) => m));
+        const messages = {};
+        entries.forEach(([key], i) => { messages[key] = decryptedList[i]; });
         dms.push({
           roomId: c.dmRoomId,
           contactEmail: c.email || null,
           contactName: c.name || null,
-          messages: msgsSnap.val() || {}
+          messages
         });
       }catch(_){ /* skip rooms we can't read */ }
     }
@@ -6848,8 +6981,14 @@ async function loadHistoricalMessages(contact){
     if(snap.exists()){
       const messages = snap.val();
       if(messages){
+        // Decrypt encrypted messages in one batched Worker round-trip before
+        // building the local view. Pre-encryption messages pass through.
+        const entries = Object.entries(messages);
+        const rawList = entries.map(([, m]) => m);
+        const decryptedList = await decryptMessageDataBatch(rawList);
         const msgArray = [];
-        Object.entries(messages).forEach(([key, m]) => {
+        entries.forEach(([key], i) => {
+          const m = decryptedList[i];
           if(m){
             const d = new Date(m.ts);
             msgArray.push({
@@ -6927,10 +7066,10 @@ function setupDMListener(dmRoomId){
   });
 
   // Listen for incoming messages in this DM room
-  msgRef.on('child_added', snap=>{
+  msgRef.on('child_added', async snap=>{
     console.log(`[setupDMListener] Message received in ${dmRoomId}`);
-    const m = snap.val();
-    if(!m || m.senderId === currentUser.uid) return;
+    const raw = snap.val();
+    if(!raw || raw.senderId === currentUser.uid) return;
 
     // Find the contact by dmRoomId instead of relying on activeCont()
     // This ensures messages are added even if a different chat is currently open
@@ -6948,6 +7087,10 @@ function setupDMListener(dmRoomId){
     // the trigger that surfaced the bug).
     const newId = snap.key || ('fb' + Date.now() + Math.random().toString(36).slice(2,5));
     if(c.msgs.some(existing => existing.id === newId)) return;
+
+    // Decrypt content before pushing into the local message list. Pre-encryption
+    // messages (no enc flag) round-trip unchanged.
+    const m = await decryptMessageDataBatch(raw);
 
     const d = new Date(m.ts);
     c.msgs.push({
@@ -10969,16 +11112,17 @@ function startFirebaseListeners(){
   const typingPath = isDM ? `dms/${c.dmRoomId}/typing` : `rooms/${roomCode}/typing`;
 
   // ── Incoming messages ──────────────────────────────
-  firebaseDb.ref(msgPath).on('child_added', snap=>{
-    const m = snap.val();
+  firebaseDb.ref(msgPath).on('child_added', async snap=>{
+    const raw = snap.val();
     // Filter own messages by Firebase UID — security rules require the
     // typing/participants keys to match auth.uid, so messages now use
     // it too for consistency. Older messages with the random deviceId
     // as senderId are ignored either way.
     // For DMs, show all messages including old ones (both people need to see the full history).
     // For group chats, only show messages from after you joined.
-    if(!m || m.senderId===(currentUser && currentUser.uid)) return;
-    if(!isDM && m.ts < joinedAt) return;
+    if(!raw || raw.senderId===(currentUser && currentUser.uid)) return;
+    if(!isDM && raw.ts < joinedAt) return;
+    const m = await decryptMessageDataBatch(raw);
     const room = ensureRoomContact();
     const d = new Date(m.ts);
     if(activeId !== room.id) room.unread = (room.unread||0) + 1;
@@ -11009,7 +11153,7 @@ function startFirebaseListeners(){
   });
 }
 
-function syncToFirebase(msg){
+async function syncToFirebase(msg){
   if(localMode && localChannel){
     localChannel.postMessage({
       type:      'msg',
@@ -11021,13 +11165,16 @@ function syncToFirebase(msg){
     return;
   }
   if(!firebaseDb||!currentUser) return;
-  const msgData = {
+  const plainData = {
     text:      msg.text||msg.translated||'',
     original:  msg.original||msg.text||'',
     senderId:  currentUser.uid,
     direction: msg.direction||appDir,
     ts:        msg.ts||Date.now()
   };
+  // Encrypt user-content fields (text, original) so the value stored in
+  // Firebase is opaque to anyone reading the database. Metadata stays plain.
+  const msgData = await encryptMessageData(plainData);
   // Check if this is a DM contact (has dmRoomId)
   const c = activeCont();
   if(c && c.dmRoomId){
