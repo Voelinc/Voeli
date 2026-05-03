@@ -1,0 +1,411 @@
+/* =====================================================================
+   Voeli redesign — visual override stylesheet
+   ---------------------------------------------------------------------
+   Add to frontend/index.html with a single line:
+
+     <link rel="stylesheet" href="voeli-redesign.css">
+
+   Place it AFTER the existing two <style> blocks so it wins specificity
+   without needing extra !important. This file only changes the LOOK of
+   the app — no JS hooks, no class renames, no markup changes.
+
+   Authored: May 2026 — based on Voeli design system v1.
+   ===================================================================== */
+
+/* ─── 1. Tokens (extend, don't redefine) ──────────────────────────── */
+:root {
+  /* Existing tokens kept: --bg --panel --panel-2 --ink --muted --muted-2
+     --line --line-2 --blue --blue-dk --blue-50 --blue-bubble --accent-soft
+     --read-tick --chip --gold --gold-bg --red --shadow-sm --shadow-md     */
+
+  /* New tokens introduced by the redesign — non-colliding names. */
+  --r-pill: 999px;
+  --r-card: 14px;
+  --r-bub: 18px;
+  --r-bub-tail: 6px;
+  --shadow-modal: 0 8px 40px rgba(11,18,32,.18);
+  --shadow-coloured-cta: 0 2px 8px rgba(0,104,255,.28);
+  --t-fast: .12s ease;
+  --t-base: .18s ease;
+
+  /* Display font stack (system, no webfont fetch). */
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+                  "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ─── 2. Sidebar ──────────────────────────────────────────────────── */
+
+/* Tighter contact rows (12→10 vertical), no bottom dividers — rely on hover */
+.crow {
+  padding: 10px 14px !important;
+  border-bottom: none !important;
+  gap: 12px;
+  border-radius: 10px;
+  margin: 2px 6px;
+}
+.crow:hover { background: var(--panel-2); }
+.crow.active, .crow[data-active="true"] {
+  background: var(--accent-soft);
+}
+
+/* Avatars round + slightly smaller in list, larger in header */
+.cav { width: 44px; height: 44px; border-radius: 50%; }
+
+/* Names tighter; preview muted-2 for the second-tier hierarchy */
+.cname { font-size: 14.5px; font-weight: 600; }
+.cprev { font-size: 12.5px; color: var(--muted-2); }
+
+/* Search field — pill style */
+.sb-search {
+  border-radius: var(--r-pill) !important;
+  border: 1px solid transparent !important;
+  background: var(--chip) !important;
+  padding: 8px 14px !important;
+  transition: border-color var(--t-base), background var(--t-base);
+}
+.sb-search:focus-within {
+  background: var(--panel) !important;
+  border-color: var(--line) !important;
+}
+.sb-search input {
+  font-size: 13.5px;
+}
+.sb-search input::placeholder { color: var(--muted-2); }
+
+/* Top header — display font for the brand */
+.sb-top h1, .sb-top .sb-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ─── 3. Chat panel header ────────────────────────────────────────── */
+.chdr {
+  border-bottom: 1px solid var(--line-2) !important;
+  padding: 12px 18px !important;
+}
+.chav { width: 36px; height: 36px; }
+.chname { font-size: 15.5px; font-weight: 600; }
+.chsub  { font-size: 12px; color: var(--muted); }
+
+.icon-btn { transition: background var(--t-fast), color var(--t-fast); }
+.icon-btn:hover { background: var(--panel-2); color: var(--ink); }
+
+/* ─── 4. Bubbles ──────────────────────────────────────────────────── */
+.bubble {
+  max-width: 64% !important;
+  padding: 9px 14px !important;
+  border-radius: var(--r-bub) !important;
+  font-size: 14.5px;
+  line-height: 1.42;
+  box-shadow: var(--shadow-sm);
+}
+/* iMessage-style 6px tail on incoming + outgoing bubbles */
+.bubble.in,
+.mrow.in .bubble {
+  border-radius: var(--r-bub) var(--r-bub) var(--r-bub) var(--r-bub-tail) !important;
+  background: var(--panel) !important;
+  color: var(--ink);
+}
+.bubble.out,
+.mrow.out .bubble {
+  border-radius: var(--r-bub) var(--r-bub) var(--r-bub-tail) var(--r-bub) !important;
+  background: var(--blue) !important;
+  color: #fff;
+}
+
+/* "Translated from" pill — subtler */
+.b-translated-badge {
+  border-color: rgba(255,255,255,.45) !important;
+  color: rgba(255,255,255,.85) !important;
+  opacity: 1 !important;
+}
+.bubble.in .b-translated-badge,
+.mrow.in .b-translated-badge {
+  border-color: var(--line) !important;
+  color: var(--muted) !important;
+}
+
+/* Original-source line under translated bubble — softer divider */
+.b-orig {
+  border-top: 1px solid rgba(255,255,255,.22) !important;
+  font-style: normal !important;
+  font-size: 12.5px !important;
+  opacity: .82;
+}
+.bubble.in .b-orig,
+.mrow.in .b-orig {
+  border-top-color: var(--line-2) !important;
+  color: var(--muted) !important;
+}
+
+/* ─── 5. Tone picker / option sheet ──────────────────────────────── */
+.optsheet {
+  background: var(--bg) !important;
+  border-radius: 22px 22px 0 0;
+  padding-top: 8px;
+}
+.shdl { background: #E5E7EB; }
+.shsaid {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.ocard {
+  border-radius: var(--r-card) !important;
+  border: 1px solid var(--line) !important;
+  padding: 14px 16px !important;
+  margin: 0 14px 10px !important;
+  transition: border-color var(--t-base), box-shadow var(--t-base), transform var(--t-fast);
+}
+.ocard:hover {
+  border-color: var(--blue) !important;
+  box-shadow: 0 2px 8px rgba(0,104,255,.10);
+}
+.ocard:active { transform: scale(0.995); }
+
+/* Recommended option — gold accent, bigger weight */
+.ocard.recommended,
+.ocard:has(.oc-recbadge) {
+  background: var(--gold-bg) !important;
+  border-color: var(--gold) !important;
+}
+
+.oc-emo {
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: .06em !important;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+.oc-trans {
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  line-height: 1.4 !important;
+  color: var(--ink);
+  margin-top: 4px;
+}
+.oc-back {
+  font-size: 12.5px !important;
+  color: var(--muted) !important;
+  font-style: normal !important;
+  margin-top: 6px !important;
+  opacity: 1 !important;
+}
+
+/* ─── 6. Composer ─────────────────────────────────────────────────── */
+.composer {
+  border-top: 1px solid var(--line-2) !important;
+}
+#txtInput, .c-input-wrap input, .c-input-wrap textarea {
+  font-size: 14.5px;
+}
+
+.cbtn-send {
+  background: var(--blue) !important;
+  box-shadow: var(--shadow-coloured-cta) !important;
+  transition: transform var(--t-fast), background var(--t-base);
+}
+.cbtn-send:hover { background: var(--blue-dk) !important; }
+.cbtn-send:active { transform: scale(0.94); }
+
+/* ─── 7. Buttons ──────────────────────────────────────────────────── */
+.btnsave {
+  border-radius: var(--r-pill) !important;
+  padding: 11px 18px !important;
+  font-weight: 600 !important;
+  transition: background var(--t-base), transform var(--t-fast);
+}
+.btnsave:hover { background: var(--blue-dk) !important; }
+.btnsave:active { transform: scale(0.98); }
+
+.btncancel {
+  border-radius: var(--r-pill) !important;
+  font-weight: 500 !important;
+}
+
+.btn-request {
+  background: var(--blue) !important;
+  border-radius: var(--r-pill) !important;
+  padding: 9px 18px !important;
+  font-weight: 600 !important;
+}
+
+.fab {
+  width: 36px !important; height: 36px !important;
+  box-shadow: var(--shadow-coloured-cta);
+  transition: transform var(--t-fast), background var(--t-base);
+}
+.fab:hover { background: var(--blue-dk); }
+.fab:active { transform: scale(0.94); }
+
+/* ─── 8. Settings sheet — group-card style ───────────────────────── */
+#settingsSheet {
+  background: var(--bg) !important;
+  border-radius: 22px 22px 0 0 !important;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom)) !important;
+}
+#settingsHeader {
+  background: var(--bg) !important;
+  border-bottom: none !important;
+  padding: 14px 20px 8px !important;
+}
+#settingsTitle {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 18px;
+}
+#settingsBody { padding: 0 16px 20px !important; }
+
+/* Section labels */
+.sett-section-label {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: .06em !important;
+  text-transform: uppercase;
+  color: var(--muted) !important;
+  margin: 18px 6px 8px !important;
+}
+
+/* Group rows into a card — each .sett-row is a row inside a white card */
+.sett-row {
+  align-items: center !important;
+  background: var(--panel);
+  padding: 14px 16px !important;
+  margin-bottom: 0 !important;
+  border-bottom: 1px solid var(--line-2);
+}
+.sett-row:first-of-type { border-radius: 12px 12px 0 0; }
+.sett-row:last-of-type  { border-radius: 0 0 12px 12px; border-bottom: none; }
+.sett-row:only-of-type  { border-radius: 12px; border-bottom: none; }
+
+/* Singletons stacked outside groups still get a card */
+.sett-row + .sett-section-label,
+.sett-section-label + .sett-row {
+  border-radius: 12px 12px 0 0;
+}
+
+.sett-row-title { font-size: 14.5px; font-weight: 500; color: var(--ink); }
+.sett-row-sub   { font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
+/* iOS-style toggle */
+.sett-toggle-track {
+  border-radius: 999px !important;
+  transition: background var(--t-base);
+}
+
+/* ─── 9. Modals (relationship, friend request) ───────────────────── */
+.modalbox {
+  border-radius: 18px !important;
+  box-shadow: var(--shadow-modal) !important;
+  padding: 24px !important;
+}
+.modalbg { background: rgba(11,18,32,.45); }
+
+.relbtn {
+  border-radius: 12px !important;
+  transition: border-color var(--t-base), background var(--t-base), transform var(--t-fast);
+}
+.relbtn:hover { border-color: var(--blue); }
+.relbtn:active { transform: scale(0.98); }
+.relbtn.active, .relbtn[aria-pressed="true"] {
+  border-color: var(--blue) !important;
+  background: var(--accent-soft) !important;
+}
+
+.flabel {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: .05em !important;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.finput {
+  border-radius: 10px !important;
+  font-size: 14px;
+  transition: border-color var(--t-base), box-shadow var(--t-base);
+}
+
+/* ─── 10. Setup screen (sign-in / create account) ─────────────────── */
+.setup-box h1 {
+  font-family: var(--font-display) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.02em;
+}
+#authPrimaryBtn,
+.setup-box .btnsave {
+  border-radius: var(--r-pill) !important;
+  padding: 12px 18px !important;
+  font-weight: 600 !important;
+  box-shadow: var(--shadow-coloured-cta);
+}
+#googleBtn {
+  border-radius: var(--r-pill) !important;
+  border-width: 1px !important;
+  font-weight: 500 !important;
+  transition: background var(--t-base), border-color var(--t-base);
+}
+#googleBtn:hover { background: var(--panel-2) !important; border-color: var(--muted-2) !important; }
+
+#authTabs {
+  border-radius: var(--r-pill) !important;
+  background: var(--chip) !important;
+}
+#authTabs .auth-tab {
+  border-radius: var(--r-pill) !important;
+  padding: 8px 14px !important;
+}
+
+/* Auth error — soft red surface, not a one-liner */
+#authError {
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  color: #991B1B !important;
+  padding: 10px 12px !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 1.45 !important;
+  margin-bottom: 12px !important;
+}
+
+/* ─── 11. Bridge card — keep peach surface, refine type ──────────── */
+.bridge-card {
+  border-radius: var(--r-card) !important;
+}
+.bridge-title {
+  font-family: var(--font-display);
+  letter-spacing: -0.005em;
+}
+
+/* ─── 12. Empty / loading states ──────────────────────────────────── */
+.sb-empty,
+.chat-empty {
+  font-size: 13.5px !important;
+  color: var(--muted) !important;
+  line-height: 1.55 !important;
+  padding: 40px 28px !important;
+}
+.sb-empty-btn,
+.chat-empty button {
+  background: var(--blue) !important;
+  color: #fff;
+  border: none;
+  border-radius: var(--r-pill);
+  font-weight: 600;
+  padding: 10px 18px;
+  box-shadow: var(--shadow-coloured-cta);
+  transition: background var(--t-base), transform var(--t-fast);
+  cursor: pointer;
+}
+.sb-empty-btn:hover,
+.chat-empty button:hover { background: var(--blue-dk) !important; }
+
+/* ─── 13. Reduced-motion: turn off transforms ─────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
+  }
+}
