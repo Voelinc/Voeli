@@ -373,6 +373,7 @@ body.is-offline::before{
 .b-meta .btgl{margin:0 0 0 2px;}
 .ticks{display:inline-flex;align-items:center;}
 .ticks svg{width:14px;height:14px;}
+.ticks.delivered{color:inherit;}
 .ticks.read{color:var(--read-tick);}
 .b-emo{display:none;} /* emotion label hidden on delivered bubbles per user preference */
 /* Original text — hidden by default; peek-on-demand via translated badge */
@@ -6991,12 +6992,27 @@ async function loadHistoricalMessages(contact){
           const m = decryptedList[i];
           if(m){
             const d = new Date(m.ts);
+            const isMe = m.senderId === currentUser.uid;
+            // Compute deliveredAt / readAt from the OTHER participant's entry
+            // so the historical view matches what the live listener produces.
+            let deliveredAt, readAt;
+            if(isMe){
+              const dt = m.deliveredTo || {};
+              const otherD = Object.keys(dt).filter(uid => uid !== currentUser.uid);
+              if(otherD.length) deliveredAt = dt[otherD[0]];
+              const rb = m.readBy || {};
+              const otherR = Object.keys(rb).filter(uid => uid !== currentUser.uid);
+              if(otherR.length) readAt = rb[otherR[0]];
+            }
             msgArray.push({
               id: key,
               text: m.text, translated: m.text, original: m.original||m.text,
-              emotion: m.emotion||'', isMe: m.senderId === currentUser.uid, mode: 'text',
+              emotion: m.emotion||'', isMe, mode: 'text',
               direction: m.direction||'en-vi', ts: m.ts,
               delivered: true,
+              deliveredAt, readAt,
+              readBy: m.readBy || {},
+              deliveredTo: m.deliveredTo || {},
               time: d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
               day: d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'})
             });
@@ -7007,6 +7023,27 @@ async function loadHistoricalMessages(contact){
         // Replace empty msgs array with historical messages
         contact.msgs = msgArray;
         if(activeId === contact.id) renderMsgs();
+
+        // Backfill deliveredTo for received messages we just loaded but
+        // didn't acknowledge before. The corresponding child_added listener
+        // would have done this for never-seen messages, but loadHistorical
+        // races with the listener and replaces c.msgs, so the listener's
+        // dedupe early-returns. This catch-up keeps the sender's tick in
+        // sync with what the recipient has actually pulled down.
+        const profile = loadContactProfile(contact.id);
+        const optedOut = profile && profile.readReceiptsEnabled === false;
+        if(!optedOut){
+          entries.forEach(([key], i) => {
+            const m = decryptedList[i];
+            if(!m || m.senderId === currentUser.uid) return;
+            const dt = m.deliveredTo || {};
+            if(!dt[currentUser.uid]){
+              firebaseDb.ref(`dms/${contact.dmRoomId}/messages/${key}/deliveredTo/${currentUser.uid}`)
+                .set(Date.now())
+                .catch(()=>{});
+            }
+          });
+        }
       }
     }
   } catch(e){
@@ -7104,6 +7141,17 @@ function setupDMListener(dmRoomId){
     });
     if(activeId === c.id) renderMsgs();
     renderSidebar();
+
+    // Tell the sender "I received your message". This is the missing signal
+    // that turns the sender's tick from sent (✓) into delivered (✓✓ grey).
+    // Gated on the same readReceiptsEnabled toggle that gates readBy: a user
+    // who turned off read receipts shouldn't leak delivery state either.
+    const profile = loadContactProfile(c.id);
+    if(!(profile && profile.readReceiptsEnabled === false) && raw.senderId !== currentUser.uid){
+      firebaseDb.ref(`dms/${dmRoomId}/messages/${newId}/deliveredTo/${currentUser.uid}`)
+        .set(Date.now())
+        .catch(err => console.warn('[deliveredTo] write failed:', err));
+    }
   });
 
   // Listen for updates to existing messages (reactions, read receipts, deletions, etc.)
@@ -7118,10 +7166,17 @@ function setupDMListener(dmRoomId){
     if(existing){
       existing.reactions = m.reactions || {};
       existing.readBy = m.readBy || {};
+      existing.deliveredTo = m.deliveredTo || {};
       existing.deleted = m.deleted || false;
-      // Set readAt if current user has read this message
-      if(currentUser && existing.readBy[currentUser.uid]){
-        existing.readAt = existing.readBy[currentUser.uid];
+      // Compute deliveredAt / readAt from the OTHER participant's entry, not
+      // ours. The sender wants to see "when did the recipient receive / read
+      // my message" — looking at our own uid would always be empty for the
+      // sender.
+      if(currentUser){
+        const otherDelivered = Object.keys(existing.deliveredTo).filter(uid => uid !== currentUser.uid);
+        if(otherDelivered.length) existing.deliveredAt = existing.deliveredTo[otherDelivered[0]];
+        const otherRead = Object.keys(existing.readBy).filter(uid => uid !== currentUser.uid);
+        if(otherRead.length) existing.readAt = existing.readBy[otherRead[0]];
       }
       if(activeId === c.id) renderMsgs();
     }
@@ -7967,9 +8022,14 @@ function renderMsgs(){
   // Detect bridge moment once for this render pass
   const bridgeResult = detectBridgeMoment(c.msgs);
   const bridgeTriggerMsgId = bridgeResult ? bridgeResult.triggerMsgId : null;
-  // Read ticks: single checkmark for sent, double checkmarks for delivered (WhatsApp-style)
+  // Read ticks: 3-state model. Single = sent, double grey = delivered to
+  // recipient's device, double blue = read by recipient.
   const singleTick = `<span class="ticks sent" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </span>`;
+  const deliveredTicks = `<span class="ticks delivered" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-left:-9px;"><polyline points="20 6 9 17 4 12"/></svg>
     </span>`;
   const doubleTicks = `<span class="ticks read" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -8022,7 +8082,9 @@ function renderMsgs(){
     const timeStr = fmtTime(m.ts);
     const editedLabel = m.edited ? `<span class="b-edited">${isVI?'đã sửa':'edited'}</span>` : '';
     const queuedLabel = m.queued ? `<span class="b-queued">${isVI?'chờ xử lý':'pending'}</span>` : '';
-    const ticksDisplay = m.isMe ? (m.readAt ? doubleTicks : (m.delivered ? doubleTicks : singleTick)) : '';
+    const ticksDisplay = m.isMe
+      ? (m.readAt ? doubleTicks : (m.deliveredAt ? deliveredTicks : singleTick))
+      : '';
     const metaRow = `<div class="b-meta">${editedLabel}${queuedLabel}${esc(timeStr)}${altBtn}${ticksDisplay}</div>`;
     // "sent as playful · Change" chip — sender-only
     const changeChip = (m.isMe && m.autoSent && m.id)
