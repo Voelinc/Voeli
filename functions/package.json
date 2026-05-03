@@ -2,7 +2,7 @@
   "name": "voeli-functions",
   "description": "Cloud Functions for Voeli (FCM push notifications on new DM messages)",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "dependencies": {
