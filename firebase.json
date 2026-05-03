@@ -12,5 +12,17 @@
         "destination": "/index.html"
       }
     ]
+  },
+  "database": {
+    "rules": "firebase-rules/database.rules.json"
+  },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs20",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "*.local"
+    ]
   }
 }

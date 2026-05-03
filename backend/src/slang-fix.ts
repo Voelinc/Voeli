@@ -11,7 +11,6 @@ export function rewriteSlang(text: string): { rewritten: string; wasChanged: boo
   const wasChanged = rewritten !== text;
 
   if (wasChanged) {
-    console.log('[SLANG FIX] Rewrote:', { original: text, rewritten });
   }
 
   return { rewritten, wasChanged };

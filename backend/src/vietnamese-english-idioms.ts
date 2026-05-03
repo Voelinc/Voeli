@@ -7,8 +7,7 @@
 // idioms that aren't in those frontend patterns.
 //
 // SCOPE: This is a SEED dictionary — ~30 entries. It's not comprehensive.
-// The existing user-feedback loop in translation-feedback.ts is the right
-// place to grow it from real usage (Risk 3 mitigation).
+// Grow it from real usage as the app rolls out.
 //
 // Mitigations baked in:
 //   - Each entry carries a `contextHint` that tells the model when the

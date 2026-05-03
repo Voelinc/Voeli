@@ -1,17 +1,10 @@
 {
   "rules": {
     "users": {
-      ".read": "auth != null",
       "$uid": {
-        ".read": "auth != null",
+        ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid",
-        "email": {
-          ".read": "auth != null",
-          ".write": "auth != null && auth.uid === $uid"
-        },
         "contacts": {
-          ".read": "auth != null && auth.uid === $uid",
-          ".write": "auth != null && auth.uid === $uid",
           "$contactId": {
             ".validate": "newData.hasChildren(['id', 'name', 'email'])"
           }
@@ -64,7 +57,7 @@
           }
         },
         "participants": {
-          ".read":  "auth != null",
+          ".read":  "auth != null && data.child(auth.uid).val() === true",
           "$uid": {
             ".write":    "auth != null && auth.uid === $uid",
             ".validate": "newData.val() === true"
@@ -96,18 +89,24 @@
     },
     "invites": {
       "$email": {
-        ".read": true,
+        ".read": "auth != null",
         ".write": "auth != null",
         "$roomId": {
           ".validate": "newData.val() === true"
         }
       }
     },
-    "registeredEmails": {
-      ".read": "auth != null",
-      "$email": {
-        ".write": "auth != null && auth.token.email === $email",
-        ".validate": "newData.val() === true"
+    "reports": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$reportId": {
+        ".write": "auth != null && (!data.exists() || root.child('admins').child(auth.uid).val() === true)",
+        ".validate": "newData.hasChildren(['reporterUid', 'reportedUid', 'reason', 'ts']) && newData.child('reporterUid').val() === auth.uid"
+      }
+    },
+    "admins": {
+      ".read": "auth != null && data.child(auth.uid).val() === true",
+      "$uid": {
+        ".write": false
       }
     }
   }

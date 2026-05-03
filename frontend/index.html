@@ -3,10 +3,15 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<!-- CSP: defense-in-depth. The app uses inline scripts/styles (single-file SPA) so
+     'unsafe-inline' is unavoidable, but connect-src is narrowed to the known
+     endpoints so an XSS payload can't exfiltrate data to an attacker domain. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://browser.sentry-cdn.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: data:; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://*.google.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://voeli-translate-worker.voeli.workers.dev http://localhost:8787 https://*.ingest.us.sentry.io https://*.ingest.sentry.io https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self';">
 <title>Translation Demo</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <!-- Sentry — error tracking. Loads early so it can catch errors during init.
      DSN is public-by-design (it's an ingest endpoint, not a secret). -->
 <script src="https://browser.sentry-cdn.com/8.40.0/bundle.min.js" crossorigin="anonymous"></script>
@@ -3210,7 +3215,9 @@ const APP_STRINGS = {
     block: 'Block',
     learnedPhrases: 'Learned phrases',
     learning: 'Learning',
-    signOut: 'Sign out'
+    signOut: 'Sign out',
+    exportData: 'Export my data',
+    deleteAccount: 'Delete account'
   },
   'vi-en': {
     contacts: 'Liên hệ',
@@ -3241,7 +3248,9 @@ const APP_STRINGS = {
     block: 'Chặn',
     learnedPhrases: 'Các cụm từ đã học',
     learning: 'Đang học',
-    signOut: 'Đăng xuất'
+    signOut: 'Đăng xuất',
+    exportData: 'Xuất dữ liệu của tôi',
+    deleteAccount: 'Xóa tài khoản'
   }
 };
 
@@ -3341,6 +3350,10 @@ function applyAppLang(){
   // Update Sign out button
   const signOutBtn = document.getElementById('settSignOutBtn');
   if(signOutBtn) signOutBtn.textContent = s.signOut;
+  const exportBtn = document.getElementById('settExportBtn');
+  if(exportBtn) exportBtn.textContent = s.exportData;
+  const deleteAccountBtn = document.getElementById('settDeleteAccountBtn');
+  if(deleteAccountBtn) deleteAccountBtn.textContent = s.deleteAccount;
 
   // Update rel-edit save button
   const relEditSave = document.querySelector('.rel-edit-save');
@@ -4410,6 +4423,12 @@ const FIREBASE_CONFIG = {
 };
 const WORKER_URL = 'https://voeli-translate-worker.voeli.workers.dev';
 
+// FCM VAPID key. Generate in Firebase Console:
+//   Project Settings → Cloud Messaging → Web configuration → Generate key pair.
+// Paste the resulting "Public key" here. Push notifications are silently
+// disabled until this is set.
+const FCM_VAPID_KEY = '';
+
 // Initialise once on script load.
 if(!firebase.apps.length){
   firebase.initializeApp(FIREBASE_CONFIG);
@@ -4705,6 +4724,13 @@ function initSignOutBtn(){
         window.location.reload();
         return;
       }
+      // Best-effort: drop this device's FCM tokens before signing out so we
+      // stop pushing notifications to a logged-out tab.
+      try {
+        if(currentUser && firebaseDb && firebase.messaging && firebase.messaging.isSupported && firebase.messaging.isSupported()){
+          await firebaseDb.ref(`users/${currentUser.uid}/fcmTokens`).remove().catch(()=>{});
+        }
+      } catch(_){}
       try { await fbAuth.signOut(); } catch(_){}
       currentUser = null;
       try { sessionStorage.removeItem('mta_user_email'); } catch(_){}
@@ -4712,6 +4738,142 @@ function initSignOutBtn(){
       document.getElementById('liveSetupScreen').style.display='none';
       document.getElementById('setupScreen').style.display='flex';
     });
+  }
+  const exportBtn = document.getElementById('settExportBtn');
+  if(exportBtn) exportBtn.addEventListener('click', exportMyData);
+  const delBtn = document.getElementById('settDeleteAccountBtn');
+  if(delBtn) delBtn.addEventListener('click', deleteMyAccount);
+}
+
+// Register this device with FCM and store the token under the user's uid so
+// the Cloud Function can look it up and push to all of the user's devices.
+// Failure modes (no VAPID key, browser unsupported, permission denied,
+// service worker registration error) are all swallowed — push is additive,
+// not load-bearing.
+async function setupPushNotifications(){
+  if(!FCM_VAPID_KEY) return;
+  if(!('serviceWorker' in navigator) || !firebase.messaging || !firebase.messaging.isSupported || !firebase.messaging.isSupported()) return;
+  if(!currentUser || !firebaseDb) return;
+  try{
+    const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    const messaging = firebase.messaging();
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted') return;
+    const token = await messaging.getToken({ vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: reg });
+    if(!token) return;
+    const tokenKey = token.replace(/[.#$\[\]\/]/g, '_').slice(0, 200);
+    await firebaseDb.ref(`users/${currentUser.uid}/fcmTokens/${tokenKey}`).set({
+      token,
+      ua: (navigator.userAgent || '').slice(0, 200),
+      ts: Date.now()
+    });
+    // Foreground messages: surface as a lightweight in-app toast rather than
+    // an OS notification, since the OS suppresses notifications for the
+    // focused tab anyway.
+    messaging.onMessage((payload) => {
+      const title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || 'New message';
+      const body  = (payload.notification && payload.notification.body)  || (payload.data && payload.data.body)  || '';
+      try { _showToast(`${title}: ${body}`.slice(0, 140)); } catch(_){}
+    });
+  }catch(_){ /* push is optional */ }
+}
+
+// Build a JSON dump of the user's profile, contacts and DM messages, then
+// trigger a browser download. All reads use the user's own auth — no admin
+// SDK needed because rules already grant self-read on /users/$uid and
+// participant-read on /dms/$roomId/messages.
+async function exportMyData(){
+  if(!currentUser || !firebaseDb){ alert('Sign in first.'); return; }
+  const isVI = appDir==='vi-en';
+  try{
+    const profileSnap = await firebaseDb.ref(`users/${currentUser.uid}`).once('value');
+    const profile = profileSnap.val() || {};
+    const dms = [];
+    const seenRoomIds = new Set();
+    for(const c of contacts){
+      if(!c.dmRoomId || seenRoomIds.has(c.dmRoomId)) continue;
+      seenRoomIds.add(c.dmRoomId);
+      try{
+        const msgsSnap = await firebaseDb.ref(`dms/${c.dmRoomId}/messages`).once('value');
+        dms.push({
+          roomId: c.dmRoomId,
+          contactEmail: c.email || null,
+          contactName: c.name || null,
+          messages: msgsSnap.val() || {}
+        });
+      }catch(_){ /* skip rooms we can't read */ }
+    }
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      uid: currentUser.uid,
+      email: currentUser.email,
+      profile,
+      contacts: contacts.map(c => ({ id:c.id, name:c.name, email:c.email, phone:c.phone, type:c.type, direction:c.direction, dmRoomId:c.dmRoomId||null })),
+      dms
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `voeli-export-${currentUser.uid.slice(0,8)}-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  }catch(err){
+    if(window.Sentry) Sentry.captureException(err);
+    alert(isVI?'Không thể xuất dữ liệu':'Could not export data');
+  }
+}
+
+// Permanently delete the user's account: scrub their messages from each DM,
+// remove themselves from /users, then delete the Firebase Auth user. Firebase
+// may require a recent sign-in for the final step — if so we surface that
+// and ask the user to sign out and back in before retrying.
+async function deleteMyAccount(){
+  if(!currentUser || !firebaseDb){ alert('Sign in first.'); return; }
+  const isVI = appDir==='vi-en';
+  const confirmMsg = isVI
+    ? 'Xóa tài khoản vĩnh viễn? Hành động này không thể hoàn tác. Tất cả tin nhắn bạn đã gửi sẽ bị đánh dấu xóa.'
+    : 'Permanently delete your account? This cannot be undone. All messages you sent will be marked as deleted.';
+  if(!confirm(confirmMsg)) return;
+  const uid = currentUser.uid;
+  try{
+    // 1. Mark messages I sent in each DM as deleted, and remove self from participants.
+    for(const c of contacts){
+      if(!c.dmRoomId) continue;
+      try{
+        const msgsSnap = await firebaseDb.ref(`dms/${c.dmRoomId}/messages`).once('value');
+        const msgs = msgsSnap.val() || {};
+        const updates = {};
+        for(const mid in msgs){
+          if(msgs[mid] && msgs[mid].senderId === uid){
+            updates[`${mid}/deleted`] = true;
+          }
+        }
+        if(Object.keys(updates).length){
+          await firebaseDb.ref(`dms/${c.dmRoomId}/messages`).update(updates);
+        }
+        await firebaseDb.ref(`dms/${c.dmRoomId}/participants/${uid}`).remove().catch(()=>{});
+      }catch(_){ /* skip rooms we can't read or write */ }
+    }
+    // 2. Delete the user's profile/contacts subtree.
+    await firebaseDb.ref(`users/${uid}`).remove().catch(()=>{});
+    // 3. Delete the Firebase Auth user. Requires recent sign-in.
+    await currentUser.delete();
+    try { localStorage.clear(); } catch(_){}
+    try { sessionStorage.clear(); } catch(_){}
+    alert(isVI?'Tài khoản đã được xóa.':'Account deleted.');
+    window.location.reload();
+  }catch(err){
+    if(err && err.code === 'auth/requires-recent-login'){
+      alert(isVI
+        ? 'Vì lý do bảo mật, hãy đăng xuất và đăng nhập lại, sau đó thử lại.'
+        : 'For security, please sign out and sign back in, then try again.');
+      return;
+    }
+    if(window.Sentry) Sentry.captureException(err);
+    alert(isVI?'Không thể xóa tài khoản':'Could not delete account');
   }
 }
 
@@ -4753,6 +4915,10 @@ fbAuth.onAuthStateChanged(async (user)=>{
     } catch(e){
       console.error('Error saving user email:', e);
     }
+    // Register this device for push notifications. No-ops silently if the
+    // VAPID key isn't configured yet, the browser doesn't support it, or
+    // the user denies permission.
+    setupPushNotifications().catch(()=>{});
   }
   if(!user){
     // Signed out — show sign-in screen, hide everything else.
@@ -6444,28 +6610,6 @@ function isValidEmail(email){
   return emailRegex.test(email);
 }
 
-async function emailExists(email){
-  if(!firebaseDb || !email) return false;
-  const lowerEmail = email.toLowerCase();
-  try {
-    const snap = await firebaseDb.ref('users').once('value');
-    if(!snap.exists()){
-      console.warn('Users database is empty — allowing contact addition');
-      return true;
-    }
-    const users = snap.val();
-    for(const uid in users){
-      if(users[uid].email && users[uid].email.toLowerCase() === lowerEmail){
-        return true;
-      }
-    }
-    return false;
-  } catch(e){
-    console.error('Error checking email:', e);
-    return true;
-  }
-}
-
 async function saveContact(){
   if(!selRelType){ alert('Please select a relationship type.'); return; }
   const name=document.getElementById('mcName').value.trim();
@@ -7106,8 +7250,10 @@ async function sendFriendRequest(toEmail){
   if(normalizedEmail === me) return;
   // Migrate any old data for the recipient before sending
   await migrateOldEmailPaths(normalizedEmail);
-  if(!(await emailExists(normalizedEmail))) return;
-  console.log(`[sendFriendRequest] Email exists, proceeding with request for ${normalizedEmail}`);
+  // Existence check removed: under tightened /users rules we can't enumerate
+  // accounts. The friend request will sit unread at /friendRequests/<hash>
+  // until/unless the recipient signs up; the per-recipient cooldown below
+  // prevents abuse.
 
   // Rate limiting: check cooldown per recipient
   const lastRequest = friendRequestTimestamps[normalizedEmail] || 0;
@@ -7923,6 +8069,12 @@ function showBubbleCtxMenu(x, y, msgId, isMe){
     html += `<div class="edit-ctx-item" id="ctxOrig"><span>${isShowingOrig?(isVI?'Ẩn bản gốc':'Hide original'):(isVI?'Xem bản gốc':'Show original')}</span></div>`;
   }
 
+  // Report (receiver-only, non-deleted)
+  if(!isMe && !msg.deleted){
+    html += `<div class="ctx-sep"></div>`;
+    html += `<div class="edit-ctx-item danger" id="ctxReport"><span>${isVI?'Báo cáo tin nhắn':'Report message'}</span></div>`;
+  }
+
   // Sender-only actions
   if(isMe && !msg.deleted){
     html += `<div class="ctx-sep"></div>`;
@@ -7952,6 +8104,9 @@ function showBubbleCtxMenu(x, y, msgId, isMe){
     if(canEdit) menu.querySelector('#ctxEdit')?.addEventListener('click', ()=>{ removeEditCtxMenu(); startInlineEdit(msgId); });
     menu.querySelector('#ctxDelete')?.addEventListener('click', ()=>{ removeEditCtxMenu(); deleteMessage(msgId); });
   }
+  if(!isMe && !msg.deleted){
+    menu.querySelector('#ctxReport')?.addEventListener('click', ()=>{ removeEditCtxMenu(); reportMessage(msgId); });
+  }
 
   const dismiss = (e)=>{ if(!menu.contains(e.target)){ removeEditCtxMenu(); document.removeEventListener('mousedown', dismiss); document.removeEventListener('touchstart', dismiss); }};
   setTimeout(()=>{ document.addEventListener('mousedown', dismiss); document.addEventListener('touchstart', dismiss); }, 0);
@@ -7972,6 +8127,40 @@ function deleteMessage(msgId){
     firebaseDb.ref(`dms/${c.dmRoomId}/messages/${msg.id}/deleted`).set(true).catch(err => {
       console.warn('[deleteMessage] Failed to sync deletion:', err);
     });
+  }
+}
+
+async function reportMessage(msgId){
+  const c = activeCont();
+  if(!c || !firebaseDb || !currentUser){ return; }
+  const msg = c.msgs.find(m=>m.id===msgId);
+  if(!msg || msg.isMe) return;
+  const isVI = appDir==='vi-en';
+  const reasons = isVI
+    ? ['Spam','Quấy rối','Nội dung phản cảm','Lừa đảo','Khác']
+    : ['Spam','Harassment','Inappropriate','Scam','Other'];
+  const promptMsg = isVI
+    ? `Báo cáo tin nhắn này?\n\nLý do: ${reasons.join(' / ')}`
+    : `Report this message?\n\nReason: ${reasons.join(' / ')}`;
+  const reason = prompt(promptMsg, reasons[0]);
+  if(reason === null) return; // user cancelled
+  const reportedUid = await getOtherParticipantUid(c.dmRoomId).catch(()=>null);
+  if(!reportedUid){ alert(isVI?'Không thể báo cáo: thiếu thông tin người gửi':'Could not report: sender info missing'); return; }
+  const reportId = `r_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+  try{
+    await firebaseDb.ref(`reports/${reportId}`).set({
+      reporterUid: currentUser.uid,
+      reportedUid,
+      roomId: c.dmRoomId,
+      msgId,
+      msgSnapshot: (msg.original || msg.text || msg.translated || '').slice(0, 500),
+      reason: (reason || '').slice(0, 200),
+      ts: Date.now()
+    });
+    alert(isVI?'Đã gửi báo cáo. Cảm ơn bạn.':'Report submitted. Thank you.');
+  }catch(err){
+    if(window.Sentry) Sentry.captureException(err);
+    alert(isVI?'Không thể gửi báo cáo':'Could not submit report');
   }
 }
 
@@ -11646,6 +11835,8 @@ try {
       <div class="sett-divider"></div>
       <div class="sett-section-label" id="settAccountLabel">Account</div>
       <button id="settSignOutBtn" type="button" style="width:100%;padding:14px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--red,#d93025);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px;-webkit-appearance:none;touch-action:manipulation;position:relative;z-index:1;">Sign out</button>
+      <button id="settExportBtn" type="button" style="width:100%;padding:14px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;margin-top:8px;-webkit-appearance:none;touch-action:manipulation;">Export my data</button>
+      <button id="settDeleteAccountBtn" type="button" style="width:100%;padding:14px 14px;border-radius:10px;border:1px solid var(--red,#d93025);background:var(--panel);color:var(--red,#d93025);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px;-webkit-appearance:none;touch-action:manipulation;">Delete account</button>
       <!-- Spacer so the button never sits inside iOS Safari's bottom gesture zone -->
       <div style="height:calc(env(safe-area-inset-bottom, 0px) + 32px);"></div>
     </div>

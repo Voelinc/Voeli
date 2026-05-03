@@ -52,7 +52,7 @@
   <div data-lang="en" class="active">
     <a href="/" class="home-link">← Back to Voeli</a>
     <h1>Privacy Policy</h1>
-    <div class="meta">Last updated: 25 April 2026</div>
+    <div class="meta">Last updated: 3 May 2026</div>
 
     <p>Voeli is an English and Vietnamese chat translator that pays attention to tone. This policy describes what data we collect, why we collect it, who we share it with, and what control you have over it.</p>
 
@@ -68,7 +68,12 @@
       <li><strong>An anonymous user ID.</strong> Generated automatically by Firebase Authentication. We use it to count how many translations you've used today so we can enforce per-user daily limits.</li>
       <li><strong>Daily usage counters.</strong> Three small integers per user per day (translations, voice notes, grammar checks). Reset every 24 hours. Stored on Cloudflare's edge network. Not joined with any other data.</li>
       <li><strong>Live Session messages.</strong> When you use Live Session mode to chat with another signed-in person, message text passes through and is briefly stored in our Firebase Realtime Database so the other person can receive it. Only the two participants in a room can read these messages. You can delete your account to remove your participation.</li>
+      <li><strong>Abuse reports.</strong> If you tap "Report message" on a message someone sent you, we record your user ID, the sender's user ID, the message text, the reason, and a timestamp so we can review and act on it. Reports are only readable by Voeli moderators.</li>
     </ul>
+
+    <div class="callout">
+      <strong>About encryption.</strong> Messages are encrypted in transit (HTTPS / TLS) and at rest by Firebase. They are <strong>not</strong> end-to-end encrypted: Voeli operators with database access could in principle read message content, and OpenAI processes the text of any message you translate. If you need true end-to-end privacy, do not use Voeli for it.
+    </div>
 
     <h2>2. What we do <em>not</em> collect</h2>
     <ul>
@@ -134,7 +139,7 @@
   <div data-lang="vi">
     <a href="/" class="home-link">← Quay lại Voeli</a>
     <h1>Chính sách Bảo mật</h1>
-    <div class="meta">Cập nhật lần cuối: 25 tháng 4, 2026</div>
+    <div class="meta">Cập nhật lần cuối: 3 tháng 5, 2026</div>
 
     <p>Voeli là ứng dụng dịch trò chuyện Anh và Việt có chú trọng đến giọng điệu. Chính sách này mô tả dữ liệu chúng tôi thu thập, lý do thu thập, đối tượng được chia sẻ, và quyền kiểm soát mà bạn có đối với dữ liệu đó.</p>
 
@@ -150,7 +155,12 @@
       <li><strong>ID người dùng ẩn danh.</strong> Được tạo tự động bởi Firebase Authentication. Chúng tôi dùng nó để đếm số lượt dịch bạn đã sử dụng trong ngày để áp dụng giới hạn hàng ngày cho mỗi người dùng.</li>
       <li><strong>Bộ đếm sử dụng hàng ngày.</strong> Ba số nguyên nhỏ cho mỗi người dùng mỗi ngày (lượt dịch, ghi âm giọng nói, kiểm tra ngữ pháp). Đặt lại sau mỗi 24 giờ. Lưu trữ trên mạng lưới biên của Cloudflare. Không kết hợp với bất kỳ dữ liệu nào khác.</li>
       <li><strong>Tin nhắn trong Live Session.</strong> Khi bạn dùng chế độ Live Session để trò chuyện với một người khác đã đăng nhập, nội dung tin nhắn đi qua và được lưu tạm thời trong Firebase Realtime Database để người kia nhận được. Chỉ hai người trong cùng một phòng mới có thể đọc các tin nhắn này. Bạn có thể xóa tài khoản để gỡ bỏ phần tham gia của mình.</li>
+      <li><strong>Báo cáo lạm dụng.</strong> Nếu bạn nhấn "Báo cáo tin nhắn" trên một tin nhắn ai đó gửi, chúng tôi ghi nhận ID người dùng của bạn, ID người gửi, nội dung tin nhắn, lý do, và thời gian để xem xét và xử lý. Chỉ người kiểm duyệt của Voeli mới có thể đọc các báo cáo này.</li>
     </ul>
+
+    <div class="callout">
+      <strong>Về mã hóa.</strong> Tin nhắn được mã hóa khi truyền (HTTPS / TLS) và khi lưu bởi Firebase. Tuy nhiên tin nhắn <strong>không</strong> được mã hóa đầu cuối: về mặt kỹ thuật người vận hành Voeli có quyền truy cập cơ sở dữ liệu có thể đọc nội dung tin nhắn, và OpenAI xử lý văn bản của các tin nhắn bạn dịch. Nếu bạn cần quyền riêng tư đầu cuối thực sự, vui lòng không dùng Voeli cho mục đích đó.
+    </div>
 
     <h2>2. Những gì chúng tôi <em>không</em> thu thập</h2>
     <ul>

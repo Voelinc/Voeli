@@ -891,8 +891,6 @@ export async function handleTranslate(
   env: Env
 ): Promise<Response> {
   const uiLang = payload.uiLang || 'en';
-  console.log('[DEBUG] handleTranslate received:', { text: payload.text?.substring(0, 50), direction: payload.direction, payloadUiLang: payload.uiLang, calculatedUiLang: uiLang });
-
   // Fix Vietnamese slang before sending to OpenAI
   if (payload.direction === 'vi-en') {
     const { rewritten, wasChanged } = rewriteSlang(payload.text);
@@ -916,12 +914,6 @@ export async function handleTranslate(
       pronounSignals.confidence >= 0.8 &&
       pronounSignals.inferredRelationship !== payload.relationship
     ) {
-      console.log('[PRONOUN OVERRIDE]', {
-        stored: payload.relationship,
-        inferred: pronounSignals.inferredRelationship,
-        confidence: pronounSignals.confidence,
-        matched: pronounSignals.matchedTokens,
-      });
       payload.relationship = pronounSignals.inferredRelationship;
     }
   }
@@ -949,7 +941,6 @@ export async function handleTranslate(
     const topicMatch = detectTopicComment(payload.text);
     if (topicMatch.detected) {
       topicCommentDetected = true;
-      console.log('[TOPIC-COMMENT]', { topic: topicMatch.topic, pattern: topicMatch.pattern });
       systemPrompt += buildTopicCommentPrompt(topicMatch);
     }
   }
@@ -964,11 +955,6 @@ export async function handleTranslate(
       pronounSignals,
     });
     if (subjectMatch.detected) {
-      console.log('[ZERO-SUBJECT]', {
-        role: subjectMatch.role,
-        pattern: subjectMatch.pattern,
-        trigger: subjectMatch.trigger,
-      });
       systemPrompt += buildImpliedSubjectPrompt(subjectMatch, pronounSignals);
     }
   }
@@ -978,11 +964,6 @@ export async function handleTranslate(
   if (payload.direction === 'vi-en') {
     const registerSignal = detectRegisterSignal(payload.text);
     if (registerSignal.level !== 'unmarked') {
-      console.log('[REGISTER]', {
-        level: registerSignal.level,
-        sino: registerSignal.matchedSino,
-        native: registerSignal.matchedNative,
-      });
       systemPrompt += buildRegisterSignalPrompt(registerSignal);
     }
   } else if (payload.direction === 'en-vi') {
@@ -996,7 +977,6 @@ export async function handleTranslate(
   if (payload.direction === 'vi-en') {
     const culturalMatches = detectCulturalConcepts(payload.text, payload.culturalConceptCounts);
     if (culturalMatches.length > 0) {
-      console.log('[CULTURAL-CONCEPTS]', { terms: culturalMatches.map((m) => m.term) });
       systemPrompt += buildCulturalConceptsPrompt(culturalMatches);
     }
   }
@@ -1006,10 +986,6 @@ export async function handleTranslate(
   if (payload.direction === 'vi-en') {
     const segmentation = detectSegmentationIssues(payload.text);
     if (segmentation.ambiguous.length > 0 || segmentation.reduplicatives.length > 0) {
-      console.log('[SEGMENTATION]', {
-        ambiguous: segmentation.ambiguous.map((a) => a.phrase),
-        reduplicatives: segmentation.reduplicatives.map((r) => r.phrase),
-      });
       systemPrompt += buildSegmentationPrompt(segmentation);
     }
   }
@@ -1019,7 +995,6 @@ export async function handleTranslate(
   if (payload.direction === 'vi-en') {
     const dishMatches = detectDishNames(payload.text, payload.dishCounts);
     if (dishMatches.length > 0) {
-      console.log('[DISH-NAMES]', { dishes: dishMatches.map((m) => m.name) });
       systemPrompt += buildDishNamesPrompt(dishMatches);
     }
   }
@@ -1030,7 +1005,6 @@ export async function handleTranslate(
   if (payload.direction === 'en-vi') {
     const classifierMatches = detectNounsNeedingClassifier(payload.text);
     if (classifierMatches.length > 0) {
-      console.log('[CLASSIFIERS]', { nouns: classifierMatches.map((m) => m.english) });
       systemPrompt += buildClassifierPrompt(classifierMatches);
     }
   }
@@ -1041,11 +1015,6 @@ export async function handleTranslate(
   if (payload.direction === 'en-vi') {
     const enPronouns = detectEnglishPronouns(payload.text);
     if (enPronouns.youNumber === 'plural' || enPronouns.weInclusivity !== 'unknown') {
-      console.log('[EN-PRONOUNS]', {
-        you: enPronouns.youNumber,
-        we: enPronouns.weInclusivity,
-        matched: enPronouns.matchedTokens,
-      });
       systemPrompt += buildEnglishPronounsPrompt(enPronouns);
     }
   }
@@ -1058,7 +1027,6 @@ export async function handleTranslate(
       payload.culturalConceptCounts
     );
     if (enCulturalMatches.length > 0) {
-      console.log('[EN-CULTURAL-CONCEPTS]', { terms: enCulturalMatches.map((m) => m.term) });
       systemPrompt += buildEnglishCulturalConceptsPrompt(enCulturalMatches);
     }
   }
@@ -1067,9 +1035,6 @@ export async function handleTranslate(
   if (payload.direction === 'en-vi') {
     const softenerMatches = detectEnglishSofteners(payload.text);
     if (softenerMatches.length > 0) {
-      console.log('[EN-SOFTENERS]', {
-        items: softenerMatches.map((m) => `${m.category}:${m.display}`),
-      });
       systemPrompt += buildEnglishSoftenersPrompt(softenerMatches);
     }
   }
@@ -1079,7 +1044,6 @@ export async function handleTranslate(
   if (payload.direction === 'en-vi') {
     const enFoodMatches = detectEnglishFoodItems(payload.text, payload.dishCounts);
     if (enFoodMatches.length > 0) {
-      console.log('[EN-FOOD-ITEMS]', { items: enFoodMatches.map((m) => m.term) });
       systemPrompt += buildEnglishFoodItemsPrompt(enFoodMatches);
     }
   }
@@ -1089,10 +1053,6 @@ export async function handleTranslate(
   // user via culturalWarnings.
   const idiomMatches = detectIdioms(payload.text, payload.direction);
   if (idiomMatches.length > 0) {
-    console.log('[IDIOMS]', {
-      direction: payload.direction,
-      phrases: idiomMatches.map((m) => m.phrase),
-    });
     systemPrompt += buildIdiomPrompt(idiomMatches);
   }
 
@@ -1138,7 +1098,6 @@ export async function handleTranslate(
   if (src === 'Vietnamese') {
     const { filtered, shouldShowPicker, reason } = filterOptionsByConfidence(result);
     result = filtered;
-    console.log('[AMBIGUITY FILTER]', { shouldShowPicker, reason, optionCount: result.options.length });
   }
 
   // Ensure bilingual fields (howItLands, backTranslation) have both en and vi versions
@@ -1200,11 +1159,6 @@ export async function handleQuick(
       pronounSignals.confidence >= 0.8 &&
       pronounSignals.inferredRelationship !== payload.relationship
     ) {
-      console.log('[QUICK PRONOUN OVERRIDE]', {
-        stored: payload.relationship,
-        inferred: pronounSignals.inferredRelationship,
-        confidence: pronounSignals.confidence,
-      });
       payload.relationship = pronounSignals.inferredRelationship;
     }
   }
@@ -1228,7 +1182,6 @@ export async function handleQuick(
     const topicMatch = detectTopicComment(payload.text);
     if (topicMatch.detected) {
       topicCommentDetected = true;
-      console.log('[QUICK TOPIC-COMMENT]', { topic: topicMatch.topic });
       systemPrompt += buildTopicCommentPrompt(topicMatch);
     }
   }
@@ -1240,7 +1193,6 @@ export async function handleQuick(
       pronounSignals,
     });
     if (subjectMatch.detected) {
-      console.log('[QUICK ZERO-SUBJECT]', { role: subjectMatch.role });
       systemPrompt += buildImpliedSubjectPrompt(subjectMatch, pronounSignals);
     }
   }
@@ -1249,7 +1201,6 @@ export async function handleQuick(
   if (payload.direction === 'vi-en') {
     const registerSignal = detectRegisterSignal(payload.text);
     if (registerSignal.level !== 'unmarked') {
-      console.log('[QUICK REGISTER]', { level: registerSignal.level });
       systemPrompt += buildRegisterSignalPrompt(registerSignal);
     }
   } else if (payload.direction === 'en-vi') {
@@ -1260,7 +1211,6 @@ export async function handleQuick(
   if (payload.direction === 'vi-en') {
     const culturalMatches = detectCulturalConcepts(payload.text, payload.culturalConceptCounts);
     if (culturalMatches.length > 0) {
-      console.log('[QUICK CULTURAL-CONCEPTS]', { terms: culturalMatches.map((m) => m.term) });
       systemPrompt += buildCulturalConceptsPrompt(culturalMatches);
     }
   }
@@ -1269,9 +1219,6 @@ export async function handleQuick(
   if (payload.direction === 'vi-en') {
     const segmentation = detectSegmentationIssues(payload.text);
     if (segmentation.ambiguous.length > 0 || segmentation.reduplicatives.length > 0) {
-      console.log('[QUICK SEGMENTATION]', {
-        ambiguous: segmentation.ambiguous.map((a) => a.phrase),
-      });
       systemPrompt += buildSegmentationPrompt(segmentation);
     }
   }
@@ -1280,7 +1227,6 @@ export async function handleQuick(
   if (payload.direction === 'vi-en') {
     const dishMatches = detectDishNames(payload.text, payload.dishCounts);
     if (dishMatches.length > 0) {
-      console.log('[QUICK DISH-NAMES]', { dishes: dishMatches.map((m) => m.name) });
       systemPrompt += buildDishNamesPrompt(dishMatches);
     }
   }
@@ -1289,7 +1235,6 @@ export async function handleQuick(
   if (payload.direction === 'en-vi') {
     const classifierMatches = detectNounsNeedingClassifier(payload.text);
     if (classifierMatches.length > 0) {
-      console.log('[QUICK CLASSIFIERS]', { nouns: classifierMatches.map((m) => m.english) });
       systemPrompt += buildClassifierPrompt(classifierMatches);
     }
   }
@@ -1298,10 +1243,6 @@ export async function handleQuick(
   if (payload.direction === 'en-vi') {
     const enPronouns = detectEnglishPronouns(payload.text);
     if (enPronouns.youNumber === 'plural' || enPronouns.weInclusivity !== 'unknown') {
-      console.log('[QUICK EN-PRONOUNS]', {
-        you: enPronouns.youNumber,
-        we: enPronouns.weInclusivity,
-      });
       systemPrompt += buildEnglishPronounsPrompt(enPronouns);
     }
   }
@@ -1313,9 +1254,6 @@ export async function handleQuick(
       payload.culturalConceptCounts
     );
     if (enCulturalMatches.length > 0) {
-      console.log('[QUICK EN-CULTURAL-CONCEPTS]', {
-        terms: enCulturalMatches.map((m) => m.term),
-      });
       systemPrompt += buildEnglishCulturalConceptsPrompt(enCulturalMatches);
     }
   }
@@ -1324,9 +1262,6 @@ export async function handleQuick(
   if (payload.direction === 'en-vi') {
     const softenerMatches = detectEnglishSofteners(payload.text);
     if (softenerMatches.length > 0) {
-      console.log('[QUICK EN-SOFTENERS]', {
-        items: softenerMatches.map((m) => `${m.category}:${m.display}`),
-      });
       systemPrompt += buildEnglishSoftenersPrompt(softenerMatches);
     }
   }
@@ -1335,7 +1270,6 @@ export async function handleQuick(
   if (payload.direction === 'en-vi') {
     const enFoodMatches = detectEnglishFoodItems(payload.text, payload.dishCounts);
     if (enFoodMatches.length > 0) {
-      console.log('[QUICK EN-FOOD-ITEMS]', { items: enFoodMatches.map((m) => m.term) });
       systemPrompt += buildEnglishFoodItemsPrompt(enFoodMatches);
     }
   }
@@ -1343,10 +1277,6 @@ export async function handleQuick(
   // Idioms (both directions).
   const idiomMatches = detectIdioms(payload.text, payload.direction);
   if (idiomMatches.length > 0) {
-    console.log('[QUICK IDIOMS]', {
-      direction: payload.direction,
-      phrases: idiomMatches.map((m) => m.phrase),
-    });
     systemPrompt += buildIdiomPrompt(idiomMatches);
   }
 
