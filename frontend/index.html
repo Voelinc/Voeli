@@ -81,7 +81,11 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html{background:var(--panel);}
-html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:var(--ink);
+/* Body bg matches html (--panel = white) so the iOS home-indicator safe area
+   paints white instead of leaking the old --bg gray. position:fixed overlays
+   like #setupScreen and the messenger panels don't always extend behind the
+   home indicator on iOS PWA, so the body color is what shows through there. */
+html,body{height:100%;height:100dvh;overflow:hidden;background:var(--panel);color:var(--ink);
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   -webkit-font-smoothing:antialiased;font-size:14px;
   /* iOS: kill the 300ms double-tap-zoom delay site-wide for snappier taps */
