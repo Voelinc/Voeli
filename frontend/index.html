@@ -1252,6 +1252,8 @@ body.is-offline::before{
   .cpanel { position: absolute !important; inset: 0 !important; width: 100% !important; flex-direction: column !important; }
   #profilePanel { position: absolute !important; inset: 0 !important; width: 100% !important; flex-direction: column !important; }
   #bottomNav { position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; z-index: 100 !important; flex-shrink: 0 !important; height: calc(50px + env(safe-area-inset-bottom, 0px)) !important; border-top: 1px solid var(--line) !important; background: var(--panel) !important; display: flex !important; width: 100% !important; padding: 0 18px env(safe-area-inset-bottom, 0px) !important; box-sizing: border-box !important; }
+  #app.chat-open #bottomNav { display: none !important; }
+  #app.chat-open #appContent { padding-bottom: 0 !important; }
   .nav-btn { padding: 0 0 4px 0 !important; justify-content: flex-end !important; }
 
   /* Top-right "signed in as" pill once authed */
@@ -6446,6 +6448,7 @@ function switchTab(tab){
     renderProfileDictionary();
     if(typeof renderBridgesLibrary === 'function') renderBridgesLibrary();
   }
+  if(typeof updateChatViewClass === 'function') updateChatViewClass();
 }
 
 // Render chat list (WhatsApp-style)
@@ -6459,6 +6462,7 @@ function renderChatList(){
   activeChat.style.display = 'none';
   chatEmpty.style.display = 'none';
   chatList.style.display = 'flex';
+  if(typeof updateChatViewClass === 'function') updateChatViewClass();
 
   if(!contacts || contacts.length === 0){
     chatListItems.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);">No conversations yet</div>';
@@ -7328,6 +7332,8 @@ async function deleteContact(id){
     activeId=null;
     document.getElementById('activeChat').style.display='none';
     document.getElementById('chatEmpty').style.display='flex';
+    currentMessagesView = 'list';
+    updateChatViewClass();
   }
   renderSidebar();
   // Messages-tab chat list is rendered separately — refresh it too so the
@@ -7834,12 +7840,20 @@ function markMessageAsRead(msgId, dmRoomId){
   });
 }
 
+function updateChatViewClass(){
+  const app = document.getElementById('app');
+  if(!app) return;
+  const inChat = currentMessagesView === 'chat' && currentTab === 'messages';
+  app.classList.toggle('chat-open', inChat);
+}
+
 function openChat(id){
   activeId=id;
   const c=activeCont(); if(!c) return;
 
   c.unread=0; // clear unread when chat is opened
   currentMessagesView = 'chat'; // ensure we're in chat view, not list view
+  updateChatViewClass();
   document.getElementById('chatEmpty').style.display='none';
   document.getElementById('chatList').style.display='none';
   document.getElementById('activeChat').style.display='flex';
@@ -7905,6 +7919,7 @@ function mobileBack(){
   if(currentMessagesView === 'chat'){
     currentMessagesView = 'list';
     renderChatList();
+    updateChatViewClass();
     return;
   }
   const sb = document.querySelector('.sidebar');
