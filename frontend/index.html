@@ -1244,19 +1244,19 @@ body.is-offline::before{
   /* appContent reserves space at the bottom for the fixed-position #bottomNav
      so contact rows / chat content don't render behind it. Matches the bar's
      own height: 48px content + capped safe-area buffer. */
-  #appContent { position: relative !important; flex: 1 !important; min-height: 0 !important; overflow: hidden !important; width: 100% !important; padding-bottom: calc(48px + min(env(safe-area-inset-bottom), 16px)) !important; box-sizing: border-box !important; }
+  #appContent { position: relative !important; flex: 1 !important; min-height: 0 !important; overflow: hidden !important; width: 100% !important; padding-bottom: calc(48px + min(env(safe-area-inset-bottom), 8px)) !important; box-sizing: border-box !important; }
   .sidebar { position: absolute !important; inset: 0 !important; width: 100% !important; min-width: 100% !important; flex-direction: column !important; }
   .cpanel { position: absolute !important; inset: 0 !important; width: 100% !important; flex-direction: column !important; }
   #profilePanel { position: absolute !important; inset: 0 !important; width: 100% !important; flex-direction: column !important; }
   /* Fixed-position bar pinned to the visual viewport bottom. position: fixed
      bypasses iOS standalone PWA's body-height quirks — the bar always sits
      at the viewport edge.
-     The padding-bottom uses min(safe-area, 16px) instead of the full
+     The padding-bottom uses min(safe-area, 8px) instead of the full
      env(safe-area-inset-bottom) so iPhones with a home indicator get a
-     clean ~16px buffer above the pill (matches the visible-gap WhatsApp /
-     Messenger leave) instead of the full ~34px which reads as "floating".
+     tight ~8px buffer above the pill (matches WhatsApp's gap) instead of
+     the full ~34px which reads as "floating".
      iPhones without a home indicator get 0px and the bar sits flush. */
-  #bottomNav { position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; z-index: 100 !important; flex-shrink: 0 !important; height: calc(48px + min(env(safe-area-inset-bottom), 16px)) !important; border-top: 1px solid var(--line) !important; background: var(--panel) !important; display: flex !important; width: 100% !important; padding: 0 calc(18px + env(safe-area-inset-right)) min(env(safe-area-inset-bottom), 16px) calc(18px + env(safe-area-inset-left)) !important; box-sizing: border-box !important; }
+  #bottomNav { position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; z-index: 100 !important; flex-shrink: 0 !important; height: calc(48px + min(env(safe-area-inset-bottom), 8px)) !important; border-top: 1px solid var(--line) !important; background: var(--panel) !important; display: flex !important; width: 100% !important; padding: 0 calc(18px + env(safe-area-inset-right)) min(env(safe-area-inset-bottom), 8px) calc(18px + env(safe-area-inset-left)) !important; box-sizing: border-box !important; }
   /* Tighten tab buttons against the bottom of the bar's content area so the
      labels sit just above the iOS home-indicator safe area, not floating
      mid-bar with empty white below. The 6px bottom-padding gives a hair of
