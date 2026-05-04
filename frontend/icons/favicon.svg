@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" fill="none">
+  <title>Voeli — app icon</title>
+  <rect width="120" height="120" rx="28" fill="#F7F8FA"></rect>
+  <path d="M22 38 Q22 26 34 26 H72 Q84 26 84 38 V60 Q84 72 72 72 H50 L36 84 V72 H34 Q22 72 22 60 Z" fill="#38BDF8"></path>
+  <path d="M40 56 Q40 44 52 44 H92 Q104 44 104 56 V78 Q104 90 92 90 H68 L82 102 V90 H92 Q104 90 104 78 Z" fill="#0068FF"></path>
+</svg>

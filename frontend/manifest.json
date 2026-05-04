@@ -1,0 +1,17 @@
+{
+  "name": "Voeli",
+  "short_name": "Voeli",
+  "description": "Tone-aware translation chat",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0068FF",
+  "background_color": "#F7F8FA",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/favicon.svg", "type": "image/svg+xml" }
+  ]
+}
