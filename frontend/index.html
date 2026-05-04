@@ -1241,18 +1241,17 @@ body.is-offline::before{
 <style>
   /* Bottom nav layout */
   #app { display: flex !important; flex-direction: column !important; width: 100% !important; height: 100% !important; }
-  /* Bottom nav: extends into the iOS home-indicator safe area via negative
-     bottom + matching internal padding-bottom. The bar's logical bottom is
-     env(safe-area-inset-bottom) below the viewport bottom; height grows by
-     the same amount and that growth is consumed by padding-bottom. Net
-     effect: bar background fills the safe-area zone, labels sit 8px above
-     the bar's visible bottom edge — which lines up with the physical screen
-     bottom in PWA cover mode. */
+  /* Bottom nav: simple 50px strip pinned to viewport bottom. Adjustments for
+     iOS PWA non-cover mode are applied at runtime by the script at the end
+     of the body — see snapBottomNav. CSS alone can't distinguish "no safe
+     area" (env=0 because device has none) from "non-cover mode" (env=0
+     because page is constrained above the safe area), so the choice between
+     "leave alone" and "translate down 34px" has to be made in JS. */
   #appContent { position: relative !important; flex: 1 !important; min-height: 0 !important; overflow: hidden !important; width: 100% !important; padding-bottom: 50px !important; box-sizing: border-box !important; }
   .sidebar { position: absolute !important; inset: 0 !important; width: 100% !important; min-width: 100% !important; flex-direction: column !important; }
   .cpanel { position: absolute !important; inset: 0 !important; width: 100% !important; flex-direction: column !important; }
   #profilePanel { position: absolute !important; inset: 0 !important; width: 100% !important; flex-direction: column !important; }
-  #bottomNav { position: fixed !important; bottom: calc(-1 * env(safe-area-inset-bottom, 0px)) !important; left: 0 !important; right: 0 !important; z-index: 100 !important; flex-shrink: 0 !important; height: calc(50px + env(safe-area-inset-bottom, 0px)) !important; border-top: 1px solid var(--line) !important; background: var(--panel) !important; display: flex !important; width: 100% !important; padding: 0 18px env(safe-area-inset-bottom, 0px) !important; box-sizing: border-box !important; }
+  #bottomNav { position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; z-index: 100 !important; flex-shrink: 0 !important; height: 50px !important; border-top: 1px solid var(--line) !important; background: var(--panel) !important; display: flex !important; width: 100% !important; padding: 0 18px !important; box-sizing: border-box !important; }
   .nav-btn { padding: 0 0 4px 0 !important; justify-content: flex-end !important; }
 
   /* Top-right "signed in as" pill once authed */
@@ -12710,5 +12709,55 @@ try {
     </div>
   </div>
 </div>
+<script>
+// Detect iOS PWA non-cover mode and snap the bottom nav to the physical
+// screen bottom. In cover mode env(safe-area-inset-bottom) reports ~34px;
+// in non-cover mode it reports 0 (the page is already clear of the safe
+// area, just sitting above it). When that happens on an iPhone that has a
+// home indicator, position:fixed bottom:0 lands above the indicator zone
+// and labels float ~34px above the screen edge no matter what CSS we use.
+//
+// The fix: detect the situation in JS and translate the entire bar down
+// by 34px so it crosses the safe-area zone visually. #appContent's
+// padding-bottom shrinks in lock-step so content still meets the bar's
+// visual top edge.
+(function snapBottomNav() {
+  function readEnvSafeBottom() {
+    var probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;height:env(safe-area-inset-bottom)';
+    document.body.appendChild(probe);
+    var v = parseFloat(getComputedStyle(probe).height) || 0;
+    probe.remove();
+    return v;
+  }
+  function apply() {
+    var nav = document.getElementById('bottomNav');
+    var content = document.getElementById('appContent');
+    if (!nav) return;
+    nav.style.transform = '';
+    if (content) content.style.paddingBottom = '';
+    // iPhones with a home indicator are 6.1"+ models, screen.height >= 812 in
+    // portrait. iPhone SE / 8 / older are smaller and have no home indicator.
+    var isIOS = /iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+    var hasHomeIndicator = isIOS && Math.max(window.screen.height || 0, window.screen.width || 0) >= 812;
+    if (!hasHomeIndicator) return;
+    var envBottom = readEnvSafeBottom();
+    // env=0 here means non-cover mode (page constrained above the safe area).
+    // Push the bar across that 34px gap. We use 34 directly rather than env,
+    // because env returns 0 in this exact situation.
+    if (envBottom === 0) {
+      nav.style.transform = 'translateY(34px)';
+      if (content) content.style.setProperty('padding-bottom', '16px', 'important');
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', apply);
+  } else {
+    apply();
+  }
+  window.addEventListener('resize', apply);
+  window.addEventListener('orientationchange', function(){ setTimeout(apply, 100); });
+})();
+</script>
 </body>
 </html>
