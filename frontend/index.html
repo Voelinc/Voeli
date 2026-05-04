@@ -7625,9 +7625,10 @@ function setupDMListener(dmRoomId, anchorKey){
 
   // Remove the previous listener if switching to a different room. We may
   // have stored a query (orderByKey().startAt(anchor)) rather than the bare
-  // ref — call .off() on whatever was stored.
+  // ref — call .off() on whatever was stored. Bare .off() detaches all event
+  // types (child_added + child_removed) at once.
   if(currentDMListenerRef){
-    currentDMListenerRef.off('child_added');
+    currentDMListenerRef.off();
   }
   if(currentBlockListenerRef){
     currentBlockListenerRef.off('value');
@@ -7734,6 +7735,23 @@ function setupDMListener(dmRoomId, anchorKey){
         .set(Date.now())
         .catch(err => console.warn('[deliveredTo] write failed:', err));
     }
+  });
+
+  // Listen for removals (currently used by the auto-send Change flow: the
+  // sender deletes the auto-sent record before re-sending via the picker, so
+  // the receiver needs to drop the old bubble or they'd see both versions).
+  // Attached to the same anchored query as child_added so the cleanup .off()
+  // sweeps both at once.
+  childAddedQuery.on('child_removed', snap => {
+    const removedId = snap.key;
+    if(!removedId) return;
+    const c = contacts.find(contact => contact.dmRoomId === dmRoomId);
+    if(!c || !c.msgs) return;
+    const idx = c.msgs.findIndex(m => m.id === removedId);
+    if(idx === -1) return;
+    c.msgs.splice(idx, 1);
+    if(activeId === c.id) renderMsgs();
+    renderSidebar();
   });
 
   // Listen for updates to existing messages (reactions, read receipts, deletions, etc.)
@@ -10236,6 +10254,16 @@ function changeAutoSent(msgId){
     ts: Date.now()
   });
 
+  // Delete the auto-sent record from Firebase. Otherwise the picker pick
+  // pushes a second message and both end up persisted — receiver sees two,
+  // sender sees two on the next reload. msg.id is set synchronously in
+  // syncToFirebase right after .push(), so this is safe even if the user
+  // taps Change before the original write's .then() resolves.
+  if(c.dmRoomId && firebaseDb && currentUser && msg.id){
+    firebaseDb.ref(`dms/${c.dmRoomId}/messages/${msg.id}`).remove()
+      .catch(err => console.warn('[changeAutoSent] failed to remove from Firebase:', err));
+  }
+
   c.msgs.splice(idx, 1);
   renderMsgs(); renderSidebar();
   pending = { result: msg._result, original: msg.original || msg.text, mode: 'text' };
@@ -11875,11 +11903,15 @@ async function syncToFirebase(msg){
     }
     console.log(`[syncToFirebase] Pushing message to Firebase at dms/${c.dmRoomId}/messages`);
     const msgRef = firebaseDb.ref(`dms/${c.dmRoomId}/messages`).push(msgData);
-    // Update the local message with the Firebase-generated ID and mark as delivered
+    // Set the Firebase-generated key on the local msg SYNCHRONOUSLY. The key is
+    // computed client-side at push() time, so it's always available — no need
+    // to wait for the server commit. This lets later flows (changeAutoSent,
+    // editMessage) reference the Firebase record before the round-trip
+    // resolves; otherwise a fast Change tap would call .remove() on the local
+    // 'cx...' / 'msg...' placeholder ID and silently fail.
     if(msg && msg.id){
+      msg.id = msgRef.key;
       msgRef.then(() => {
-        const fbId = msgRef.key;
-        msg.id = fbId;
         msg.delivered = true;
         if(activeId === c.id) renderMsgs();
       }).catch((err) => {
