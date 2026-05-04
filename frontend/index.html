@@ -5217,37 +5217,75 @@ function _markUndecryptable(list, owners){
   return clones;
 }
 
-// Register this device with FCM and store the token under the user's uid so
-// the Cloud Function can look it up and push to all of the user's devices.
-// Failure modes (no VAPID key, browser unsupported, permission denied,
-// service worker registration error) are all swallowed — push is additive,
-// not load-bearing.
-async function setupPushNotifications(){
-  if(!FCM_VAPID_KEY) return;
-  if(!('serviceWorker' in navigator) || !firebase.messaging || !firebase.messaging.isSupported || !firebase.messaging.isSupported()) return;
-  if(!currentUser || !firebaseDb) return;
+// Push notifications run in two modes:
+//   - silent refresh on auth state change: register SW + save token, but
+//     ONLY if Notification.permission is already 'granted'. Never prompts.
+//   - user-initiated enable from Settings: calls Notification.requestPermission()
+//     from a user gesture, then runs the silent refresh. iOS PWA requires the
+//     prompt to originate from a user click, so the auto path silently no-ops
+//     on iOS until the user taps Enable.
+let _pushOnMessageAttached = false;
+function _attachPushOnMessage(messaging){
+  if(_pushOnMessageAttached) return;
+  _pushOnMessageAttached = true;
+  messaging.onMessage((payload) => {
+    const title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || 'New message';
+    const body  = (payload.notification && payload.notification.body)  || (payload.data && payload.data.body)  || '';
+    try { _showToast(`${title}: ${body}`.slice(0, 140)); } catch(_){}
+  });
+}
+
+async function refreshPushTokenIfPermitted(){
+  if(!FCM_VAPID_KEY) return false;
+  if(!('serviceWorker' in navigator) || !firebase.messaging) return false;
+  if(!currentUser || !firebaseDb) return false;
+  if(typeof Notification === 'undefined' || Notification.permission !== 'granted') return false;
   try{
     const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
     const messaging = firebase.messaging();
-    const perm = await Notification.requestPermission();
-    if(perm !== 'granted') return;
     const token = await messaging.getToken({ vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: reg });
-    if(!token) return;
+    if(!token) return false;
     const tokenKey = token.replace(/[.#$\[\]\/]/g, '_').slice(0, 200);
     await firebaseDb.ref(`users/${currentUser.uid}/fcmTokens/${tokenKey}`).set({
       token,
       ua: (navigator.userAgent || '').slice(0, 200),
       ts: Date.now()
     });
-    // Foreground messages: surface as a lightweight in-app toast rather than
-    // an OS notification, since the OS suppresses notifications for the
-    // focused tab anyway.
-    messaging.onMessage((payload) => {
-      const title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || 'New message';
-      const body  = (payload.notification && payload.notification.body)  || (payload.data && payload.data.body)  || '';
-      try { _showToast(`${title}: ${body}`.slice(0, 140)); } catch(_){}
-    });
-  }catch(_){ /* push is optional */ }
+    _attachPushOnMessage(messaging);
+    return true;
+  }catch(err){
+    console.warn('[push] refresh failed:', err);
+    if(window.Sentry) Sentry.captureException(err);
+    return false;
+  }
+}
+
+async function enablePushNotifications(){
+  if(!currentUser || !firebaseDb) return { ok:false, reason:'not-signed-in' };
+  if(typeof Notification === 'undefined') return { ok:false, reason:'unsupported' };
+  try{
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted') return { ok:false, reason:perm };
+    const ok = await refreshPushTokenIfPermitted();
+    return ok ? { ok:true } : { ok:false, reason:'token-failed' };
+  }catch(err){
+    console.warn('[push] enable failed:', err);
+    if(window.Sentry) Sentry.captureException(err);
+    return { ok:false, reason:'error' };
+  }
+}
+
+// Back-compat alias for the existing auth-state call site. Silent on the
+// no-permission path; the user must tap Enable in Settings to grant.
+async function setupPushNotifications(){
+  return refreshPushTokenIfPermitted();
+}
+
+function _isIOS(){
+  return /iPad|iPhone|iPod/.test(navigator.userAgent || '');
+}
+function _isStandalonePWA(){
+  return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
 }
 
 // Build a JSON dump of the user's profile, contacts and DM messages, then
@@ -12809,6 +12847,89 @@ function showOnboarding(){
   };
 
   renderLangPicker();
+  renderNotificationSettings();
+}
+
+function renderNotificationSettings(){
+  const isVI = appDir === 'vi-en';
+  const label = document.getElementById('settNotifLabel');
+  const status = document.getElementById('settNotifStatus');
+  const btn = document.getElementById('settNotifEnableBtn');
+  const hint = document.getElementById('settNotifIosHint');
+  if(!label || !status || !btn) return;
+
+  label.textContent = isVI ? 'Thông báo' : 'Notifications';
+
+  const supported = typeof Notification !== 'undefined' && 'serviceWorker' in navigator;
+  const perm = supported ? Notification.permission : 'unsupported';
+  const onIOSWithoutPWA = _isIOS() && !_isStandalonePWA();
+
+  // Best-effort token check, async but non-blocking — refresh the line once it lands.
+  let tokenLine = isVI ? 'Mã thiết bị: đang kiểm tra…' : 'Device token: checking…';
+  if(currentUser && firebaseDb){
+    firebaseDb.ref(`users/${currentUser.uid}/fcmTokens`).once('value').then(snap => {
+      const has = !!(snap.val() && Object.keys(snap.val()).length);
+      const ln = isVI
+        ? `Mã thiết bị: ${has ? 'đã lưu' : 'chưa có'}`
+        : `Device token: ${has ? 'saved' : 'none'}`;
+      // Replace the second line (token line) of the status block.
+      const lines = (status.textContent || '').split('\n');
+      lines[1] = ln;
+      status.textContent = lines.join('\n');
+    }).catch(()=>{});
+  } else {
+    tokenLine = isVI ? 'Mã thiết bị: chưa đăng nhập' : 'Device token: not signed in';
+  }
+
+  const permLabel = isVI
+    ? ({ granted:'đã cấp', denied:'đã từ chối', default:'chưa hỏi', unsupported:'không hỗ trợ' }[perm] || perm)
+    : ({ granted:'granted', denied:'denied', default:'not yet asked', unsupported:'not supported' }[perm] || perm);
+  status.textContent = `${isVI?'Quyền':'Permission'}: ${permLabel}\n${tokenLine}`;
+  status.style.whiteSpace = 'pre-line';
+
+  // Button label and behavior depend on permission state.
+  btn.disabled = false;
+  btn.style.opacity = '1';
+  btn.style.cursor = 'pointer';
+  if(perm === 'granted'){
+    btn.textContent = isVI ? 'Đã bật' : 'Enabled';
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    btn.style.cursor = 'default';
+    btn.onclick = null;
+  } else if(perm === 'denied'){
+    btn.textContent = isVI ? 'Bị chặn trong cài đặt trình duyệt' : 'Blocked in browser settings';
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    btn.style.cursor = 'default';
+    btn.onclick = null;
+  } else {
+    btn.textContent = isVI ? 'Bật thông báo' : 'Enable notifications';
+    btn.onclick = async () => {
+      btn.disabled = true;
+      btn.textContent = isVI ? 'Đang bật…' : 'Enabling…';
+      const res = await enablePushNotifications();
+      if(res.ok){
+        _showToast(isVI ? 'Thông báo đã bật' : 'Notifications enabled');
+      } else if(res.reason === 'denied'){
+        _showToast(isVI ? 'Đã từ chối quyền' : 'Permission denied');
+      } else {
+        _showToast(isVI ? 'Không thể bật thông báo' : 'Could not enable notifications');
+      }
+      renderNotificationSettings();
+    };
+  }
+
+  if(onIOSWithoutPWA){
+    hint.style.display = 'block';
+    hint.textContent = isVI
+      ? 'Thông báo chỉ hoạt động khi Voeli được thêm vào màn hình chính. Trên iPhone, mở trong Safari, chạm Chia sẻ rồi chọn Thêm vào Màn hình chính.'
+      : 'Notifications only work when Voeli is added to your home screen. On iPhone, open this in Safari, tap Share, then Add to Home Screen.';
+    btn.style.display = 'none';
+  } else {
+    hint.style.display = 'none';
+    btn.style.display = 'block';
+  }
 }
 
 // One-time cleanup of legacy tutorial state from localStorage
@@ -12864,6 +12985,11 @@ try {
         <div class="sett-section-label">Your style insights</div>
         <div id="stylePanelContent"></div>
       </div>
+      <div class="sett-divider"></div>
+      <div class="sett-section-label" id="settNotifLabel">Notifications</div>
+      <div id="settNotifStatus" style="font-size:13px;color:var(--muted);line-height:1.5;margin:6px 0 8px;"></div>
+      <button id="settNotifEnableBtn" type="button" style="width:100%;padding:14px 14px;border-radius:10px;border:none;background:var(--blue);color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;-webkit-appearance:none;touch-action:manipulation;">Enable notifications</button>
+      <div id="settNotifIosHint" style="display:none;font-size:13px;color:var(--muted);line-height:1.5;margin-top:8px;padding:10px 12px;border-radius:8px;background:var(--panel-2);"></div>
       <div class="sett-divider"></div>
       <div class="sett-section-label" id="settAccountLabel">Account</div>
       <button id="settSignOutBtn" type="button" style="width:100%;padding:14px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--red,#d93025);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px;-webkit-appearance:none;touch-action:manipulation;position:relative;z-index:1;">Sign out</button>
