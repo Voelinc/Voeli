@@ -1438,12 +1438,12 @@ body.is-offline::before{
           </div>
         </div>
         <div class="ch-actions">
-          <button class="icon-btn" title="Video call" aria-label="Video call" onclick="alert('(demo) video call')">
+          <button class="icon-btn" id="btnVideoCall" title="Video call" aria-label="Video call" onclick="alert(appDir==='vi-en' ? '(demo) gọi video' : '(demo) video call')">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
             </svg>
           </button>
-          <button class="icon-btn" title="Voice call" aria-label="Voice call" onclick="alert('(demo) voice call')">
+          <button class="icon-btn" id="btnVoiceCall" title="Voice call" aria-label="Voice call" onclick="alert(appDir==='vi-en' ? '(demo) gọi thoại' : '(demo) voice call')">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
             </svg>
@@ -1455,7 +1455,7 @@ body.is-offline::before{
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
             </svg>
           </button>
-          <button class="icon-btn" title="More" aria-label="More" onclick="if(activeId)openModal(activeId)">
+          <button class="icon-btn" id="btnMoreContact" title="More" aria-label="More" onclick="if(activeId)openModal(activeId)">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
             </svg>
@@ -1898,137 +1898,137 @@ const SLANG_EN = [
 
 const SLANG_VI = [
   // Developer test phrase
-  { pattern:/\bdonnywillisvoeli2\b/i, phrase:"donnywillisvoeli2", a:"Vietnamese developer test phrase", b:"always triggers picker with Vietnamese explanations", reason:"Vietnamese developer test phrase — ensures picker always appears with Vietnamese explanations for testing.", vietnameseEquiv:"donnywillisvoeli2", dismissScope:"global" },
+  { pattern:/\bdonnywillisvoeli2\b/i, phrase:"donnywillisvoeli2", a:"Vietnamese developer test phrase", b:"always triggers picker with Vietnamese explanations", reason:{en:"Vietnamese developer test phrase — ensures picker always appears with Vietnamese explanations for testing.",vi:"Cụm từ thử nghiệm dành cho dev tiếng Việt. Đảm bảo picker luôn hiện ra với giải thích tiếng Việt khi kiểm thử."}, vietnameseEquiv:"donnywillisvoeli2", dismissScope:"global" },
   // Multi-word phrases — specific enough to be safe without trailing anchors
-  { pattern:/chết con rồi/i,         phrase:"Chết con rồi",       a:"laughing so hard, having a great time",                      b:"oh no, something actually went wrong",       aEn:"I'm dying, that's hilarious",       bEn:"oh no, I'm in trouble",       reason:"Literally 'I'm dead (child form)' — Vietnamese hyperbole mirrors English 'I'm dying.' Death = extreme reaction, not literal.",         englishEquiv:"I'm dead",              dismissScope:"global" },
-  { pattern:/ghét cái mặt/i,         phrase:"Ghét cái mặt",       a:"playful affectionate teasing between close friends",          b:"genuinely disliking someone's face",         aEn:"you're the worst (affectionate)",       bEn:"I really can't stand you",       reason:"Literally 'hate your face' — between close friends it's like 'I can't stand how great you are.' Outsiders read it as an insult.",         englishEquiv:"I hate you",            dismissScope:"global"  },
-  { pattern:/thôi xong/i,            phrase:"Thôi xong",          a:"we're genuinely in trouble",                                 b:"joking reaction to something minor",         aEn:"oh no, we're really in for it",       bEn:"well, that's done",       reason:"Literally 'that's done/over.' Can signal real trouble or a joking 'welp.' Stakes and tone make the difference.",                            englishEquiv:"welp",                  dismissScope:"global" },
-  { pattern:/trời ơi/i,              phrase:"Trời ơi",            a:"positive amazement — wow, incredible",                       b:"frustration, panic, or distress",            aEn:"oh my god, that's amazing",       bEn:"oh my god, this is terrible",       reason:"Calling to the heavens — pure intonation-dependent. The same words cover awe, panic, or frustration with no other signal.",                 englishEquiv:"oh my god",             dismissScope:"global"  },
-  { pattern:/hết hồn/i,              phrase:"Hết hồn",            a:"you scared me — said playfully",                             b:"genuinely shocked or frightened",            aEn:"you scared me (playful)",       bEn:"I was genuinely terrified",       reason:"Literally 'lost my soul' — same idea as 'scared out of my mind.' Playful or genuine depends entirely on what caused it.",                   englishEquiv:"you gave me a heart attack", dismissScope:"global" },
-  { pattern:/tức chết/i,             phrase:"Tức chết",           a:"so annoying — casual exaggeration",                          b:"extreme genuine anger",                      aEn:"this is so frustrating",       bEn:"I'm absolutely livid",       reason:"Literally 'angry to death' — Vietnamese hyperbole. Usually an exaggeration, but very cold delivery makes it feel real.",                    englishEquiv:"I could scream",        dismissScope:"global" },
-  { pattern:/não cá vàng/i,          phrase:"Não cá vàng",        a:"affectionate teasing — you're so forgetful",                 b:"calling someone actually unintelligent",     aEn:"you're so scattered (affectionate)",       bEn:"you're actually dumb",       reason:"Literally 'goldfish brain' — affectionate teasing about short memory. Can read as a mean intelligence insult to outsiders.",                 englishEquiv:"such an airhead",       dismissScope:"global"  },
-  { pattern:/dễ thương quá/i,        phrase:"Dễ thương quá",      a:"genuine compliment — you're adorable",                       b:"sarcastic, condescending",                   aEn:"you're so cute",       bEn:"how precious (sarcastic)",       reason:"Literally 'so easy to love.' Usually sincere, but with the wrong tone it flips to patronizing sarcasm.",                                   englishEquiv:"that's so cute",        dismissScope:"global"  },
-  { pattern:/biết rồi biết rồi/i,    phrase:"Biết rồi biết rồi",  a:"I genuinely heard and understood you",                       b:"I'm annoyed, stop repeating yourself",       aEn:"I got it, don't worry",       bEn:"I know already, stop",       reason:"Repeating 'I know, I know' — genuine acknowledgment OR an irritated 'please stop.' Speed and flatness of delivery decides it.",             englishEquiv:"I know, I know",        dismissScope:"global"  },
-  { pattern:/sao cũng được/i,        phrase:"Sao cũng được",      a:"genuinely easy going, no real preference",                   b:"passive aggressive — I've given up caring",  aEn:"I'm cool with anything",       bEn:"do whatever you want",       reason:"'Any way is fine' — easygoing OR passive-aggressive giving up. Relationship and prior conversation are the only clues.",                    englishEquiv:"whatever you want",     dismissScope:"global"  },
-  { pattern:/thôi kệ/i,              phrase:"Thôi kệ",            a:"it's okay, let it go — peaceful",                            b:"I'm done, don't bring this up again",        aEn:"it's okay, let it go",       bEn:"I'm done with this",       reason:"'Forget it, let it go' — peaceful acceptance OR frustrated surrender. Very different outcomes depending on which it is.",                     englishEquiv:"forget it",             dismissScope:"global"  },
+  { pattern:/chết con rồi/i,         phrase:"Chết con rồi",       a:"laughing so hard, having a great time",                      b:"oh no, something actually went wrong",       aEn:"I'm dying, that's hilarious",       bEn:"oh no, I'm in trouble",       reason:{en:"Literally 'I'm dead (child form)' — Vietnamese hyperbole mirrors English 'I'm dying.' Death = extreme reaction, not literal.",vi:"Nghĩa đen là 'tôi chết rồi (dạng trẻ con)'. Đây là cách nói quá kiểu Việt, giống 'I'm dying' trong tiếng Anh. 'Chết' là phản ứng cực độ, không phải nghĩa đen."},         englishEquiv:"I'm dead",              dismissScope:"global" },
+  { pattern:/ghét cái mặt/i,         phrase:"Ghét cái mặt",       a:"playful affectionate teasing between close friends",          b:"genuinely disliking someone's face",         aEn:"you're the worst (affectionate)",       bEn:"I really can't stand you",       reason:{en:"Literally 'hate your face' — between close friends it's like 'I can't stand how great you are.' Outsiders read it as an insult.",vi:"Nghĩa đen là 'ghét cái mặt'. Giữa bạn bè thân thì như kiểu 'tôi không chịu nổi vì bạn quá hay'. Người ngoài có thể hiểu nhầm thành lời xúc phạm."},         englishEquiv:"I hate you",            dismissScope:"global"  },
+  { pattern:/thôi xong/i,            phrase:"Thôi xong",          a:"we're genuinely in trouble",                                 b:"joking reaction to something minor",         aEn:"oh no, we're really in for it",       bEn:"well, that's done",       reason:{en:"Literally 'that's done/over.' Can signal real trouble or a joking 'welp.' Stakes and tone make the difference.",vi:"Nghĩa đen là 'thế là xong'. Có thể là rắc rối thật, hoặc chỉ là câu đùa kiểu 'thôi rồi'. Tình huống và giọng điệu quyết định ý nghĩa."},                            englishEquiv:"welp",                  dismissScope:"global" },
+  { pattern:/trời ơi/i,              phrase:"Trời ơi",            a:"positive amazement — wow, incredible",                       b:"frustration, panic, or distress",            aEn:"oh my god, that's amazing",       bEn:"oh my god, this is terrible",       reason:{en:"Calling to the heavens — pure intonation-dependent. The same words cover awe, panic, or frustration with no other signal.",vi:"Là tiếng gọi trời, hoàn toàn phụ thuộc vào ngữ điệu. Cùng một câu này có thể là kinh ngạc, hoảng hốt, hoặc bực bội mà không có dấu hiệu nào khác."},                 englishEquiv:"oh my god",             dismissScope:"global"  },
+  { pattern:/hết hồn/i,              phrase:"Hết hồn",            a:"you scared me — said playfully",                             b:"genuinely shocked or frightened",            aEn:"you scared me (playful)",       bEn:"I was genuinely terrified",       reason:{en:"Literally 'lost my soul' — same idea as 'scared out of my mind.' Playful or genuine depends entirely on what caused it.",vi:"Nghĩa đen là 'mất hồn', giống ý 'sợ chết khiếp' trong tiếng Anh. Vui đùa hay sợ thật phụ thuộc hoàn toàn vào nguyên nhân."},                   englishEquiv:"you gave me a heart attack", dismissScope:"global" },
+  { pattern:/tức chết/i,             phrase:"Tức chết",           a:"so annoying — casual exaggeration",                          b:"extreme genuine anger",                      aEn:"this is so frustrating",       bEn:"I'm absolutely livid",       reason:{en:"Literally 'angry to death' — Vietnamese hyperbole. Usually an exaggeration, but very cold delivery makes it feel real.",vi:"Nghĩa đen là 'tức đến chết'. Thường là cách nói quá, nhưng nếu giọng lạnh lùng thì có thể là tức thật."},                    englishEquiv:"I could scream",        dismissScope:"global" },
+  { pattern:/não cá vàng/i,          phrase:"Não cá vàng",        a:"affectionate teasing — you're so forgetful",                 b:"calling someone actually unintelligent",     aEn:"you're so scattered (affectionate)",       bEn:"you're actually dumb",       reason:{en:"Literally 'goldfish brain' — affectionate teasing about short memory. Can read as a mean intelligence insult to outsiders.",vi:"Nghĩa đen là 'não cá vàng'. Là cách trêu thân mật về trí nhớ kém. Người ngoài có thể hiểu nhầm thành lời chê bai trí thông minh."},                 englishEquiv:"such an airhead",       dismissScope:"global"  },
+  { pattern:/dễ thương quá/i,        phrase:"Dễ thương quá",      a:"genuine compliment — you're adorable",                       b:"sarcastic, condescending",                   aEn:"you're so cute",       bEn:"how precious (sarcastic)",       reason:{en:"Literally 'so easy to love.' Usually sincere, but with the wrong tone it flips to patronizing sarcasm.",vi:"Nghĩa đen là 'rất dễ yêu thương'. Thường là chân thành, nhưng nếu sai giọng có thể trở thành mỉa mai bề trên."},                                   englishEquiv:"that's so cute",        dismissScope:"global"  },
+  { pattern:/biết rồi biết rồi/i,    phrase:"Biết rồi biết rồi",  a:"I genuinely heard and understood you",                       b:"I'm annoyed, stop repeating yourself",       aEn:"I got it, don't worry",       bEn:"I know already, stop",       reason:{en:"Repeating 'I know, I know' — genuine acknowledgment OR an irritated 'please stop.' Speed and flatness of delivery decides it.",vi:"Lặp lại 'biết rồi biết rồi'. Có thể là sự đồng ý chân thành, hoặc là 'thôi đi đi' đầy bực bội. Tốc độ và độ phẳng của giọng nói quyết định ý nghĩa."},             englishEquiv:"I know, I know",        dismissScope:"global"  },
+  { pattern:/sao cũng được/i,        phrase:"Sao cũng được",      a:"genuinely easy going, no real preference",                   b:"passive aggressive — I've given up caring",  aEn:"I'm cool with anything",       bEn:"do whatever you want",       reason:{en:"'Any way is fine' — easygoing OR passive-aggressive giving up. Relationship and prior conversation are the only clues.",vi:"Nghĩa là 'kiểu nào cũng được'. Có thể là dễ tính thật, hoặc là buông xuôi kiểu thụ động. Mối quan hệ và bối cảnh trước đó là manh mối duy nhất."},                    englishEquiv:"whatever you want",     dismissScope:"global"  },
+  { pattern:/thôi kệ/i,              phrase:"Thôi kệ",            a:"it's okay, let it go — peaceful",                            b:"I'm done, don't bring this up again",        aEn:"it's okay, let it go",       bEn:"I'm done with this",       reason:{en:"'Forget it, let it go' — peaceful acceptance OR frustrated surrender. Very different outcomes depending on which it is.",vi:"Nghĩa là 'thôi kệ đi'. Có thể là chấp nhận một cách thanh thản, hoặc là đầu hàng vì bực bội. Hai trường hợp dẫn đến kết quả rất khác nhau."},                     englishEquiv:"forget it",             dismissScope:"global"  },
   // Tightened: short phrase anchored to start of message to avoid mid-sentence fragments
-  { pattern:/^ừ thì\b/i,             phrase:"Ừ thì",              a:"okay, fair enough, genuine agreement",                       b:"said to end conversation — not actually agreeing", aEn:"okay, fair point",       bEn:"fine, whatever",       reason:"Soft agreement opener that can mean genuine 'okay fair' OR a sarcastic 'fine, whatever you say.' Tone is everything.",              englishEquiv:"fine then",             dismissScope:"global"  },
+  { pattern:/^ừ thì\b/i,             phrase:"Ừ thì",              a:"okay, fair enough, genuine agreement",                       b:"said to end conversation — not actually agreeing", aEn:"okay, fair point",       bEn:"fine, whatever",       reason:{en:"Soft agreement opener that can mean genuine 'okay fair' OR a sarcastic 'fine, whatever you say.' Tone is everything.",vi:"Cách mở câu đồng ý nhẹ nhàng, có thể là 'ừ đúng đấy' chân thành, hoặc 'ừ, bạn nói sao thì sao' đầy mỉa mai. Giọng điệu là tất cả."},              englishEquiv:"fine then",             dismissScope:"global"  },
   // Single-word slang — safe because these words have no other common meaning in chat
-  { pattern:/\bmặn\b/i,              phrase:"Mặn",                a:"witty, sharp, charming — has a great personality",           b:"literally salty — as in food",               aEn:"you're iconic",       bEn:"literally salty",       reason:"Internet slang borrowed 'mặn' (salty/savory) to mean someone with a sharp, charming personality. No relation to food.",                   englishEquiv:"iconic",                dismissScope:"global" },
-  { pattern:/\bđỉnh\b/i,             phrase:"Đỉnh",               a:"amazing, the best, incredible",                              b:"literally the peak of a mountain",           aEn:"that's insane (in a good way)",       bEn:"literally a mountain peak",       reason:"'Đỉnh' = summit/peak. Slang stretched it to 'the absolute top' in quality. Easy to mistake for a geography word.",                        englishEquiv:"that's insane",         dismissScope:"global"  },
+  { pattern:/\bmặn\b/i,              phrase:"Mặn",                a:"witty, sharp, charming — has a great personality",           b:"literally salty — as in food",               aEn:"you're iconic",       bEn:"literally salty",       reason:{en:"Internet slang borrowed 'mặn' (salty/savory) to mean someone with a sharp, charming personality. No relation to food.",vi:"Tiếng lóng mạng mượn từ 'mặn' (vị mặn trong đồ ăn) để chỉ người có cá tính sắc sảo, duyên dáng. Không liên quan đến đồ ăn."},                   englishEquiv:"iconic",                dismissScope:"global" },
+  { pattern:/\bđỉnh\b/i,             phrase:"Đỉnh",               a:"amazing, the best, incredible",                              b:"literally the peak of a mountain",           aEn:"that's insane (in a good way)",       bEn:"literally a mountain peak",       reason:{en:"'Đỉnh' = summit/peak. Slang stretched it to 'the absolute top' in quality. Easy to mistake for a geography word.",vi:"'Đỉnh' nghĩa đen là chóp núi. Tiếng lóng mở rộng thành 'cực kỳ chất lượng'. Dễ bị hiểu nhầm thành từ địa lý."},                        englishEquiv:"that's insane",         dismissScope:"global"  },
   // Intensified Đỉnh forms — stronger than plain Đỉnh, used for extra emphasis
-  { pattern:/đỉnh vãi/i,             phrase:"Đỉnh vãi",           a:"incredibly amazing — emphatic, stronger than plain Đỉnh",    b:"peak + crude intensifier — sounds rude if literal",          aEn:"that's absolutely fire",       bEn:"that's extremely peak",       reason:"'Vãi' is a crude intensifier that makes 'Đỉnh' even stronger — equivalent to English 'that's fire' or 'slay', same hyperbolic praise.", englishEquiv:"that's fire",           dismissScope:"global"  },
-  { pattern:/đỉnh luôn/i,            phrase:"Đỉnh luôn",          a:"absolutely nailed it — used to praise performance",          b:"literally 'peak immediately' — makes no sense directly",     aEn:"you absolutely killed it",       bEn:"peak right away",       reason:"'Luôn' (immediately/totally) amplifies 'Đỉnh' — the Vietnamese way of saying someone killed it. Same energy, same context.",              englishEquiv:"killed it",             dismissScope:"global"  },
+  { pattern:/đỉnh vãi/i,             phrase:"Đỉnh vãi",           a:"incredibly amazing — emphatic, stronger than plain Đỉnh",    b:"peak + crude intensifier — sounds rude if literal",          aEn:"that's absolutely fire",       bEn:"that's extremely peak",       reason:{en:"'Vãi' is a crude intensifier that makes 'Đỉnh' even stronger — equivalent to English 'that's fire' or 'slay', same hyperbolic praise.",vi:"'Vãi' là từ tăng cường thô tục làm 'Đỉnh' mạnh hơn, tương đương 'that's fire' hay 'slay' trong tiếng Anh, cùng kiểu khen quá đà."}, englishEquiv:"that's fire",           dismissScope:"global"  },
+  { pattern:/đỉnh luôn/i,            phrase:"Đỉnh luôn",          a:"absolutely nailed it — used to praise performance",          b:"literally 'peak immediately' — makes no sense directly",     aEn:"you absolutely killed it",       bEn:"peak right away",       reason:{en:"'Luôn' (immediately/totally) amplifies 'Đỉnh' — the Vietnamese way of saying someone killed it. Same energy, same context.",vi:"'Luôn' (ngay lập tức, hoàn toàn) làm 'Đỉnh' mạnh thêm. Là cách người Việt khen ai đó làm xuất sắc. Cùng năng lượng, cùng bối cảnh với 'killed it'."},              englishEquiv:"killed it",             dismissScope:"global"  },
   // Thôi đi — Vietnamese disbelief exclamation matching English 'shut up'
-  { pattern:/thôi đi[.!?~\s]*$/i,    phrase:"Thôi đi",            a:"excited disbelief — 'no way, seriously?!'",                  b:"telling someone to actually stop or go away",                aEn:"shut up, no way",       bEn:"go away, stop it",       reason:"Between friends 'Thôi đi' is the Vietnamese equivalent of 'shut up' as excited disbelief — same energy, not a command.",                   englishEquiv:"shut up",               dismissScope:"global"  },
-  { pattern:/hiểu rồi thôi[.!?~\s]*$/i, phrase:"Hiểu rồi thôi",  a:"cold acknowledgment — I understood and I'm shutting this down now", b:"peaceful closure — okay I get it, no hidden tension",       aEn:"I heard you, end of story",       bEn:"okay, I understand you",       reason:"'Thôi' (stop/that's it) is the key word — it cuts the conversation off after acknowledging. No word-for-word English match; same cold door-closing energy as 'noted.'",                                 englishEquiv:"noted",               dismissScope:"global" },
-  { pattern:/sướng thật nhỉ[.!?~\s]*$/i, phrase:"Sướng thật nhỉ", a:"sarcastic observation — 'how nice for you' dripping with quiet resentment", b:"genuine compliment — sincerely noting how good someone has it", aEn:"must be nice (sarcastic)",       bEn:"you have it so good",       reason:"'Nhỉ' at the end turns it sarcastic — the Vietnamese equivalent of 'must be nice.' No word-for-word English match; both dress envy as a casual remark.",                                    englishEquiv:"must be nice",        dismissScope:"global" },
-  { pattern:/oke oke oke[.!?~\s]*$/i,    phrase:"Oke oke oke",     a:"masking discomfort — saying okay three times because you're not actually okay", b:"genuinely enthusiastic agreement — repetition for emphasis", aEn:"okay fine whatever",       bEn:"yes yes absolutely",       reason:"Vietnamese Gen-Z borrowed 'oke' and repeated it the same way 'cool cool cool' works in English — three times signals hidden anxiety, not real enthusiasm. No word-for-word match; the energy is the translation.", englishEquiv:"cool cool cool",      dismissScope:"global" },
+  { pattern:/thôi đi[.!?~\s]*$/i,    phrase:"Thôi đi",            a:"excited disbelief — 'no way, seriously?!'",                  b:"telling someone to actually stop or go away",                aEn:"shut up, no way",       bEn:"go away, stop it",       reason:{en:"Between friends 'Thôi đi' is the Vietnamese equivalent of 'shut up' as excited disbelief — same energy, not a command.",vi:"Giữa bạn bè, 'Thôi đi' là cách nói tương đương 'shut up' bày tỏ sự ngạc nhiên thích thú trong tiếng Anh, cùng năng lượng, không phải mệnh lệnh."},                   englishEquiv:"shut up",               dismissScope:"global"  },
+  { pattern:/hiểu rồi thôi[.!?~\s]*$/i, phrase:"Hiểu rồi thôi",  a:"cold acknowledgment — I understood and I'm shutting this down now", b:"peaceful closure — okay I get it, no hidden tension",       aEn:"I heard you, end of story",       bEn:"okay, I understand you",       reason:{en:"'Thôi' (stop/that's it) is the key word — it cuts the conversation off after acknowledging. No word-for-word English match; same cold door-closing energy as 'noted.'",vi:"'Thôi' (dừng lại) là từ then chốt, nó cắt đứt cuộc trò chuyện sau khi đã thừa nhận. Không có cách dịch từng từ sang tiếng Anh, nhưng cùng cảm giác đóng cửa lạnh lùng như 'noted'."},                                 englishEquiv:"noted",               dismissScope:"global" },
+  { pattern:/sướng thật nhỉ[.!?~\s]*$/i, phrase:"Sướng thật nhỉ", a:"sarcastic observation — 'how nice for you' dripping with quiet resentment", b:"genuine compliment — sincerely noting how good someone has it", aEn:"must be nice (sarcastic)",       bEn:"you have it so good",       reason:{en:"'Nhỉ' at the end turns it sarcastic — the Vietnamese equivalent of 'must be nice.' No word-for-word English match; both dress envy as a casual remark.",vi:"'Nhỉ' ở cuối câu biến nó thành mỉa mai, tương đương 'must be nice' trong tiếng Anh. Không có cách dịch từng từ, nhưng cả hai đều ngụy trang sự ghen tị thành câu nói bình thường."},                                    englishEquiv:"must be nice",        dismissScope:"global" },
+  { pattern:/oke oke oke[.!?~\s]*$/i,    phrase:"Oke oke oke",     a:"masking discomfort — saying okay three times because you're not actually okay", b:"genuinely enthusiastic agreement — repetition for emphasis", aEn:"okay fine whatever",       bEn:"yes yes absolutely",       reason:{en:"Vietnamese Gen-Z borrowed 'oke' and repeated it the same way 'cool cool cool' works in English — three times signals hidden anxiety, not real enthusiasm. No word-for-word match; the energy is the translation.",vi:"Gen Z Việt mượn 'oke' và lặp lại giống cách 'cool cool cool' hoạt động trong tiếng Anh. Ba lần nói báo hiệu lo lắng giấu kín, không phải hào hứng thật. Không có cách dịch từng từ, năng lượng chính là bản dịch."}, englishEquiv:"cool cool cool",      dismissScope:"global" },
 
   // Relationship / emotional weight phrases — calm on the surface, heavy underneath
   // These are plain sentences that slip through without a trigger. The weight is everything.
   // New entries — Vietnamese counterparts of English-only slang phrases
-  { pattern:/cười muốn chết/i,       phrase:"Cười muốn chết",     a:"laughing uncontrollably — pure comedic expression",           b:"literally 'laughing to death' — alarming if taken literally", aEn:"I'm screaming, that's so funny",       bEn:"I'm laughing too hard",       reason:"Vietnamese death-as-intensifier for laughter. Mirrors 'I'm screaming' in English — both mean overwhelmed by laughter, not actual dying.", englishEquiv:"I'm screaming",      dismissScope:"global" },
-  { pattern:/xỉu luôn/i,             phrase:"Xỉu luôn",           a:"completely overwhelmed — too much to handle",                 b:"literally 'fainting immediately' — sounds medical",           aEn:"I can't, too much",       bEn:"I'm literally fainting",       reason:"Gen-Z Vietnamese for being overwhelmed by emotion or laughter. Mirrors English 'I can't' — same trailing sense of emotional overload.",  englishEquiv:"I can't",            dismissScope:"global" },
-  { pattern:/nghe đã tai/i,          phrase:"Nghe đã tai",        a:"sounds incredible — deeply satisfying to hear",               b:"literal 'satisfying to the ear' — sounds like a compliment about hearing ability", aEn:"that absolutely slaps",       bEn:"that sounds good to my ears",       reason:"Vietnamese way of saying something sounds amazing — used for music the same way English uses 'that slaps.' Same energy, zero shared words.", englishEquiv:"that slaps",        dismissScope:"global" },
-  { pattern:/thật luôn/i,            phrase:"Thật luôn",          a:"seriously, for real — I genuinely mean this",                 b:"literal 'really immediately' — makes no sense directly",      aEn:"no cap, for real",       bEn:"really right now",       reason:"Gen-Z Vietnamese sincerity marker. Direct equivalent of 'no cap' — both signal 'I'm not joking, this is real.' Different words, same job.", englishEquiv:"no cap",            dismissScope:"global" },
-  { pattern:/\bcũng hơi\b/i,         phrase:"Cũng hơi",           a:"kind of, quietly — I sort of feel this way but won't shout it", b:"literal 'also a little' — misses the softening function",   aEn:"lowkey, kind of",       bEn:"also a little bit",       reason:"Vietnamese understatement softener that works exactly like 'lowkey' — used to admit something without fully committing to it.",            englishEquiv:"lowkey",            dismissScope:"global" },
-  { pattern:/có vibe/i,              phrase:"Có vibe",            a:"radiates a certain energy or feeling",                        b:"literal 'has vibe' — makes no sense word-for-word",           aEn:"it's giving (a vibe)",       bEn:"it has vibe",       reason:"Vietnamese internet slang borrowed 'vibe' but uses it the same way English uses 'it's giving' — something channels a particular energy.",   englishEquiv:"it's giving",       dismissScope:"global" },
-  { pattern:/nghiện luôn/i,          phrase:"Nghiện luôn",        a:"instantly hooked — I love this so much",                      b:"literally 'addicted immediately' — sounds serious",           aEn:"I'm obsessed, no joke",       bEn:"I'm immediately addicted",       reason:"Vietnamese Gen-Z compliment. 'Nghiện' (addicted) used as enthusiasm, exactly like 'I'm obsessed' — both sound alarming but mean adoration.", englishEquiv:"I'm obsessed",      dismissScope:"global" },
-  { pattern:/muốn khóc quá/i,        phrase:"Muốn khóc quá",      a:"something is so overwhelming it's moving — joy or beauty",    b:"literally 'want to cry so much' — sounds like distress",      aEn:"I could cry, it's so beautiful",       bEn:"I want to cry from sadness",       reason:"Vietnamese emotional overflow for something beautiful or touching. Mirrors 'I could cry' — same ambiguity, joy or sadness, context decides.", englishEquiv:"I could cry",       dismissScope:"global"  },
-  { pattern:/đồ tệ/i,                phrase:"Đồ tệ",              a:"affectionate teasing — said with warmth between close friends", b:"genuinely calling someone terrible",                         aEn:"you're the absolute worst (affectionate)",       bEn:"you're genuinely terrible",       reason:"Vietnamese affectionate insult between friends. Direct equivalent of 'you're the worst' — both flip from insult to term of endearment in close relationships.", englishEquiv:"you're the worst", dismissScope:"global"  },
+  { pattern:/cười muốn chết/i,       phrase:"Cười muốn chết",     a:"laughing uncontrollably — pure comedic expression",           b:"literally 'laughing to death' — alarming if taken literally", aEn:"I'm screaming, that's so funny",       bEn:"I'm laughing too hard",       reason:{en:"Vietnamese death-as-intensifier for laughter. Mirrors 'I'm screaming' in English — both mean overwhelmed by laughter, not actual dying.",vi:"Cách dùng 'chết' để cường điệu cho tiếng cười trong tiếng Việt. Giống 'I'm screaming' trong tiếng Anh, cả hai đều có nghĩa là cười ngất, không phải chết thật."}, englishEquiv:"I'm screaming",      dismissScope:"global" },
+  { pattern:/xỉu luôn/i,             phrase:"Xỉu luôn",           a:"completely overwhelmed — too much to handle",                 b:"literally 'fainting immediately' — sounds medical",           aEn:"I can't, too much",       bEn:"I'm literally fainting",       reason:{en:"Gen-Z Vietnamese for being overwhelmed by emotion or laughter. Mirrors English 'I can't' — same trailing sense of emotional overload.",vi:"Tiếng lóng Gen Z Việt cho cảm giác quá tải bởi cảm xúc hoặc tiếng cười. Giống 'I can't' trong tiếng Anh, cùng kiểu cảm giác cảm xúc tràn ngập."},  englishEquiv:"I can't",            dismissScope:"global" },
+  { pattern:/nghe đã tai/i,          phrase:"Nghe đã tai",        a:"sounds incredible — deeply satisfying to hear",               b:"literal 'satisfying to the ear' — sounds like a compliment about hearing ability", aEn:"that absolutely slaps",       bEn:"that sounds good to my ears",       reason:{en:"Vietnamese way of saying something sounds amazing — used for music the same way English uses 'that slaps.' Same energy, zero shared words.",vi:"Cách người Việt khen âm thanh hay tuyệt, dùng cho âm nhạc giống cách tiếng Anh dùng 'that slaps'. Cùng năng lượng, không có từ chung."}, englishEquiv:"that slaps",        dismissScope:"global" },
+  { pattern:/thật luôn/i,            phrase:"Thật luôn",          a:"seriously, for real — I genuinely mean this",                 b:"literal 'really immediately' — makes no sense directly",      aEn:"no cap, for real",       bEn:"really right now",       reason:{en:"Gen-Z Vietnamese sincerity marker. Direct equivalent of 'no cap' — both signal 'I'm not joking, this is real.' Different words, same job.",vi:"Dấu hiệu chân thành của Gen Z Việt. Tương đương trực tiếp với 'no cap'. Cả hai đều báo hiệu 'tôi không đùa, chuyện này là thật'. Khác từ, cùng vai trò."}, englishEquiv:"no cap",            dismissScope:"global" },
+  { pattern:/\bcũng hơi\b/i,         phrase:"Cũng hơi",           a:"kind of, quietly — I sort of feel this way but won't shout it", b:"literal 'also a little' — misses the softening function",   aEn:"lowkey, kind of",       bEn:"also a little bit",       reason:{en:"Vietnamese understatement softener that works exactly like 'lowkey' — used to admit something without fully committing to it.",vi:"Từ làm nhẹ giảm nói của tiếng Việt, hoạt động giống hệt 'lowkey'. Dùng để thừa nhận điều gì đó mà không cam kết hoàn toàn."},            englishEquiv:"lowkey",            dismissScope:"global" },
+  { pattern:/có vibe/i,              phrase:"Có vibe",            a:"radiates a certain energy or feeling",                        b:"literal 'has vibe' — makes no sense word-for-word",           aEn:"it's giving (a vibe)",       bEn:"it has vibe",       reason:{en:"Vietnamese internet slang borrowed 'vibe' but uses it the same way English uses 'it's giving' — something channels a particular energy.",vi:"Tiếng lóng mạng tiếng Việt mượn 'vibe' nhưng dùng nó giống cách tiếng Anh dùng 'it's giving'. Cái gì đó tỏa ra năng lượng đặc biệt."},   englishEquiv:"it's giving",       dismissScope:"global" },
+  { pattern:/nghiện luôn/i,          phrase:"Nghiện luôn",        a:"instantly hooked — I love this so much",                      b:"literally 'addicted immediately' — sounds serious",           aEn:"I'm obsessed, no joke",       bEn:"I'm immediately addicted",       reason:{en:"Vietnamese Gen-Z compliment. 'Nghiện' (addicted) used as enthusiasm, exactly like 'I'm obsessed' — both sound alarming but mean adoration.",vi:"Lời khen Gen Z Việt. 'Nghiện' dùng như sự hào hứng, giống hệt 'I'm obsessed'. Cả hai nghe có vẻ đáng lo nhưng thực ra là sự yêu thích cuồng nhiệt."}, englishEquiv:"I'm obsessed",      dismissScope:"global" },
+  { pattern:/muốn khóc quá/i,        phrase:"Muốn khóc quá",      a:"something is so overwhelming it's moving — joy or beauty",    b:"literally 'want to cry so much' — sounds like distress",      aEn:"I could cry, it's so beautiful",       bEn:"I want to cry from sadness",       reason:{en:"Vietnamese emotional overflow for something beautiful or touching. Mirrors 'I could cry' — same ambiguity, joy or sadness, context decides.",vi:"Cảm xúc trào dâng của tiếng Việt khi gặp điều gì đẹp đẽ hoặc cảm động. Giống 'I could cry', cùng sự mơ hồ, vui hay buồn do bối cảnh quyết định."}, englishEquiv:"I could cry",       dismissScope:"global"  },
+  { pattern:/đồ tệ/i,                phrase:"Đồ tệ",              a:"affectionate teasing — said with warmth between close friends", b:"genuinely calling someone terrible",                         aEn:"you're the absolute worst (affectionate)",       bEn:"you're genuinely terrible",       reason:{en:"Vietnamese affectionate insult between friends. Direct equivalent of 'you're the worst' — both flip from insult to term of endearment in close relationships.",vi:"Câu mắng yêu giữa bạn bè trong tiếng Việt. Tương đương trực tiếp với 'you're the worst'. Cả hai chuyển từ lời xúc phạm thành lời thân thương trong mối quan hệ thân thiết."}, englishEquiv:"you're the worst", dismissScope:"global"  },
 
   // ── Vietnamese proverbs ──────────────────────────────────────
   // Traditional sayings that come up naturally in casual conversation.
   // Both sides should learn these — not just the Vietnamese speaker.
-  { pattern:/cây có cội|nước có nguồn/i,         phrase:"Cây có cội, nước có nguồn",  a:"every person comes from somewhere — your roots and origins never leave you",                          b:"a literal observation about trees and water — misses that this is a saying about identity and belonging", aEn:"you can't forget where you came from",       bEn:"trees have roots, water has a source",       reason:"One of the most common Vietnamese proverbs. Closest English idea: 'you can't forget where you came from.' Both cultures carry this — they just say it differently.",    englishEquiv:"you can't forget where you came from", dismissScope:"global" },
-  { pattern:/ăn quả nhớ kẻ trồng cây/i,          phrase:"Ăn quả nhớ kẻ trồng cây",   a:"when you enjoy something, remember the people who made it possible — gratitude for those before you",  b:"a literal instruction about fruit and farming",                                                           aEn:"don't forget who got you here",       bEn:"when eating fruit, remember who planted the tree",       reason:"Vietnamese proverb about gratitude and remembering your roots. The English parallel: 'don't forget who helped you get here.' Said when someone achieves something or forgets where their blessings came from.", englishEquiv:"don't forget who helped you get here", dismissScope:"global" },
-  { pattern:/uống nước nhớ nguồn/i,               phrase:"Uống nước nhớ nguồn",        a:"always remember where you came from and who gave you what you have",                                    b:"a reminder about water and its source — sounds like environmental advice",                                aEn:"remember where your blessings came from",       bEn:"when drinking water, remember its source",       reason:"Literally 'when drinking water, remember the source.' One of the most widely known Vietnamese sayings — about gratitude, origins, and not forgetting your roots as you grow.",  englishEquiv:"remember where you came from",         dismissScope:"global" },
-  { pattern:/thương người như thể thương thân/i,  phrase:"Thương người như thể thương thân", a:"love others the way you love yourself — empathy as a core value",                              b:"a complex literal phrase that loses its meaning word-for-word",                                           aEn:"treat people as you'd treat yourself",       bEn:"love others as you love yourself (literally)",       reason:"Vietnamese equivalent of 'do unto others.' Used to teach compassion — especially to children. Comes up naturally in conversations about kindness or how someone treated another person.", englishEquiv:"treat others the way you want to be treated", dismissScope:"global" },
-  { pattern:/một miếng khi đói bằng một gói khi no/i, phrase:"Một miếng khi đói bằng một gói khi no", a:"a small gesture when someone truly needs it means more than a grand one when they don't", b:"a comparison about food portions — misses the entire point",                                          aEn:"one bite when hungry beats a full meal when full",       bEn:"literally about food portions",       reason:"Vietnamese proverb about timing and meaning. The English parallel: 'it's the thought that counts — especially when it counts.' Said when a small act of kindness lands at exactly the right moment.", englishEquiv:"a little goes a long way when it matters", dismissScope:"global" },
-  { pattern:/lời nói chẳng mất tiền mua/i,        phrase:"Lời nói chẳng mất tiền mua", a:"kind words cost nothing — there's no excuse not to be gentle with people",                              b:"a statement about the price of words — sounds transactional",                                            aEn:"kind words are free, use them",       bEn:"words don't cost money to buy",       reason:"Literally 'words don't cost money to buy.' Used the same way English uses 'if you don't have anything nice to say...' — a gentle reminder that how you speak to someone is a choice.", englishEquiv:"kind words cost nothing",              dismissScope:"global" },
+  { pattern:/cây có cội|nước có nguồn/i,         phrase:"Cây có cội, nước có nguồn",  a:"every person comes from somewhere — your roots and origins never leave you",                          b:"a literal observation about trees and water — misses that this is a saying about identity and belonging", aEn:"you can't forget where you came from",       bEn:"trees have roots, water has a source",       reason:{en:"One of the most common Vietnamese proverbs. Closest English idea: 'you can't forget where you came from.' Both cultures carry this — they just say it differently.",vi:"Một trong những câu tục ngữ phổ biến nhất của Việt Nam. Ý tiếng Anh gần nhất là 'you can't forget where you came from'. Cả hai nền văn hóa đều mang ý này, chỉ nói khác cách."},    englishEquiv:"you can't forget where you came from", dismissScope:"global" },
+  { pattern:/ăn quả nhớ kẻ trồng cây/i,          phrase:"Ăn quả nhớ kẻ trồng cây",   a:"when you enjoy something, remember the people who made it possible — gratitude for those before you",  b:"a literal instruction about fruit and farming",                                                           aEn:"don't forget who got you here",       bEn:"when eating fruit, remember who planted the tree",       reason:{en:"Vietnamese proverb about gratitude and remembering your roots. The English parallel: 'don't forget who helped you get here.' Said when someone achieves something or forgets where their blessings came from.",vi:"Tục ngữ Việt về lòng biết ơn và nhớ về cội nguồn. Tương đương tiếng Anh là 'don't forget who helped you get here'. Thường được nói khi ai đó đạt được thành công hoặc quên đi nơi xuất phát."}, englishEquiv:"don't forget who helped you get here", dismissScope:"global" },
+  { pattern:/uống nước nhớ nguồn/i,               phrase:"Uống nước nhớ nguồn",        a:"always remember where you came from and who gave you what you have",                                    b:"a reminder about water and its source — sounds like environmental advice",                                aEn:"remember where your blessings came from",       bEn:"when drinking water, remember its source",       reason:{en:"Literally 'when drinking water, remember the source.' One of the most widely known Vietnamese sayings — about gratitude, origins, and not forgetting your roots as you grow.",vi:"Nghĩa đen là 'khi uống nước, nhớ về nguồn'. Một trong những câu tục ngữ Việt được biết đến rộng rãi nhất, về lòng biết ơn, cội nguồn, và việc không quên gốc rễ khi trưởng thành."},  englishEquiv:"remember where you came from",         dismissScope:"global" },
+  { pattern:/thương người như thể thương thân/i,  phrase:"Thương người như thể thương thân", a:"love others the way you love yourself — empathy as a core value",                              b:"a complex literal phrase that loses its meaning word-for-word",                                           aEn:"treat people as you'd treat yourself",       bEn:"love others as you love yourself (literally)",       reason:{en:"Vietnamese equivalent of 'do unto others.' Used to teach compassion — especially to children. Comes up naturally in conversations about kindness or how someone treated another person.",vi:"Phiên bản tiếng Việt của 'do unto others'. Dùng để dạy lòng nhân ái, đặc biệt là cho trẻ em. Xuất hiện tự nhiên trong các cuộc trò chuyện về sự tử tế hoặc cách ai đó đối xử với người khác."}, englishEquiv:"treat others the way you want to be treated", dismissScope:"global" },
+  { pattern:/một miếng khi đói bằng một gói khi no/i, phrase:"Một miếng khi đói bằng một gói khi no", a:"a small gesture when someone truly needs it means more than a grand one when they don't", b:"a comparison about food portions — misses the entire point",                                          aEn:"one bite when hungry beats a full meal when full",       bEn:"literally about food portions",       reason:{en:"Vietnamese proverb about timing and meaning. The English parallel: 'it's the thought that counts — especially when it counts.' Said when a small act of kindness lands at exactly the right moment.",vi:"Tục ngữ Việt về thời điểm và ý nghĩa. Tương đương tiếng Anh là 'it's the thought that counts, especially when it counts'. Được nói khi một hành động tử tế nhỏ đến đúng vào lúc cần thiết."}, englishEquiv:"a little goes a long way when it matters", dismissScope:"global" },
+  { pattern:/lời nói chẳng mất tiền mua/i,        phrase:"Lời nói chẳng mất tiền mua", a:"kind words cost nothing — there's no excuse not to be gentle with people",                              b:"a statement about the price of words — sounds transactional",                                            aEn:"kind words are free, use them",       bEn:"words don't cost money to buy",       reason:{en:"Literally 'words don't cost money to buy.' Used the same way English uses 'if you don't have anything nice to say...' — a gentle reminder that how you speak to someone is a choice.",vi:"Nghĩa đen là 'lời nói không tốn tiền mua'. Dùng giống cách tiếng Anh dùng 'if you don't have anything nice to say...'. Một lời nhắc nhở nhẹ nhàng rằng cách bạn nói với ai đó là một lựa chọn."}, englishEquiv:"kind words cost nothing",              dismissScope:"global" },
 
   // hardcodedEn: literal maps cleanly, no cultural gap — just translate directly every time, no banner
-  { pattern:/buồn lắm[.!?~\s]*$/i,            phrase:"Buồn lắm",               a:"direct emotional disclosure — 'I'm so sad', said plainly and meant completely",                             b:"literal 'very sad' — a cold translation strips the personal weight of this confession",            aEn:"I'm so sad (no filter)",       bEn:"I'm very sad",       reason:"'Lắm' intensifies but also signals directness — they're not softening this. Cold translation flattens the intimacy of someone telling you exactly how they feel.",          hardcodedEn:"I'm so sad" },
-  { pattern:/tức lắm[.!?~\s]*$/i,             phrase:"Tức lắm",                a:"genuine anger fully felt — 'I'm really angry', the intensity is the whole message",                          b:"literal 'very angry' — loses the directness of someone who isn't softening their emotion",         aEn:"I'm so angry (no holding back)",       bEn:"I'm very angry",       reason:"'Lắm' at the end of an emotion signals they're stating it plainly, not cushioning it. The translation must carry that without sounding like a dictionary entry.",             hardcodedEn:"I'm so angry" },
-  { pattern:/không cần nữa[.!?~\s]*$/i,       phrase:"Không cần nữa",          a:"finality — 'I don't need it/you/this anymore', the 'nữa' makes it a closing statement",                       b:"simple statement of not needing something — misses the weight of 'nữa' in a personal context",     aEn:"I don't need this anymore",       bEn:"I don't need that",       reason:"'Nữa' marks a before and after — there was a time when it was needed, and now that's over. In a relationship context this can mean a person. The translation needs to feel like an ending.", hardcodedEn:"I don't need this anymore" },
+  { pattern:/buồn lắm[.!?~\s]*$/i,            phrase:"Buồn lắm",               a:"direct emotional disclosure — 'I'm so sad', said plainly and meant completely",                             b:"literal 'very sad' — a cold translation strips the personal weight of this confession",            aEn:"I'm so sad (no filter)",       bEn:"I'm very sad",       reason:{en:"'Lắm' intensifies but also signals directness — they're not softening this. Cold translation flattens the intimacy of someone telling you exactly how they feel.",vi:"'Lắm' vừa nhấn mạnh, vừa báo hiệu sự thẳng thắn. Họ không làm nhẹ điều này. Bản dịch lạnh lùng sẽ làm phẳng đi sự thân mật của ai đó kể cho bạn nghe chính xác họ cảm thấy thế nào."},          hardcodedEn:"I'm so sad" },
+  { pattern:/tức lắm[.!?~\s]*$/i,             phrase:"Tức lắm",                a:"genuine anger fully felt — 'I'm really angry', the intensity is the whole message",                          b:"literal 'very angry' — loses the directness of someone who isn't softening their emotion",         aEn:"I'm so angry (no holding back)",       bEn:"I'm very angry",       reason:{en:"'Lắm' at the end of an emotion signals they're stating it plainly, not cushioning it. The translation must carry that without sounding like a dictionary entry.",vi:"'Lắm' ở cuối một cảm xúc báo hiệu họ đang nói thẳng, không đệm thêm. Bản dịch phải truyền tải được điều đó mà không nghe giống một mục từ điển."},             hardcodedEn:"I'm so angry" },
+  { pattern:/không cần nữa[.!?~\s]*$/i,       phrase:"Không cần nữa",          a:"finality — 'I don't need it/you/this anymore', the 'nữa' makes it a closing statement",                       b:"simple statement of not needing something — misses the weight of 'nữa' in a personal context",     aEn:"I don't need this anymore",       bEn:"I don't need that",       reason:{en:"'Nữa' marks a before and after — there was a time when it was needed, and now that's over. In a relationship context this can mean a person. The translation needs to feel like an ending.",vi:"'Nữa' đánh dấu một mốc trước và sau. Đã có lúc cần nó, và bây giờ đã hết. Trong bối cảnh tình cảm, có thể chỉ một người. Bản dịch cần mang cảm giác của một kết thúc."}, hardcodedEn:"I don't need this anymore" },
   // englishEquiv: no word-for-word match — show explanation banner first time, then auto-use after dismiss
-  { pattern:/hết chịu nổi/i,                  phrase:"Hết chịu nổi",           a:"breaking point — 'I can't take it anymore', the limit has been reached",                                      b:"generic expression of difficulty — misses that this marks a threshold being crossed",              aEn:"I can't do this anymore",       bEn:"I can't take it",       reason:"'Hết' (depleted/finished) + 'chịu nổi' (able to bear) = the capacity to endure is gone. In a relationship context this is not figurative — it signals something has to change.",  englishEquiv:"I can't do this anymore",              dismissScope:"contact" },
-  { pattern:/chán lắm rồi/i,                  phrase:"Chán lắm rồi",           a:"exhausted and fed up — 'rồi' signals this feeling has been building for a long time, not just today",         b:"simply bored or tired — misses the accumulated weight that 'rồi' adds",                            aEn:"I'm so done with this",       bEn:"I'm bored and tired",       reason:"'Rồi' (already) is the key word — it means this isn't new, it has been building. Without it in the translation you lose the exhaustion of something that's been going on for a while.",englishEquiv:"I'm so done",                          dismissScope:"contact" },
-  { pattern:/mình cần nói chuyện/i,           phrase:"Mình cần nói chuyện",    a:"most loaded phrase in any language — signals something serious and potentially relationship-defining is coming", b:"literal 'I/we need to talk' — neutral surface that misses the weight everyone knows this phrase carries", aEn:"we need to talk (serious)",       bEn:"we need to talk (literal)",       reason:"Same weight as 'we need to talk' in English. Using 'mình' (soft, intimate self-reference) makes it even heavier — it's coming from somewhere personal.",              englishEquiv:"we need to talk",                      dismissScope:"global"  },
-  { pattern:/sao lúc nào cũng vậy/i,          phrase:"Sao lúc nào cũng vậy",  a:"frustration at a recurring pattern — accusation + exhaustion, this has happened before and it hurts",         b:"neutral question about why things are a certain way — misses the accumulated frustration",          aEn:"why do you always do this",       bEn:"why is it always like this",       reason:"'Lúc nào cũng' (always/every time) signals a pattern, not an incident. This isn't about today — it's about every time. Translation must carry that weight.",               englishEquiv:"why do you always",                      dismissScope:"contact" },
-  { pattern:/em mệt rồi[.!?~\s]*$/i,          phrase:"Em mệt rồi",             a:"emotional exhaustion that has been building — 'rồi' signals accumulation, not just today's tiredness",        b:"literal physical tiredness — misses that 'rồi' marks this as a culmination, not a passing state",   aEn:"I'm worn out from all of this",       bEn:"I'm physically tired",       reason:"'Em' (intimate first person) + 'mệt' (exhausted) + 'rồi' (already, suggesting buildup) = someone who has been carrying something for a long time. Physical tiredness lacks the 'rồi.'", englishEquiv:"I'm so tired of this",                dismissScope:"contact" },
-  { pattern:/bỏ cuộc rồi[.!?~\s]*$/i,         phrase:"Bỏ cuộc rồi",            a:"resignation — 'I've given up', the decision is already made and 'rồi' marks it as final",                     b:"surrendering in a task or challenge — misses that in a personal context this is a profound statement", aEn:"I give up, it's over",       bEn:"I'm giving up on this",       reason:"'Bỏ cuộc' (to abandon the fight) + 'rồi' (already done) = the giving up has already happened. This is someone telling you from the other side of a decision, not in the middle of making it.", englishEquiv:"i give up",                           dismissScope:"contact" },
-  { pattern:/thôi được rồi[.!?~\s]*$/i,       phrase:"Thôi được rồi",          a:"resigned acceptance — okay, letting this go, even if it still hurts",                                       b:"neutral confirmation that something is done or okay — misses the emotional cost behind the words",       aEn:"it's fine (no it's not)",       bEn:"it's okay and done",       reason:"'Thôi' (stop/let it be) + 'được' (okay) + 'rồi' (already) — said after conflict it almost never means everything is fine. Direct equivalent of 'it's fine' — same emotional disguise, same quiet surrender.", englishEquiv:"it's fine",                          dismissScope:"contact" },
-  { pattern:/cứ làm theo ý (anh|em) đi/i,     phrase:"Cứ làm theo ý anh đi",   a:"genuine permission — I truly don't mind, do as you please",                                                 b:"passive-aggressive resignation — I've emotionally withdrawn from the decision",                          aEn:"whatever you want, I'm fine with it",       bEn:"do whatever you want",       reason:"'Cứ' (go ahead, just) + 'theo ý' (according to your will) — in conflict this is the Vietnamese equivalent of 'do what you want.' Said flatly, it means the person has already emotionally left the conversation.", englishEquiv:"do what you want",                   dismissScope:"contact" },
-  { pattern:/chán đời[.!?~\s]*$/i,            phrase:"Chán đời",               a:"world-weary exhaustion — overwhelmed by everything right now, not just one thing",                          b:"literal 'bored of life' — sounds dramatic or concerning when it's usually someone venting",              aEn:"I'm so tired of everything",       bEn:"I'm bored of life",       reason:"Not depression — accumulated weariness with the weight of everything at once. Equivalent of 'I'm so over it' in English. Both signal someone who has been carrying too much for too long and finally said it.", englishEquiv:"i'm so over it",                     dismissScope:"contact" },
-  { pattern:/nhớ không chịu được[.!?~\s]*$/i, phrase:"Nhớ không chịu được",    a:"intense longing — the missing has become physical, not just emotional",                                      b:"literal 'can't bear to miss' — sounds like a complaint about being bothered by something",               aEn:"I miss you so much it hurts",       bEn:"I can't bear to miss you",       reason:"'Nhớ' (miss/long for) + 'không chịu được' (can't bear/endure) = the absence has crossed into something painful. Equivalent of 'I miss you so much it hurts' — both say the missing has become unbearable.", englishEquiv:"i miss you so much it hurts",        dismissScope:"contact" },
-  { pattern:/ghét lắm[.!?~\s]*$/i,           phrase:"Ghét lắm",               a:"deep affection disguised as annoyance — between close people this means the opposite of what it says",      b:"genuine strong dislike — reads as a real insult if the relationship is misread",                         aEn:"you're the worst (affectionate)",       bEn:"I really hate you",       reason:"'Ghét' (hate) + 'lắm' (so much) — between close friends or partners said with warmth, this flips completely. Equivalent of 'you're the worst' said affectionately — both are terms of endearment wearing insult clothing.", englishEquiv:"you're the worst",              dismissScope:"contact" },
+  { pattern:/hết chịu nổi/i,                  phrase:"Hết chịu nổi",           a:"breaking point — 'I can't take it anymore', the limit has been reached",                                      b:"generic expression of difficulty — misses that this marks a threshold being crossed",              aEn:"I can't do this anymore",       bEn:"I can't take it",       reason:{en:"'Hết' (depleted/finished) + 'chịu nổi' (able to bear) = the capacity to endure is gone. In a relationship context this is not figurative — it signals something has to change.",vi:"'Hết' (đã cạn) cộng 'chịu nổi' (chịu đựng được) bằng khả năng chịu đựng đã hết. Trong tình cảm thì không phải là ẩn dụ, mà báo hiệu cần phải thay đổi."},  englishEquiv:"I can't do this anymore",              dismissScope:"contact" },
+  { pattern:/chán lắm rồi/i,                  phrase:"Chán lắm rồi",           a:"exhausted and fed up — 'rồi' signals this feeling has been building for a long time, not just today",         b:"simply bored or tired — misses the accumulated weight that 'rồi' adds",                            aEn:"I'm so done with this",       bEn:"I'm bored and tired",       reason:{en:"'Rồi' (already) is the key word — it means this isn't new, it has been building. Without it in the translation you lose the exhaustion of something that's been going on for a while.",vi:"'Rồi' là từ then chốt. Nó cho thấy điều này không phải mới, mà đã tích tụ. Không có nó trong bản dịch, bạn mất đi sự mệt mỏi của một thứ đã kéo dài."},englishEquiv:"I'm so done",                          dismissScope:"contact" },
+  { pattern:/mình cần nói chuyện/i,           phrase:"Mình cần nói chuyện",    a:"most loaded phrase in any language — signals something serious and potentially relationship-defining is coming", b:"literal 'I/we need to talk' — neutral surface that misses the weight everyone knows this phrase carries", aEn:"we need to talk (serious)",       bEn:"we need to talk (literal)",       reason:{en:"Same weight as 'we need to talk' in English. Using 'mình' (soft, intimate self-reference) makes it even heavier — it's coming from somewhere personal.",vi:"Cùng sức nặng như 'we need to talk' trong tiếng Anh. Dùng 'mình' (cách xưng hô nhẹ nhàng, thân mật) làm câu nói nặng thêm. Nó đến từ một nơi rất cá nhân."},              englishEquiv:"we need to talk",                      dismissScope:"global"  },
+  { pattern:/sao lúc nào cũng vậy/i,          phrase:"Sao lúc nào cũng vậy",  a:"frustration at a recurring pattern — accusation + exhaustion, this has happened before and it hurts",         b:"neutral question about why things are a certain way — misses the accumulated frustration",          aEn:"why do you always do this",       bEn:"why is it always like this",       reason:{en:"'Lúc nào cũng' (always/every time) signals a pattern, not an incident. This isn't about today — it's about every time. Translation must carry that weight.",vi:"'Lúc nào cũng' báo hiệu một quy luật lặp đi lặp lại, không phải một sự việc. Đây không phải chuyện hôm nay, mà là chuyện mỗi lần. Bản dịch phải mang được sức nặng đó."},               englishEquiv:"why do you always",                      dismissScope:"contact" },
+  { pattern:/em mệt rồi[.!?~\s]*$/i,          phrase:"Em mệt rồi",             a:"emotional exhaustion that has been building — 'rồi' signals accumulation, not just today's tiredness",        b:"literal physical tiredness — misses that 'rồi' marks this as a culmination, not a passing state",   aEn:"I'm worn out from all of this",       bEn:"I'm physically tired",       reason:{en:"'Em' (intimate first person) + 'mệt' (exhausted) + 'rồi' (already, suggesting buildup) = someone who has been carrying something for a long time. Physical tiredness lacks the 'rồi.'",vi:"'Em' (xưng hô thân mật) cộng 'mệt' cộng 'rồi' (đã, ngụ ý tích tụ) bằng một người đã gồng gánh điều gì đó từ lâu. Mệt thể xác đơn thuần không có chữ 'rồi'."}, englishEquiv:"I'm so tired of this",                dismissScope:"contact" },
+  { pattern:/bỏ cuộc rồi[.!?~\s]*$/i,         phrase:"Bỏ cuộc rồi",            a:"resignation — 'I've given up', the decision is already made and 'rồi' marks it as final",                     b:"surrendering in a task or challenge — misses that in a personal context this is a profound statement", aEn:"I give up, it's over",       bEn:"I'm giving up on this",       reason:{en:"'Bỏ cuộc' (to abandon the fight) + 'rồi' (already done) = the giving up has already happened. This is someone telling you from the other side of a decision, not in the middle of making it.",vi:"'Bỏ cuộc' cộng 'rồi' bằng việc từ bỏ đã xảy ra. Đây là một người đang nói với bạn từ phía sau quyết định, không phải đang giữa lúc cân nhắc."}, englishEquiv:"i give up",                           dismissScope:"contact" },
+  { pattern:/thôi được rồi[.!?~\s]*$/i,       phrase:"Thôi được rồi",          a:"resigned acceptance — okay, letting this go, even if it still hurts",                                       b:"neutral confirmation that something is done or okay — misses the emotional cost behind the words",       aEn:"it's fine (no it's not)",       bEn:"it's okay and done",       reason:{en:"'Thôi' (stop/let it be) + 'được' (okay) + 'rồi' (already) — said after conflict it almost never means everything is fine. Direct equivalent of 'it's fine' — same emotional disguise, same quiet surrender.",vi:"'Thôi' cộng 'được' cộng 'rồi'. Nói sau khi xung đột, hầu như không bao giờ có nghĩa là mọi thứ ổn. Tương đương trực tiếp với 'it's fine'. Cùng kiểu ngụy trang cảm xúc, cùng sự đầu hàng lặng lẽ."}, englishEquiv:"it's fine",                          dismissScope:"contact" },
+  { pattern:/cứ làm theo ý (anh|em) đi/i,     phrase:"Cứ làm theo ý anh đi",   a:"genuine permission — I truly don't mind, do as you please",                                                 b:"passive-aggressive resignation — I've emotionally withdrawn from the decision",                          aEn:"whatever you want, I'm fine with it",       bEn:"do whatever you want",       reason:{en:"'Cứ' (go ahead, just) + 'theo ý' (according to your will) — in conflict this is the Vietnamese equivalent of 'do what you want.' Said flatly, it means the person has already emotionally left the conversation.",vi:"'Cứ' (cứ việc) cộng 'theo ý'. Trong xung đột, đây là phiên bản tiếng Việt của 'do what you want'. Nếu nói phẳng phiu, có nghĩa là người đó đã rút khỏi cuộc trò chuyện về mặt cảm xúc."}, englishEquiv:"do what you want",                   dismissScope:"contact" },
+  { pattern:/chán đời[.!?~\s]*$/i,            phrase:"Chán đời",               a:"world-weary exhaustion — overwhelmed by everything right now, not just one thing",                          b:"literal 'bored of life' — sounds dramatic or concerning when it's usually someone venting",              aEn:"I'm so tired of everything",       bEn:"I'm bored of life",       reason:{en:"Not depression — accumulated weariness with the weight of everything at once. Equivalent of 'I'm so over it' in English. Both signal someone who has been carrying too much for too long and finally said it.",vi:"Không phải trầm cảm, mà là sự mệt mỏi tích tụ dưới sức nặng của mọi thứ cùng lúc. Tương đương 'I'm so over it' trong tiếng Anh. Cả hai đều báo hiệu một người đã gồng gánh quá nhiều quá lâu và cuối cùng đã thốt ra."}, englishEquiv:"i'm so over it",                     dismissScope:"contact" },
+  { pattern:/nhớ không chịu được[.!?~\s]*$/i, phrase:"Nhớ không chịu được",    a:"intense longing — the missing has become physical, not just emotional",                                      b:"literal 'can't bear to miss' — sounds like a complaint about being bothered by something",               aEn:"I miss you so much it hurts",       bEn:"I can't bear to miss you",       reason:{en:"'Nhớ' (miss/long for) + 'không chịu được' (can't bear/endure) = the absence has crossed into something painful. Equivalent of 'I miss you so much it hurts' — both say the missing has become unbearable.",vi:"'Nhớ' cộng 'không chịu được' bằng sự vắng mặt đã trở thành một thứ đau đớn. Tương đương 'I miss you so much it hurts'. Cả hai đều nói nỗi nhớ đã trở nên không chịu nổi."}, englishEquiv:"i miss you so much it hurts",        dismissScope:"contact" },
+  { pattern:/ghét lắm[.!?~\s]*$/i,           phrase:"Ghét lắm",               a:"deep affection disguised as annoyance — between close people this means the opposite of what it says",      b:"genuine strong dislike — reads as a real insult if the relationship is misread",                         aEn:"you're the worst (affectionate)",       bEn:"I really hate you",       reason:{en:"'Ghét' (hate) + 'lắm' (so much) — between close friends or partners said with warmth, this flips completely. Equivalent of 'you're the worst' said affectionately — both are terms of endearment wearing insult clothing.",vi:"'Ghét' cộng 'lắm'. Giữa bạn bè thân hoặc người yêu, nếu nói với sự ấm áp thì câu này lật ngược hoàn toàn. Tương đương 'you're the worst' nói thân thương. Cả hai đều là lời thân mật khoác áo lời chửi."}, englishEquiv:"you're the worst",              dismissScope:"contact" },
 
   // ── Batch 4: Vietnamese Gen Z dual-meaning traps ──────────────────────────
-  { pattern:/\btoang(\s+rồi|\s+luôn)?[.!?~\s]*$/i,                                  phrase:"Toang",        a:"it's all over / things are completely ruined — disaster acknowledgment with a shrug",      b:"reads as nonsense in English — the literal verb is 'to crack open'",                  aEn:"we're absolutely cooked",       bEn:"to crack open",       reason:"Gen Z VN word for total failure with comedic resignation. No literal meaning carries over. English equivalent 'we're cooked' captures the same shrug-at-disaster energy.",                   englishEquiv:"we're cooked",     dismissScope:"global" },
-  { pattern:/\bbó tay[.!?~\s]*$|\bbó tay với\b/i,                                   phrase:"Bó tay",       a:"I give up / I literally cannot — surrender after trying",                                  b:"literal 'tied hands' — sounds like restraint, abuse, or being physically held",       aEn:"I'm out of ideas",       bEn:"my hands are tied",       reason:"Gen Z VN surrender phrase. Word-for-word translation sounds violent. The slang sense is pure 'I'm out of ideas.' English equivalent 'I can't' carries the same defeat without alarm.",      englishEquiv:"I can't",          dismissScope:"global" },
-  { pattern:/\băn hành\b/i,                                                          phrase:"Ăn hành",      a:"taking a beating / getting harsh criticism — absurd-funny framing of suffering",           b:"literal 'eating onions' — confusing food reference",                                   aEn:"getting absolutely roasted",       bEn:"eating onions",       reason:"Gen Z VN slang. Frames hardship as an absurd meal you're forced to eat. No English food idiom matches; 'getting roasted' carries the same self-deprecating beat-taking energy.",            englishEquiv:"getting roasted",  dismissScope:"global" },
-  { pattern:/\b(phải|đang|đi)\s+cày\b|\bcày (đêm|cả đêm|sml)\b/i,                  phrase:"Cày",          a:"grinding — studying or working extremely hard, often through the night",                   b:"literal 'to plow' — agricultural verb",                                                aEn:"grinding, locked in",       bEn:"plowing the fields",       reason:"Gen Z VN usage of an old farming verb. Literal sense is fields and oxen; slang sense is hustle culture. English 'lock in' or 'grinding' carries the focused-work energy.",                  englishEquiv:"grinding",         dismissScope:"global" },
-  { pattern:/\b(hơi|quá|thằng|con|đồ|mày)\s+lầy\b|\blầy lội\b/i,                   phrase:"Lầy",          a:"playfully stubborn troublemaker — affectionate accusation of being a chaotic friend",       b:"reads as nonsense or vaguely negative in other languages",                            aEn:"you're such a menace (affectionate)",       bEn:"(nonsense word)",       reason:"Gen Z VN affectionate label. No English single word captures it — 'menace' (in the affectionate Gen Z sense) is the closest equivalent.",                                                  englishEquiv:"such a menace",    dismissScope:"global" },
-  { pattern:/\b(đi|cùng|nay)\s+xõa\b|\bxõa thôi\b|\bxõa đi\b/i,                    phrase:"Xõa",          a:"let loose — permission to forget responsibilities and have fun",                            b:"literal 'to let down (hair)' — confusing without context",                            aEn:"let loose, go have fun",       bEn:"let your hair down",       reason:"Gen Z VN release-valve word. Used after stressful periods to signal 'time to enjoy.' English 'let loose' carries the same release energy.",                                                englishEquiv:"let loose",        dismissScope:"global" },
-  { pattern:/\b(đang|đừng|hay|chỉ|chuyên)\s+cà khịa\b|\bcà khịa nhau\b/i,           phrase:"Cà khịa",      a:"playful teasing / friendly banter — pre-emptively flagged as joking, not serious",          b:"easily mistaken for genuine sarcasm or insult without the cultural context",          aEn:"just messing with you",       bEn:"genuine sarcasm or insult",       reason:"Gen Z VN word for affectionate trolling. The whole point is 'don't take this seriously.' English 'just roasting' captures the same playful-not-serious teasing.",                          englishEquiv:"just roasting",    dismissScope:"global" },
-  { pattern:/\bchém gió\b/i,                                                         phrase:"Chém gió",     a:"talking big / exaggerating — calling out tall tales with affection",                       b:"literal 'cutting wind' — confusing physical imagery",                                  aEn:"you're capping, that's not real",       bEn:"cutting wind",       reason:"Gen Z VN call-out for exaggeration. Word-for-word translation is meaningless. English 'capping' (Gen Z) carries the same accusation of BS-talking.",                                       englishEquiv:"capping",          dismissScope:"global" },
-  { pattern:/\bmãi mận\b/i,                                                          phrase:"Mãi mận",      a:"looking great / impressive — admiration for appearance, humor, or vibe",                    b:"literal 'forever salty/savory' — food metaphor that doesn't translate",               aEn:"that's iconic, you're iconic",       bEn:"forever salty",       reason:"Gen Z VN praise word borrowed from 'mặn mà' (savory/charming). English has no flavor-based compliment; 'iconic' carries the same lasting-impressiveness.",                                  englishEquiv:"iconic",           dismissScope:"global" },
-  { pattern:/\bmãi keo\b|\bmãi mận mãi keo\b/i,                                      phrase:"Mãi keo",      a:"ride or die / inseparable bond — friendship oath",                                          b:"literal 'forever glue' — sticky substance, no relational sense",                       aEn:"you're my ride or die",       bEn:"forever glue",       reason:"Gen Z VN friendship phrase. The glue metaphor doesn't carry over. English 'ride or die' captures the same forever-loyalty energy.",                                                       englishEquiv:"ride or die",      dismissScope:"global" },
+  { pattern:/\btoang(\s+rồi|\s+luôn)?[.!?~\s]*$/i,                                  phrase:"Toang",        a:"it's all over / things are completely ruined — disaster acknowledgment with a shrug",      b:"reads as nonsense in English — the literal verb is 'to crack open'",                  aEn:"we're absolutely cooked",       bEn:"to crack open",       reason:{en:"Gen Z VN word for total failure with comedic resignation. No literal meaning carries over. English equivalent 'we're cooked' captures the same shrug-at-disaster energy.",vi:"Từ Gen Z Việt cho thất bại toàn tập kèm sự chấp nhận hài hước. Nghĩa đen không dịch được. Tương đương tiếng Anh là 'we're cooked', cùng năng lượng nhún vai trước thảm họa."},                   englishEquiv:"we're cooked",     dismissScope:"global" },
+  { pattern:/\bbó tay[.!?~\s]*$|\bbó tay với\b/i,                                   phrase:"Bó tay",       a:"I give up / I literally cannot — surrender after trying",                                  b:"literal 'tied hands' — sounds like restraint, abuse, or being physically held",       aEn:"I'm out of ideas",       bEn:"my hands are tied",       reason:{en:"Gen Z VN surrender phrase. Word-for-word translation sounds violent. The slang sense is pure 'I'm out of ideas.' English equivalent 'I can't' carries the same defeat without alarm.",vi:"Câu đầu hàng của Gen Z Việt. Dịch từng từ thì nghe có vẻ bạo lực. Nghĩa lóng đơn thuần là 'tôi hết cách'. Tương đương tiếng Anh là 'I can't', cùng cảm giác bất lực mà không gây hoang mang."},      englishEquiv:"I can't",          dismissScope:"global" },
+  { pattern:/\băn hành\b/i,                                                          phrase:"Ăn hành",      a:"taking a beating / getting harsh criticism — absurd-funny framing of suffering",           b:"literal 'eating onions' — confusing food reference",                                   aEn:"getting absolutely roasted",       bEn:"eating onions",       reason:{en:"Gen Z VN slang. Frames hardship as an absurd meal you're forced to eat. No English food idiom matches; 'getting roasted' carries the same self-deprecating beat-taking energy.",vi:"Tiếng lóng Gen Z Việt. Đóng khung sự cực khổ như một bữa ăn vô lý mà bạn buộc phải nuốt. Không có thành ngữ tiếng Anh về đồ ăn nào tương ứng, 'getting roasted' mang cùng năng lượng tự trào khi bị nhồi đòn."},            englishEquiv:"getting roasted",  dismissScope:"global" },
+  { pattern:/\b(phải|đang|đi)\s+cày\b|\bcày (đêm|cả đêm|sml)\b/i,                  phrase:"Cày",          a:"grinding — studying or working extremely hard, often through the night",                   b:"literal 'to plow' — agricultural verb",                                                aEn:"grinding, locked in",       bEn:"plowing the fields",       reason:{en:"Gen Z VN usage of an old farming verb. Literal sense is fields and oxen; slang sense is hustle culture. English 'lock in' or 'grinding' carries the focused-work energy.",vi:"Cách Gen Z Việt dùng một động từ nông nghiệp cổ. Nghĩa đen là ruộng và trâu, nghĩa lóng là văn hóa cày cuốc công việc. 'Lock in' hay 'grinding' trong tiếng Anh mang cùng năng lượng làm việc tập trung."},                  englishEquiv:"grinding",         dismissScope:"global" },
+  { pattern:/\b(hơi|quá|thằng|con|đồ|mày)\s+lầy\b|\blầy lội\b/i,                   phrase:"Lầy",          a:"playfully stubborn troublemaker — affectionate accusation of being a chaotic friend",       b:"reads as nonsense or vaguely negative in other languages",                            aEn:"you're such a menace (affectionate)",       bEn:"(nonsense word)",       reason:{en:"Gen Z VN affectionate label. No English single word captures it — 'menace' (in the affectionate Gen Z sense) is the closest equivalent.",vi:"Nhãn dán thân thương của Gen Z Việt. Không có một từ tiếng Anh nào diễn tả đủ, 'menace' (theo nghĩa thân thương kiểu Gen Z) là gần nhất."},                                                  englishEquiv:"such a menace",    dismissScope:"global" },
+  { pattern:/\b(đi|cùng|nay)\s+xõa\b|\bxõa thôi\b|\bxõa đi\b/i,                    phrase:"Xõa",          a:"let loose — permission to forget responsibilities and have fun",                            b:"literal 'to let down (hair)' — confusing without context",                            aEn:"let loose, go have fun",       bEn:"let your hair down",       reason:{en:"Gen Z VN release-valve word. Used after stressful periods to signal 'time to enjoy.' English 'let loose' carries the same release energy.",vi:"Từ xả hơi của Gen Z Việt. Dùng sau những giai đoạn căng thẳng để báo hiệu 'đến lúc tận hưởng'. 'Let loose' trong tiếng Anh mang cùng năng lượng giải tỏa."},                                                englishEquiv:"let loose",        dismissScope:"global" },
+  { pattern:/\b(đang|đừng|hay|chỉ|chuyên)\s+cà khịa\b|\bcà khịa nhau\b/i,           phrase:"Cà khịa",      a:"playful teasing / friendly banter — pre-emptively flagged as joking, not serious",          b:"easily mistaken for genuine sarcasm or insult without the cultural context",          aEn:"just messing with you",       bEn:"genuine sarcasm or insult",       reason:{en:"Gen Z VN word for affectionate trolling. The whole point is 'don't take this seriously.' English 'just roasting' captures the same playful-not-serious teasing.",vi:"Từ Gen Z Việt cho việc trêu chọc thân thương. Trọng tâm là 'đừng coi nghiêm trọng'. 'Just roasting' trong tiếng Anh mang cùng kiểu trêu vui không nghiêm túc."},                          englishEquiv:"just roasting",    dismissScope:"global" },
+  { pattern:/\bchém gió\b/i,                                                         phrase:"Chém gió",     a:"talking big / exaggerating — calling out tall tales with affection",                       b:"literal 'cutting wind' — confusing physical imagery",                                  aEn:"you're capping, that's not real",       bEn:"cutting wind",       reason:{en:"Gen Z VN call-out for exaggeration. Word-for-word translation is meaningless. English 'capping' (Gen Z) carries the same accusation of BS-talking.",vi:"Cách Gen Z Việt gọi tên việc khoác lác. Dịch từng từ thì vô nghĩa. 'Capping' (Gen Z) trong tiếng Anh mang cùng kiểu cáo buộc nói phét."},                                       englishEquiv:"capping",          dismissScope:"global" },
+  { pattern:/\bmãi mận\b/i,                                                          phrase:"Mãi mận",      a:"looking great / impressive — admiration for appearance, humor, or vibe",                    b:"literal 'forever salty/savory' — food metaphor that doesn't translate",               aEn:"that's iconic, you're iconic",       bEn:"forever salty",       reason:{en:"Gen Z VN praise word borrowed from 'mặn mà' (savory/charming). English has no flavor-based compliment; 'iconic' carries the same lasting-impressiveness.",vi:"Từ khen của Gen Z Việt mượn từ 'mặn mà'. Tiếng Anh không có lời khen dựa trên vị giác, 'iconic' mang cùng cảm giác ấn tượng lâu dài."},                                  englishEquiv:"iconic",           dismissScope:"global" },
+  { pattern:/\bmãi keo\b|\bmãi mận mãi keo\b/i,                                      phrase:"Mãi keo",      a:"ride or die / inseparable bond — friendship oath",                                          b:"literal 'forever glue' — sticky substance, no relational sense",                       aEn:"you're my ride or die",       bEn:"forever glue",       reason:{en:"Gen Z VN friendship phrase. The glue metaphor doesn't carry over. English 'ride or die' captures the same forever-loyalty energy.",vi:"Câu nói về tình bạn của Gen Z Việt. Hình ảnh keo dán không dịch được. 'Ride or die' trong tiếng Anh mang cùng năng lượng trung thành mãi mãi."},                                                       englishEquiv:"ride or die",      dismissScope:"global" },
 
   // ── Batch 5: Vietnamese Millennial & Gen X dual-meaning traps ──────────────────────────
-  { pattern:/\b(hơi|quá|thật|đồ|sao mà)\s+sến\b|\bsến súa\b|\bphim sến\b|\bnhạc sến\b/i,            phrase:"Sến",          a:"overly sentimental / cheesy in a fond, dated way — old-school romantic-drama energy",     b:"reads as dismissive without the cultural context of Vietnamese romance-drama era",   aEn:"that's so cheesy (affectionate)",       bEn:"overly sentimental",       reason:"Mil VN word for old-fashioned cheesy romance. Affectionate when used among friends; sounds harsh translated literally. English 'cheesy' captures the warm-mocking tone.",                  englishEquiv:"cheesy",            dismissScope:"global" },
-  { pattern:/\b(hơi|quá|thật|đồ|nhìn|sao mà)\s+quê\b|\bquê quê\b|\bquê mùa\b/i,                     phrase:"Quê",          a:"uncool, country-style, out of fashion — urban-vs-rural style judgment",                  b:"literally 'hometown/countryside' — sounds like a geography or family word",          aEn:"that's so basic, so uncool",       bEn:"like the countryside",       reason:"Mil VN class/style judgment. Tight pattern — only fires when paired with intensifier or 'mùa' suffix, so 'về quê' (going home) won't trigger.",                                            englishEquiv:"basic",             dismissScope:"global" },
-  { pattern:/\b(hơi|quá|thật|đồ|sao mà)\s+chảnh\b|\bchảnh chọe\b/i,                                  phrase:"Chảnh",        a:"stuck-up / attitude-y — calling out someone's social performance",                       b:"reads as opaque without cultural context",                                            aEn:"you're being so stuck-up",       bEn:"(culturally opaque)",       reason:"Mil VN call-out for snootiness. Often gendered. English 'stuck-up' carries the same deflation energy.",                                                                                    englishEquiv:"stuck-up",          dismissScope:"global" },
-  { pattern:/\b(bị|đang|nó|cô|anh|em|hắn)\s+bơ\b|\bbơ luôn\b|\bbơ tao\b|\bbơ tôi\b/i,                phrase:"Bơ",           a:"to ignore / give the cold shoulder — deliberate silence as rejection",                   b:"literally 'butter' — sounds like a food word",                                        aEn:"they're ghosting me completely",       bEn:"butter",       reason:"Mil VN word for being iced out. Tight pattern requires subject pronoun or specific verb framing, so 'mua bơ' (buy butter) won't trigger. English 'ghosting' carries the same rejection.",  englishEquiv:"ghosting me",       dismissScope:"global" },
-  { pattern:/\b(rất|máu|hơi|quá)\s+máu\b|\bmáu lắm\b|\bmáu nhỉ\b/i,                                   phrase:"Máu",          a:"passionate / really into something — Gen X enthusiasm marker",                           b:"literally 'blood' — sounds violent or medical",                                        aEn:"I'm all in, passionate",       bEn:"blood (literal)",       reason:"Gen X VN passion marker. Word-for-word translation sounds alarming. Tight pattern — only fires with intensifier or sentence-final particle, so medical/literal 'máu' won't trigger.",       englishEquiv:"all in",            dismissScope:"global" },
-  { pattern:/\bsố má\b/i,                                                                              phrase:"Số má",        a:"having reputation / street cred — known on the streets",                                 b:"literally 'fate cheek' — meaningless word-for-word",                                  aEn:"you've got street cred",       bEn:"fate cheek",       reason:"Gen X VN reputation flex. The compound word has no literal meaning that carries over. English 'street cred' captures the same earned-respect energy.",                                     englishEquiv:"street cred",       dismissScope:"global" },
-  { pattern:/\bchặt chém\b|\bbị chặt\b|\bchặt giá\b/i,                                                phrase:"Chặt chém",    a:"overcharging / ripping someone off — usually about market or tourist prices",            b:"literally 'to chop and slash' — sounds violent",                                      aEn:"they're totally overcharging me",       bEn:"to chop and slash",       reason:"Gen X VN market-economy word. Word-for-word translation sounds like assault. The pricing-overcharge sense is the only correct read.",                                                      englishEquiv:"price gouging",     dismissScope:"global" },
-  { pattern:/\b(đồ|thằng|con|hắn|nó|sao mà|đừng)\s+xạo\b|\bxạo ke\b|\bxạo lờ\b|\bnói xạo\b/i,         phrase:"Xạo",          a:"lying, full of it — casual call-out for BS-talking",                                     b:"reads as unclear without context — vague accusation",                                  aEn:"you're lying, stop capping",       bEn:"(unclear accusation)",       reason:"Gen X VN word for liar. Tight pattern requires subject pronoun, intensifier, or paired suffix, so it won't fire on unrelated text.",                                                       englishEquiv:"capping",           dismissScope:"global" },
-  { pattern:/\bgiang hồ\b/i,                                                                            phrase:"Giang hồ",     a:"the streets / underworld credibility — street-tough lifestyle",                          b:"literally 'rivers and lakes' — sounds like a geography term",                          aEn:"street life, street tough",       bEn:"rivers and lakes",       reason:"Gen X VN street-credibility word. Word-for-word translation is geographic nonsense. English 'street life' or 'thug life' carries the same underworld energy.",                              englishEquiv:"street life",       dismissScope:"global" },
-  { pattern:/\b(đang|đừng|hay|chỉ|chuyên)\s+làm màu\b|\blàm màu thôi\b/i,                            phrase:"Làm màu",      a:"putting on a show / being fake-impressive — calling out performative behavior",          b:"literally 'doing color' — meaningless word-for-word",                                 aEn:"stop putting on an act",       bEn:"doing color",       reason:"Gen X VN call-out for performative fakery. Word-for-word translation has no meaning. English 'putting on a show' captures the fake-display energy.",                                       englishEquiv:"putting on a show", dismissScope:"global" },
+  { pattern:/\b(hơi|quá|thật|đồ|sao mà)\s+sến\b|\bsến súa\b|\bphim sến\b|\bnhạc sến\b/i,            phrase:"Sến",          a:"overly sentimental / cheesy in a fond, dated way — old-school romantic-drama energy",     b:"reads as dismissive without the cultural context of Vietnamese romance-drama era",   aEn:"that's so cheesy (affectionate)",       bEn:"overly sentimental",       reason:{en:"Mil VN word for old-fashioned cheesy romance. Affectionate when used among friends; sounds harsh translated literally. English 'cheesy' captures the warm-mocking tone.",vi:"Từ thế hệ Millennial Việt chỉ kiểu lãng mạn sến súa cổ điển. Thân thương khi dùng giữa bạn bè, nghe gắt nếu dịch nguyên văn. 'Cheesy' trong tiếng Anh mang cùng giọng vừa ấm áp vừa giễu cợt."},                  englishEquiv:"cheesy",            dismissScope:"global" },
+  { pattern:/\b(hơi|quá|thật|đồ|nhìn|sao mà)\s+quê\b|\bquê quê\b|\bquê mùa\b/i,                     phrase:"Quê",          a:"uncool, country-style, out of fashion — urban-vs-rural style judgment",                  b:"literally 'hometown/countryside' — sounds like a geography or family word",          aEn:"that's so basic, so uncool",       bEn:"like the countryside",       reason:{en:"Mil VN class/style judgment. Tight pattern — only fires when paired with intensifier or 'mùa' suffix, so 'về quê' (going home) won't trigger.",vi:"Đánh giá phong cách của thế hệ Millennial Việt. Mẫu phát hiện chặt, chỉ kích hoạt khi đi kèm từ tăng cường hoặc hậu tố 'mùa', nên 'về quê' không kích hoạt nhầm."},                                            englishEquiv:"basic",             dismissScope:"global" },
+  { pattern:/\b(hơi|quá|thật|đồ|sao mà)\s+chảnh\b|\bchảnh chọe\b/i,                                  phrase:"Chảnh",        a:"stuck-up / attitude-y — calling out someone's social performance",                       b:"reads as opaque without cultural context",                                            aEn:"you're being so stuck-up",       bEn:"(culturally opaque)",       reason:{en:"Mil VN call-out for snootiness. Often gendered. English 'stuck-up' carries the same deflation energy.",vi:"Cách thế hệ Millennial Việt gọi tên sự kênh kiệu, thường mang sắc thái giới tính. 'Stuck-up' trong tiếng Anh mang cùng năng lượng hạ thấp."},                                                                                    englishEquiv:"stuck-up",          dismissScope:"global" },
+  { pattern:/\b(bị|đang|nó|cô|anh|em|hắn)\s+bơ\b|\bbơ luôn\b|\bbơ tao\b|\bbơ tôi\b/i,                phrase:"Bơ",           a:"to ignore / give the cold shoulder — deliberate silence as rejection",                   b:"literally 'butter' — sounds like a food word",                                        aEn:"they're ghosting me completely",       bEn:"butter",       reason:{en:"Mil VN word for being iced out. Tight pattern requires subject pronoun or specific verb framing, so 'mua bơ' (buy butter) won't trigger. English 'ghosting' carries the same rejection.",vi:"Từ thế hệ Millennial Việt cho việc bị làm lơ. Mẫu phát hiện cần đại từ hoặc cách dùng động từ cụ thể, nên 'mua bơ' không kích hoạt nhầm. 'Ghosting' trong tiếng Anh mang cùng kiểu từ chối."},  englishEquiv:"ghosting me",       dismissScope:"global" },
+  { pattern:/\b(rất|máu|hơi|quá)\s+máu\b|\bmáu lắm\b|\bmáu nhỉ\b/i,                                   phrase:"Máu",          a:"passionate / really into something — Gen X enthusiasm marker",                           b:"literally 'blood' — sounds violent or medical",                                        aEn:"I'm all in, passionate",       bEn:"blood (literal)",       reason:{en:"Gen X VN passion marker. Word-for-word translation sounds alarming. Tight pattern — only fires with intensifier or sentence-final particle, so medical/literal 'máu' won't trigger.",vi:"Dấu hiệu nhiệt huyết của Gen X Việt. Dịch từng từ thì nghe đáng sợ. Mẫu phát hiện chặt, chỉ kích hoạt với từ tăng cường hoặc trợ từ cuối câu, nên 'máu' nghĩa đen y học không kích hoạt nhầm."},       englishEquiv:"all in",            dismissScope:"global" },
+  { pattern:/\bsố má\b/i,                                                                              phrase:"Số má",        a:"having reputation / street cred — known on the streets",                                 b:"literally 'fate cheek' — meaningless word-for-word",                                  aEn:"you've got street cred",       bEn:"fate cheek",       reason:{en:"Gen X VN reputation flex. The compound word has no literal meaning that carries over. English 'street cred' captures the same earned-respect energy.",vi:"Câu khoe danh tiếng của Gen X Việt. Từ ghép này không có nghĩa đen nào dịch được. 'Street cred' trong tiếng Anh mang cùng năng lượng được kính trọng do giành được."},                                     englishEquiv:"street cred",       dismissScope:"global" },
+  { pattern:/\bchặt chém\b|\bbị chặt\b|\bchặt giá\b/i,                                                phrase:"Chặt chém",    a:"overcharging / ripping someone off — usually about market or tourist prices",            b:"literally 'to chop and slash' — sounds violent",                                      aEn:"they're totally overcharging me",       bEn:"to chop and slash",       reason:{en:"Gen X VN market-economy word. Word-for-word translation sounds like assault. The pricing-overcharge sense is the only correct read.",vi:"Từ Gen X Việt liên quan đến kinh tế chợ búa. Dịch từng từ thì nghe như hành hung. Nghĩa duy nhất đúng là chặt chém giá cả."},                                                      englishEquiv:"price gouging",     dismissScope:"global" },
+  { pattern:/\b(đồ|thằng|con|hắn|nó|sao mà|đừng)\s+xạo\b|\bxạo ke\b|\bxạo lờ\b|\bnói xạo\b/i,         phrase:"Xạo",          a:"lying, full of it — casual call-out for BS-talking",                                     b:"reads as unclear without context — vague accusation",                                  aEn:"you're lying, stop capping",       bEn:"(unclear accusation)",       reason:{en:"Gen X VN word for liar. Tight pattern requires subject pronoun, intensifier, or paired suffix, so it won't fire on unrelated text.",vi:"Từ Gen X Việt cho kẻ nói dối. Mẫu phát hiện chặt, cần đại từ, từ tăng cường, hoặc hậu tố đi kèm, nên không kích hoạt trên văn bản không liên quan."},                                                       englishEquiv:"capping",           dismissScope:"global" },
+  { pattern:/\bgiang hồ\b/i,                                                                            phrase:"Giang hồ",     a:"the streets / underworld credibility — street-tough lifestyle",                          b:"literally 'rivers and lakes' — sounds like a geography term",                          aEn:"street life, street tough",       bEn:"rivers and lakes",       reason:{en:"Gen X VN street-credibility word. Word-for-word translation is geographic nonsense. English 'street life' or 'thug life' carries the same underworld energy.",vi:"Từ uy tín giang hồ của Gen X Việt. Dịch từng từ ra địa lý là vô nghĩa. 'Street life' hay 'thug life' trong tiếng Anh mang cùng năng lượng thế giới ngầm."},                              englishEquiv:"street life",       dismissScope:"global" },
+  { pattern:/\b(đang|đừng|hay|chỉ|chuyên)\s+làm màu\b|\blàm màu thôi\b/i,                            phrase:"Làm màu",      a:"putting on a show / being fake-impressive — calling out performative behavior",          b:"literally 'doing color' — meaningless word-for-word",                                 aEn:"stop putting on an act",       bEn:"doing color",       reason:{en:"Gen X VN call-out for performative fakery. Word-for-word translation has no meaning. English 'putting on a show' captures the fake-display energy.",vi:"Cách Gen X Việt gọi tên sự trình diễn giả tạo. Dịch từng từ thì không có nghĩa. 'Putting on a show' trong tiếng Anh mang cùng năng lượng phô bày giả."},                                       englishEquiv:"putting on a show", dismissScope:"global" },
 
   // ── Emotional-equivalence matches — words an English reader will *feel* the same way a Vietnamese speaker meant ──
-  { pattern:/không sao/i,                    phrase:"Không sao",              a:"warm reassurance — it's fine, don't worry about it",                                                       b:"literal 'nothing happened' — misses the gentleness",                                                     aEn:"no worries, it's fine",       bEn:"nothing happened",       reason:"Universal Vietnamese reassurance across all generations. Direct emotional match to English 'no worries.'",                                                                                                          englishEquiv:"no worries",        dismissScope:"global" },
-  { pattern:/\btám\b/i,                      phrase:"Tám",                    a:"juicy gossip — the thrill of chatting and sharing news",                                                   b:"literal number eight",                                                                                   aEn:"spill the tea, gossip",       bEn:"number eight",       reason:"Universal Vietnamese for gossiping. Same conspiratorial joy as English 'tea.'",                                                                                                                                      englishEquiv:"tea",               dismissScope:"global" },
-  { pattern:/\bcrush\b/i,                    phrase:"Crush",                  a:"romantic interest — that butterfly feeling about someone",                                                 b:"the English word borrowed wholesale",                                                                    aEn:"I have a crush on them",       bEn:"crush (English word)",       reason:"Vietnamese borrowed 'crush' directly — used identically in both languages. Same word, same butterflies.",                                                                                                            englishEquiv:"crush",             dismissScope:"global" },
-  { pattern:/mặc kệ/i,                       phrase:"Mặc kệ",                 a:"don't care, let it go — dismissive shrug",                                                                 b:"literal indifference — misses the casual letting-go tone",                                              aEn:"whatever, don't care",       bEn:"indifference",       reason:"Universal Vietnamese for 'let it be.' Same dismissive 'whatever' shrug as English.",                                                                                                                                 englishEquiv:"whatever",          dismissScope:"global" },
-  { pattern:/thoải mái/i,                    phrase:"Thoải mái",              a:"relaxed and comfortable — at ease",                                                                        b:"literal 'comfortable' — misses the chill vibe",                                                          aEn:"I'm chill, relaxed",       bEn:"comfortable",       reason:"Gen X + Millennial Vietnamese for 'I'm relaxed.' Direct emotional match to English 'chill.'",                                                                                                                          englishEquiv:"chill",             dismissScope:"global" },
-  { pattern:/\bnhàn\b/i,                     phrase:"Nhàn",                   a:"easy, leisurely — life is light right now",                                                                b:"literal 'leisure'",                                                                                      aEn:"life's easy right now",       bEn:"leisure",       reason:"Gen X + Millennial Vietnamese for an easy, low-stress state. Same vibe as English 'chill.'",                                                                                                                          englishEquiv:"chill",             dismissScope:"global" },
-  { pattern:/\bgato\b/i,                     phrase:"GATO",                   a:"bitter jealousy — petty envy with attitude",                                                               b:"literal acronym (Ghen Ăn Tức Ở) — meaningless without context",                                          aEn:"you're being so salty",       bEn:"(acronym meaningless)",       reason:"Vietnamese Gen Z + Millennial slang for jealousy with attitude. Same petty-bitter energy as English 'salty.'",                                                                                                        englishEquiv:"salty",             dismissScope:"global" },
-  { pattern:/bình thường thôi/i,             phrase:"Bình thường thôi",       a:"nothing special — dismissive 'meh, ordinary'",                                                             b:"literal 'just normal' — misses the dismissiveness",                                                      aEn:"that's so basic",       bEn:"it's just normal",       reason:"Vietnamese Gen Z + Millennial way of writing something off as unremarkable. Direct emotional match to English 'basic.'",                                                                                              englishEquiv:"basic",             dismissScope:"global" },
-  { pattern:/\bxịn\b/i,                      phrase:"Xịn",                    a:"high quality, the real deal — genuine and impressive",                                                     b:"literal 'genuine'",                                                                                      aEn:"that's sick, quality",       bEn:"genuine",       reason:"Gen X + Millennial Vietnamese praise for quality. Same enthusiastic approval as English 'sick.'",                                                                                                                      englishEquiv:"sick",              dismissScope:"global" },
-  { pattern:/tội nghiệp/i,                   phrase:"Tội nghiệp",             a:"sympathetic 'aw, poor thing' — gentle compassion for someone's bad luck",                                  b:"literal 'sinful situation' — misses the warmth",                                                         aEn:"aw that sucks for you",       bEn:"sinful situation",       reason:"Gen X Vietnamese expression of sympathy. Direct emotional match to English 'bummer.'",                                                                                                                                englishEquiv:"bummer",            dismissScope:"global" },
+  { pattern:/không sao/i,                    phrase:"Không sao",              a:"warm reassurance — it's fine, don't worry about it",                                                       b:"literal 'nothing happened' — misses the gentleness",                                                     aEn:"no worries, it's fine",       bEn:"nothing happened",       reason:{en:"Universal Vietnamese reassurance across all generations. Direct emotional match to English 'no worries.'",vi:"Câu trấn an phổ biến trong tiếng Việt qua mọi thế hệ. Khớp cảm xúc trực tiếp với 'no worries' trong tiếng Anh."},                                                                                                          englishEquiv:"no worries",        dismissScope:"global" },
+  { pattern:/\btám\b/i,                      phrase:"Tám",                    a:"juicy gossip — the thrill of chatting and sharing news",                                                   b:"literal number eight",                                                                                   aEn:"spill the tea, gossip",       bEn:"number eight",       reason:{en:"Universal Vietnamese for gossiping. Same conspiratorial joy as English 'tea.'",vi:"Cách tiếng Việt phổ thông gọi việc buôn chuyện. Cùng niềm vui đồng lõa như 'tea' trong tiếng Anh."},                                                                                                                                      englishEquiv:"tea",               dismissScope:"global" },
+  { pattern:/\bcrush\b/i,                    phrase:"Crush",                  a:"romantic interest — that butterfly feeling about someone",                                                 b:"the English word borrowed wholesale",                                                                    aEn:"I have a crush on them",       bEn:"crush (English word)",       reason:{en:"Vietnamese borrowed 'crush' directly — used identically in both languages. Same word, same butterflies.",vi:"Tiếng Việt mượn nguyên 'crush', dùng giống hệt trong cả hai ngôn ngữ. Cùng từ, cùng cảm giác hồi hộp."},                                                                                                            englishEquiv:"crush",             dismissScope:"global" },
+  { pattern:/mặc kệ/i,                       phrase:"Mặc kệ",                 a:"don't care, let it go — dismissive shrug",                                                                 b:"literal indifference — misses the casual letting-go tone",                                              aEn:"whatever, don't care",       bEn:"indifference",       reason:{en:"Universal Vietnamese for 'let it be.' Same dismissive 'whatever' shrug as English.",vi:"Cách tiếng Việt phổ thông nói 'thôi kệ đi'. Cùng kiểu nhún vai 'whatever' như tiếng Anh."},                                                                                                                                 englishEquiv:"whatever",          dismissScope:"global" },
+  { pattern:/thoải mái/i,                    phrase:"Thoải mái",              a:"relaxed and comfortable — at ease",                                                                        b:"literal 'comfortable' — misses the chill vibe",                                                          aEn:"I'm chill, relaxed",       bEn:"comfortable",       reason:{en:"Gen X + Millennial Vietnamese for 'I'm relaxed.' Direct emotional match to English 'chill.'",vi:"Cách Gen X và Millennial Việt nói 'tôi đang thư giãn'. Khớp cảm xúc trực tiếp với 'chill' trong tiếng Anh."},                                                                                                                          englishEquiv:"chill",             dismissScope:"global" },
+  { pattern:/\bnhàn\b/i,                     phrase:"Nhàn",                   a:"easy, leisurely — life is light right now",                                                                b:"literal 'leisure'",                                                                                      aEn:"life's easy right now",       bEn:"leisure",       reason:{en:"Gen X + Millennial Vietnamese for an easy, low-stress state. Same vibe as English 'chill.'",vi:"Cách Gen X và Millennial Việt diễn tả trạng thái dễ chịu, ít căng thẳng. Cùng vibe như 'chill' trong tiếng Anh."},                                                                                                                          englishEquiv:"chill",             dismissScope:"global" },
+  { pattern:/\bgato\b/i,                     phrase:"GATO",                   a:"bitter jealousy — petty envy with attitude",                                                               b:"literal acronym (Ghen Ăn Tức Ở) — meaningless without context",                                          aEn:"you're being so salty",       bEn:"(acronym meaningless)",       reason:{en:"Vietnamese Gen Z + Millennial slang for jealousy with attitude. Same petty-bitter energy as English 'salty.'",vi:"Tiếng lóng Gen Z và Millennial Việt cho sự ghen tị có thái độ. Cùng năng lượng cay cú nhỏ nhen như 'salty' trong tiếng Anh."},                                                                                                        englishEquiv:"salty",             dismissScope:"global" },
+  { pattern:/bình thường thôi/i,             phrase:"Bình thường thôi",       a:"nothing special — dismissive 'meh, ordinary'",                                                             b:"literal 'just normal' — misses the dismissiveness",                                                      aEn:"that's so basic",       bEn:"it's just normal",       reason:{en:"Vietnamese Gen Z + Millennial way of writing something off as unremarkable. Direct emotional match to English 'basic.'",vi:"Cách Gen Z và Millennial Việt gạt đi điều gì đó như tầm thường. Khớp cảm xúc trực tiếp với 'basic' trong tiếng Anh."},                                                                                              englishEquiv:"basic",             dismissScope:"global" },
+  { pattern:/\bxịn\b/i,                      phrase:"Xịn",                    a:"high quality, the real deal — genuine and impressive",                                                     b:"literal 'genuine'",                                                                                      aEn:"that's sick, quality",       bEn:"genuine",       reason:{en:"Gen X + Millennial Vietnamese praise for quality. Same enthusiastic approval as English 'sick.'",vi:"Lời khen chất lượng của Gen X và Millennial Việt. Cùng sự tán thành nhiệt tình như 'sick' trong tiếng Anh."},                                                                                                                      englishEquiv:"sick",              dismissScope:"global" },
+  { pattern:/tội nghiệp/i,                   phrase:"Tội nghiệp",             a:"sympathetic 'aw, poor thing' — gentle compassion for someone's bad luck",                                  b:"literal 'sinful situation' — misses the warmth",                                                         aEn:"aw that sucks for you",       bEn:"sinful situation",       reason:{en:"Gen X Vietnamese expression of sympathy. Direct emotional match to English 'bummer.'",vi:"Cách Gen X Việt biểu lộ sự thông cảm. Khớp cảm xúc trực tiếp với 'bummer' trong tiếng Anh."},                                                                                                                                englishEquiv:"bummer",            dismissScope:"global" },
 
   // ── No direct English equivalent — pre-send modal warns sender, no forced translation ──
   // NOTE: Vietnamese ambiguous verbs (được, để, tới, có, ghê, hay, etc.) are now handled by smart context-aware
   // confidence scoring in the backend. OpenAI returns confidence scores for each interpretation, and the backend
   // automatically filters options: high confidence = auto-translate (no picker), low confidence = show picker.
   // This replaces the always-show-picker behavior. See vietnamese-ambiguity-detector.ts for details.
-  { pattern:/\bnhậu\b/i,                     phrase:"Nhậu",                   a:"drinking and bonding with friends — a core Vietnamese social ritual, not just 'getting drinks'",          b:"literal translation 'drinking' loses the cultural and relational weight",                              aEn:"going out for nhậu",       bEn:"drinking",       reason:"No direct English equivalent. 'Nhậu' is central to Vietnamese friendship and family life — English 'going for drinks' is too transactional.",                                                                          noEquivalent:true, dismissScope:"global" },
-  { pattern:/thả thính/i,                    phrase:"Thả thính",              a:"playful, subtle flirting — putting hints out into the world to see who responds",                          b:"literal 'throwing bait' misses the strategic-flirty tone",                                              aEn:"subtle flirting, dropping hints",       bEn:"throwing bait",       reason:"No direct English equivalent. Vietnamese Gen Z + Millennial slang for the cat-and-mouse early stage of flirting — English has 'flirting' but no single phrase that captures the strategic playfulness.",                noEquivalent:true, dismissScope:"global" },
+  { pattern:/\bnhậu\b/i,                     phrase:"Nhậu",                   a:"drinking and bonding with friends — a core Vietnamese social ritual, not just 'getting drinks'",          b:"literal translation 'drinking' loses the cultural and relational weight",                              aEn:"going out for nhậu",       bEn:"drinking",       reason:{en:"No direct English equivalent. 'Nhậu' is central to Vietnamese friendship and family life — English 'going for drinks' is too transactional.",vi:"Không có từ tiếng Anh tương đương trực tiếp. 'Nhậu' là trung tâm của tình bạn và gia đình Việt. 'Going for drinks' trong tiếng Anh quá mang tính giao dịch."},                                                                          noEquivalent:true, dismissScope:"global" },
+  { pattern:/thả thính/i,                    phrase:"Thả thính",              a:"playful, subtle flirting — putting hints out into the world to see who responds",                          b:"literal 'throwing bait' misses the strategic-flirty tone",                                              aEn:"subtle flirting, dropping hints",       bEn:"throwing bait",       reason:{en:"No direct English equivalent. Vietnamese Gen Z + Millennial slang for the cat-and-mouse early stage of flirting — English has 'flirting' but no single phrase that captures the strategic playfulness.",vi:"Không có từ tiếng Anh tương đương trực tiếp. Tiếng lóng Gen Z và Millennial Việt cho giai đoạn đầu của tán tỉnh kiểu mèo vờn chuột. Tiếng Anh có 'flirting' nhưng không có cụm nào diễn tả được sự tinh nghịch chiến thuật."},                noEquivalent:true, dismissScope:"global" },
 
   // ── Emotional bridge phrases (Universal) ──
-  { pattern:/cơm chưa/i,                    phrase:"Cơm chưa",                a:"caring greeting — 'have you eaten yet?' as a way of saying 'I care about you'", b:"literal food question — misses the warmth",  aEn:"have you eaten? (caring)",       bEn:"have you eaten? (literal)",       reason:"No word-for-word EN match. 'You good? Eaten yet?' captures the caring-as-greeting warmth across all generations.",                                  englishEquiv:"You good? Eaten yet?",            dismissScope:"global" },
-  { pattern:/vất vả/i,                      phrase:"Vất vả",                  a:"sympathetic recognition of someone's exhausting struggle — 'you've been through it'", b:"literal 'hard work'",                  aEn:"you've been through so much",       bEn:"hard work",       reason:"No word-for-word EN match. 'You've been through it' carries the same sympathetic acknowledgment.",                                                  englishEquiv:"You've been through it",          dismissScope:"global" },
-  { pattern:/tử tế/i,                       phrase:"Tử tế",                   a:"deep respect for good character — 'a genuinely good person'", b:"literal 'decent' — too flat",                                            aEn:"they're a genuinely good person",       bEn:"decent",       reason:"No word-for-word EN match. 'A genuinely good person' captures the deep character respect.",                                                          englishEquiv:"A genuinely good person",         dismissScope:"global" },
+  { pattern:/cơm chưa/i,                    phrase:"Cơm chưa",                a:"caring greeting — 'have you eaten yet?' as a way of saying 'I care about you'", b:"literal food question — misses the warmth",  aEn:"have you eaten? (caring)",       bEn:"have you eaten? (literal)",       reason:{en:"No word-for-word EN match. 'You good? Eaten yet?' captures the caring-as-greeting warmth across all generations.",vi:"Không có từ tiếng Anh khớp từng chữ. 'You good? Eaten yet?' truyền tải được sự ấm áp của lời chào qua các thế hệ."},                                  englishEquiv:"You good? Eaten yet?",            dismissScope:"global" },
+  { pattern:/vất vả/i,                      phrase:"Vất vả",                  a:"sympathetic recognition of someone's exhausting struggle — 'you've been through it'", b:"literal 'hard work'",                  aEn:"you've been through so much",       bEn:"hard work",       reason:{en:"No word-for-word EN match. 'You've been through it' carries the same sympathetic acknowledgment.",vi:"Không có từ tiếng Anh khớp từng chữ. 'You've been through it' mang cùng sự công nhận đầy thông cảm."},                                                  englishEquiv:"You've been through it",          dismissScope:"global" },
+  { pattern:/tử tế/i,                       phrase:"Tử tế",                   a:"deep respect for good character — 'a genuinely good person'", b:"literal 'decent' — too flat",                                            aEn:"they're a genuinely good person",       bEn:"decent",       reason:{en:"No word-for-word EN match. 'A genuinely good person' captures the deep character respect.",vi:"Không có từ tiếng Anh khớp từng chữ. 'A genuinely good person' truyền tải được sự kính trọng sâu sắc về phẩm chất."},                                                          englishEquiv:"A genuinely good person",         dismissScope:"global" },
 
   // ── Emotional bridge phrases (Gen X + Mil) ──
-  { pattern:/\bsếp\b/i,                     phrase:"Sếp",                     a:"the boss — workplace authority figure",                        b:"literal 'boss'",                                                          aEn:"the boss",       bEn:"the boss (literal)",       reason:"Direct concept transfer — same workplace hierarchy emotion.",                                                                                          englishEquiv:"The boss",                        dismissScope:"global" },
-  { pattern:/làm ăn/i,                      phrase:"Làm ăn",                  a:"making a living — the earnest weight of earning",              b:"literal 'doing/eating'",                                                  aEn:"hustling to make a living",       bEn:"doing/eating",       reason:"No word-for-word EN match. 'Hustling' captures the earnest grind.",                                                                                    englishEquiv:"Hustling",                        dismissScope:"global" },
-  { pattern:/la cà/i,                       phrase:"La cà",                   a:"wandering, hanging around aimlessly — leisurely loitering",     b:"literal nonsense",                                                        aEn:"bumming around aimlessly",       bEn:"(nonsense)",       reason:"No word-for-word EN match. 'Bumming around' captures the leisurely loitering vibe.",                                                                  englishEquiv:"Bumming around",                  dismissScope:"global" },
-  { pattern:/tự lực/i,                      phrase:"Tự lực",                  a:"self-reliance as a value — standing on your own",               b:"literal 'own strength'",                                                  aEn:"standing on my own",       bEn:"own strength",       reason:"No word-for-word EN match. 'Standing on my own' captures the same self-reliance ethos.",                                                              englishEquiv:"Standing on my own",              dismissScope:"global" },
-  { pattern:/chơi đẹp/i,                    phrase:"Chơi đẹp",                a:"playing fair, with honor — doing it right",                    b:"literal 'play beautifully'",                                              aEn:"playing it fair",       bEn:"playing beautifully",       reason:"No word-for-word EN match. 'Playing it fair' captures the honor-based fair play.",                                                                    englishEquiv:"Playing it fair",                 dismissScope:"global" },
+  { pattern:/\bsếp\b/i,                     phrase:"Sếp",                     a:"the boss — workplace authority figure",                        b:"literal 'boss'",                                                          aEn:"the boss",       bEn:"the boss (literal)",       reason:{en:"Direct concept transfer — same workplace hierarchy emotion.",vi:"Khái niệm chuyển ngữ trực tiếp, cùng cảm xúc về thứ bậc nơi làm việc."},                                                                                          englishEquiv:"The boss",                        dismissScope:"global" },
+  { pattern:/làm ăn/i,                      phrase:"Làm ăn",                  a:"making a living — the earnest weight of earning",              b:"literal 'doing/eating'",                                                  aEn:"hustling to make a living",       bEn:"doing/eating",       reason:{en:"No word-for-word EN match. 'Hustling' captures the earnest grind.",vi:"Không có từ tiếng Anh khớp từng chữ. 'Hustling' truyền tải được sự cày cuốc chân thành."},                                                                                    englishEquiv:"Hustling",                        dismissScope:"global" },
+  { pattern:/la cà/i,                       phrase:"La cà",                   a:"wandering, hanging around aimlessly — leisurely loitering",     b:"literal nonsense",                                                        aEn:"bumming around aimlessly",       bEn:"(nonsense)",       reason:{en:"No word-for-word EN match. 'Bumming around' captures the leisurely loitering vibe.",vi:"Không có từ tiếng Anh khớp từng chữ. 'Bumming around' truyền tải được vibe la cà thong thả."},                                                                  englishEquiv:"Bumming around",                  dismissScope:"global" },
+  { pattern:/tự lực/i,                      phrase:"Tự lực",                  a:"self-reliance as a value — standing on your own",               b:"literal 'own strength'",                                                  aEn:"standing on my own",       bEn:"own strength",       reason:{en:"No word-for-word EN match. 'Standing on my own' captures the same self-reliance ethos.",vi:"Không có từ tiếng Anh khớp từng chữ. 'Standing on my own' truyền tải được tinh thần tự thân vận động."},                                                              englishEquiv:"Standing on my own",              dismissScope:"global" },
+  { pattern:/chơi đẹp/i,                    phrase:"Chơi đẹp",                a:"playing fair, with honor — doing it right",                    b:"literal 'play beautifully'",                                              aEn:"playing it fair",       bEn:"playing beautifully",       reason:{en:"No word-for-word EN match. 'Playing it fair' captures the honor-based fair play.",vi:"Không có từ tiếng Anh khớp từng chữ. 'Playing it fair' truyền tải được tinh thần chơi công bằng có danh dự."},                                                                    englishEquiv:"Playing it fair",                 dismissScope:"global" },
 
   // ── Emotional bridge phrases (Gen X) ──
-  { pattern:/khổ lắm/i,                     phrase:"Khổ lắm",                 a:"life is so hard — weary acknowledgment",                       b:"literal 'very suffering'",                                                aEn:"life's been rough",       bEn:"I'm suffering a lot",       reason:"No word-for-word EN match. 'Life's been rough' captures the weary acknowledgment.",                                                                    englishEquiv:"Life's been rough",               dismissScope:"global" },
-  { pattern:/chịu đựng/i,                   phrase:"Chịu đựng",               a:"endure it — resigned bearing of hardship",                     b:"literal 'endure'",                                                        aEn:"just gotta bear it",       bEn:"endure it",       reason:"No word-for-word EN match. 'Just gotta bear it' captures the same resigned endurance.",                                                                englishEquiv:"Just gotta bear it",              dismissScope:"global" },
-  { pattern:/hiền lành/i,                   phrase:"Hiền lành",               a:"gentle, kind-natured character (a person, not a vibe)",         b:"literal 'meek'",                                                          aEn:"a gentle soul",       bEn:"meek",       reason:"No word-for-word EN match. 'A gentle soul' captures the kind-character reverence.",                                                                    englishEquiv:"A gentle soul",                   dismissScope:"global" },
-  { pattern:/chịu thương chịu khó/i,        phrase:"Chịu thương chịu khó",   a:"hardworking and enduring without complaint — highest work-ethic compliment", b:"literal nonsense",                                       aEn:"a real grinder who never complains",       bEn:"(nonsense)",       reason:"No word-for-word EN match. 'A real grinder who never complains' captures the work-ethic-plus-endurance compliment.",                                  englishEquiv:"A real grinder who never complains", dismissScope:"global" },
-  { pattern:/trời ơi đất hỡi/i,             phrase:"Trời ơi đất hỡi",         a:"heightened exasperation — 'oh heaven and earth!'",              b:"literal heaven/earth invocation",                                         aEn:"oh for heaven's sake",       bEn:"calling to heaven and earth",       reason:"No word-for-word EN match. 'Oh for heaven's sake' captures the same heightened OMG.",                                                                  englishEquiv:"Oh for heaven's sake",            dismissScope:"global" },
-  { pattern:/làm đầu tắt mặt tối/i,         phrase:"Làm đầu tắt mặt tối",     a:"working non-stop sun-up to sun-down — exhausted from work",     b:"literal nonsense",                                                        aEn:"working themselves to the bone",       bEn:"(nonsense)",       reason:"No word-for-word EN match. 'Working themselves to the bone' captures the same exhaustion.",                                                            englishEquiv:"Working themselves to the bone",  dismissScope:"global" },
-  { pattern:/không dư dả gì/i,              phrase:"Không dư dả gì",          a:"financial tightness — 'just getting by'",                       b:"literal 'no surplus'",                                                    aEn:"just getting by",       bEn:"no surplus",       reason:"No word-for-word EN match. 'Just getting by' captures the financial tightness.",                                                                       englishEquiv:"Just getting by",                 dismissScope:"global" },
+  { pattern:/khổ lắm/i,                     phrase:"Khổ lắm",                 a:"life is so hard — weary acknowledgment",                       b:"literal 'very suffering'",                                                aEn:"life's been rough",       bEn:"I'm suffering a lot",       reason:{en:"No word-for-word EN match. 'Life's been rough' captures the weary acknowledgment.",vi:"Không có từ tiếng Anh khớp từng chữ. 'Life's been rough' truyền tải được sự công nhận đầy mệt mỏi."},                                                                    englishEquiv:"Life's been rough",               dismissScope:"global" },
+  { pattern:/chịu đựng/i,                   phrase:"Chịu đựng",               a:"endure it — resigned bearing of hardship",                     b:"literal 'endure'",                                                        aEn:"just gotta bear it",       bEn:"endure it",       reason:{en:"No word-for-word EN match. 'Just gotta bear it' captures the same resigned endurance.",vi:"Không có từ tiếng Anh khớp từng chữ. 'Just gotta bear it' truyền tải được sự chịu đựng cam chịu."},                                                                englishEquiv:"Just gotta bear it",              dismissScope:"global" },
+  { pattern:/hiền lành/i,                   phrase:"Hiền lành",               a:"gentle, kind-natured character (a person, not a vibe)",         b:"literal 'meek'",                                                          aEn:"a gentle soul",       bEn:"meek",       reason:{en:"No word-for-word EN match. 'A gentle soul' captures the kind-character reverence.",vi:"Không có từ tiếng Anh khớp từng chữ. 'A gentle soul' truyền tải được sự kính trọng dành cho phẩm chất hiền lành."},                                                                    englishEquiv:"A gentle soul",                   dismissScope:"global" },
+  { pattern:/chịu thương chịu khó/i,        phrase:"Chịu thương chịu khó",   a:"hardworking and enduring without complaint — highest work-ethic compliment", b:"literal nonsense",                                       aEn:"a real grinder who never complains",       bEn:"(nonsense)",       reason:{en:"No word-for-word EN match. 'A real grinder who never complains' captures the work-ethic-plus-endurance compliment.",vi:"Không có từ tiếng Anh khớp từng chữ. 'A real grinder who never complains' truyền tải được lời khen kết hợp đạo đức làm việc và sự chịu đựng."},                                  englishEquiv:"A real grinder who never complains", dismissScope:"global" },
+  { pattern:/trời ơi đất hỡi/i,             phrase:"Trời ơi đất hỡi",         a:"heightened exasperation — 'oh heaven and earth!'",              b:"literal heaven/earth invocation",                                         aEn:"oh for heaven's sake",       bEn:"calling to heaven and earth",       reason:{en:"No word-for-word EN match. 'Oh for heaven's sake' captures the same heightened OMG.",vi:"Không có từ tiếng Anh khớp từng chữ. 'Oh for heaven's sake' truyền tải được sự bực bội OMG ở mức cao."},                                                                  englishEquiv:"Oh for heaven's sake",            dismissScope:"global" },
+  { pattern:/làm đầu tắt mặt tối/i,         phrase:"Làm đầu tắt mặt tối",     a:"working non-stop sun-up to sun-down — exhausted from work",     b:"literal nonsense",                                                        aEn:"working themselves to the bone",       bEn:"(nonsense)",       reason:{en:"No word-for-word EN match. 'Working themselves to the bone' captures the same exhaustion.",vi:"Không có từ tiếng Anh khớp từng chữ. 'Working themselves to the bone' truyền tải được sự kiệt sức tương tự."},                                                            englishEquiv:"Working themselves to the bone",  dismissScope:"global" },
+  { pattern:/không dư dả gì/i,              phrase:"Không dư dả gì",          a:"financial tightness — 'just getting by'",                       b:"literal 'no surplus'",                                                    aEn:"just getting by",       bEn:"no surplus",       reason:{en:"No word-for-word EN match. 'Just getting by' captures the financial tightness.",vi:"Không có từ tiếng Anh khớp từng chữ. 'Just getting by' truyền tải được sự eo hẹp tài chính."},                                                                       englishEquiv:"Just getting by",                 dismissScope:"global" },
 ];
 
 function detectSlang(text, direction){
@@ -2273,8 +2273,8 @@ const _GEN_MAP = {
 };
 const _GEN_LABEL = {
   "gen-z": { en: "Gen Z", vi: "Gen Z" },
-  "gen-mill": { en: "Millennial", vi: "Millennial" },
-  "gen-x": { en: "Gen X", vi: "Gen X" },
+  "gen-mill": { en: "Millennial", vi: "Thế hệ Y" },
+  "gen-x": { en: "Gen X", vi: "Thế hệ X" },
   "gen-uni": { en: "All ages", vi: "Mọi lứa tuổi" }
 };
 function getPhraseGen(phrase){
@@ -4564,7 +4564,7 @@ function updateFriendRequestBadge(){
 
 function showPendingRequests(){
   if(pendingFriendRequests.length === 0){
-    alert('No pending friend requests');
+    alert(appDir==='vi-en' ? 'Không có yêu cầu kết bạn nào đang chờ' : 'No pending friend requests');
     return;
   }
   // Display the requests as cards
@@ -4766,7 +4766,7 @@ let friendRequestHourStart = Date.now();
 window.addEventListener('online', () => {
   isOnline = true;
   document.body.classList.remove('is-offline');
-  _showToast('Connection restored');
+  _showToast(appDir==='vi-en' ? 'Đã khôi phục kết nối' : 'Connection restored');
   // Flush any queued messages
   flushOfflineMessageQueue();
 });
@@ -4774,7 +4774,7 @@ window.addEventListener('online', () => {
 window.addEventListener('offline', () => {
   isOnline = false;
   document.body.classList.add('is-offline');
-  _showToast('You are offline. Messages will be sent when you reconnect.');
+  _showToast(appDir==='vi-en' ? 'Bạn đang ngoại tuyến. Tin nhắn sẽ được gửi khi bạn kết nối lại.' : 'You are offline. Messages will be sent when you reconnect.');
 });
 
 async function flushOfflineMessageQueue(){
@@ -4912,9 +4912,9 @@ function setAuthLoading(on){
 async function obFinishName(){
   const input = document.getElementById('obNameInput');
   const name = (input && input.value || '').trim();
-  if(!name){ showObNameError('Please enter a name.'); return; }
-  if(name.length > 40){ showObNameError('Keep it under 40 characters.'); return; }
-  if(!currentUser){ showObNameError('Something went wrong. Please sign in again.'); return; }
+  if(!name){ showObNameError(appDir==='vi-en' ? 'Hãy nhập tên.' : 'Please enter a name.'); return; }
+  if(name.length > 40){ showObNameError(appDir==='vi-en' ? 'Giữ dưới 40 ký tự.' : 'Keep it under 40 characters.'); return; }
+  if(!currentUser){ showObNameError(appDir==='vi-en' ? 'Đã có lỗi xảy ra. Hãy đăng nhập lại.' : 'Something went wrong. Please sign in again.'); return; }
   setAuthLoading(true); showObNameError('');
   try{
     try{ await fbAuth.currentUser.updateProfile({ displayName: name }); }catch(_){}
@@ -4925,7 +4925,7 @@ async function obFinishName(){
     document.getElementById('setupScreen').style.display='none';
     launchApp();
   }catch(err){
-    showObNameError('Could not save your name. Try again.');
+    showObNameError(appDir==='vi-en' ? 'Không lưu được tên của bạn. Hãy thử lại.' : 'Could not save your name. Try again.');
   }finally{
     setAuthLoading(false);
   }
@@ -4957,15 +4957,15 @@ function initApp(){
   if(authPrimaryBtn) authPrimaryBtn.addEventListener('click', async ()=>{
     const email = (document.getElementById('authEmail').value||'').trim();
     const pwd   = (document.getElementById('authPwd').value||'');
-    if(!email || !pwd){ showAuthError('Email and password are required.'); return; }
-    if(pwd.length < 8){ showAuthError('Password must be at least 8 characters.'); return; }
+    if(!email || !pwd){ showAuthError(appDir==='vi-en' ? 'Email và mật khẩu là bắt buộc.' : 'Email and password are required.'); return; }
+    if(pwd.length < 8){ showAuthError(appDir==='vi-en' ? 'Mật khẩu phải có ít nhất 8 ký tự.' : 'Password must be at least 8 characters.'); return; }
     const signupBirthday = (document.getElementById('authBirthday').value||'').trim();
-    if(!signupBirthday){ showAuthError('Please enter your birthday.'); return; }
+    if(!signupBirthday){ showAuthError(appDir==='vi-en' ? 'Hãy nhập ngày sinh của bạn.' : 'Please enter your birthday.'); return; }
     const ageNow = computeAgeFromBirthday(signupBirthday);
-    if(ageNow == null || ageNow < 13){ showAuthError('You must be at least 13 to create an account.'); return; }
-    if(ageNow > 120){ showAuthError('That birthday doesn\'t look right.'); return; }
+    if(ageNow == null || ageNow < 13){ showAuthError(appDir==='vi-en' ? 'Bạn phải đủ 13 tuổi để tạo tài khoản.' : 'You must be at least 13 to create an account.'); return; }
+    if(ageNow > 120){ showAuthError(appDir==='vi-en' ? 'Ngày sinh có vẻ không đúng.' : 'That birthday doesn\'t look right.'); return; }
     if(!_turnstileToken){
-      showAuthError('Please complete the captcha to create an account.');
+      showAuthError(appDir==='vi-en' ? 'Hãy hoàn thành captcha để tạo tài khoản.' : 'Please complete the captcha to create an account.');
       return;
     }
     setAuthLoading(true); showAuthError('');
@@ -4996,7 +4996,7 @@ function initApp(){
   if(authSigninBtn) authSigninBtn.addEventListener('click', async ()=>{
     const email = (authEmailSI && authEmailSI.value || '').trim();
     const pwd   = (authPwdSI && authPwdSI.value || '');
-    if(!email || !pwd){ showAuthErrorSI('Email and password are required.'); return; }
+    if(!email || !pwd){ showAuthErrorSI(appDir==='vi-en' ? 'Email và mật khẩu là bắt buộc.' : 'Email and password are required.'); return; }
     setAuthLoading(true); showAuthErrorSI('');
     try{
       await fbAuth.signInWithEmailAndPassword(email, pwd);
@@ -5033,11 +5033,11 @@ function initApp(){
   // Forgot password — uses the email field on the sign-in screen
   if(authResetBtn) authResetBtn.addEventListener('click', async ()=>{
     const email = (authEmailSI && authEmailSI.value || '').trim();
-    if(!email){ showAuthErrorSI('Type your email first, then tap Forgot password.'); return; }
+    if(!email){ showAuthErrorSI(appDir==='vi-en' ? 'Hãy nhập email trước, rồi nhấn Quên mật khẩu.' : 'Type your email first, then tap Forgot password.'); return; }
     setAuthLoading(true); showAuthErrorSI('');
     try{
       await fbAuth.sendPasswordResetEmail(email);
-      showAuthErrorSI(''); alert('Reset link sent to ' + email + '. Check your inbox.');
+      showAuthErrorSI(''); alert(appDir==='vi-en' ? 'Đã gửi liên kết đặt lại tới ' + email + '. Hãy kiểm tra hộp thư.' : 'Reset link sent to ' + email + '. Check your inbox.');
     }catch(err){
       showAuthErrorSI(friendlyAuthError(err));
     }finally{
@@ -5293,7 +5293,7 @@ function _isStandalonePWA(){
 // SDK needed because rules already grant self-read on /users/$uid and
 // participant-read on /dms/$roomId/messages.
 async function exportMyData(){
-  if(!currentUser || !firebaseDb){ alert('Sign in first.'); return; }
+  if(!currentUser || !firebaseDb){ alert(appDir==='vi-en' ? 'Hãy đăng nhập trước.' : 'Sign in first.'); return; }
   const isVI = appDir==='vi-en';
   try{
     const profileSnap = await firebaseDb.ref(`users/${currentUser.uid}`).once('value');
@@ -5346,7 +5346,7 @@ async function exportMyData(){
 // may require a recent sign-in for the final step — if so we surface that
 // and ask the user to sign out and back in before retrying.
 async function deleteMyAccount(){
-  if(!currentUser || !firebaseDb){ alert('Sign in first.'); return; }
+  if(!currentUser || !firebaseDb){ alert(appDir==='vi-en' ? 'Hãy đăng nhập trước.' : 'Sign in first.'); return; }
   const isVI = appDir==='vi-en';
   const confirmMsg = isVI
     ? 'Xóa tài khoản vĩnh viễn? Hành động này không thể hoàn tác. Tất cả tin nhắn bạn đã gửi sẽ bị đánh dấu xóa.'
@@ -5395,7 +5395,18 @@ async function deleteMyAccount(){
 // Map Firebase's terse error codes into human messages.
 function friendlyAuthError(err){
   const code = (err && err.code) || '';
-  const map = {
+  const isVI = appDir === 'vi-en';
+  const map = isVI ? {
+    'auth/invalid-email':            'Địa chỉ email không hợp lệ.',
+    'auth/user-not-found':           'Không có tài khoản nào với email này. Hãy thử Tạo tài khoản.',
+    'auth/wrong-password':           'Sai mật khẩu. Hãy thử lại hoặc nhấn Quên mật khẩu.',
+    'auth/invalid-credential':       'Email hoặc mật khẩu không đúng.',
+    'auth/email-already-in-use':     'Đã có tài khoản với email này. Hãy thử Đăng nhập.',
+    'auth/weak-password':            'Mật khẩu quá yếu. Hãy dùng ít nhất 8 ký tự.',
+    'auth/too-many-requests':        'Quá nhiều lần thử. Hãy đợi một phút rồi thử lại.',
+    'auth/network-request-failed':   'Lỗi mạng. Hãy kiểm tra kết nối internet.',
+    'auth/popup-blocked':            'Trình duyệt đã chặn cửa sổ đăng nhập Google. Hãy cho phép cửa sổ bật lên trên trang này rồi thử lại.',
+  } : {
     'auth/invalid-email':            'That email address looks invalid.',
     'auth/user-not-found':           'No account with that email — try Create account instead.',
     'auth/wrong-password':           'Wrong password. Try again or tap Forgot password.',
@@ -5406,7 +5417,7 @@ function friendlyAuthError(err){
     'auth/network-request-failed':   'Network error. Check your internet connection.',
     'auth/popup-blocked':            'Your browser blocked the Google sign-in popup. Allow popups for this site and try again.',
   };
-  return map[code] || (err && err.message) || 'Something went wrong. Try again.';
+  return map[code] || (err && err.message) || (isVI ? 'Đã có lỗi xảy ra. Hãy thử lại.' : 'Something went wrong. Try again.');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -5500,7 +5511,7 @@ function livePickRel(id){ liveSelRel=id; renderLiveRelGrid(); }
 function openLiveSessionForContact(){
   const c = activeCont(); if(!c||!c.email) return;
   const myEmail = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
-  if(!myEmail){ alert('Sign in first so your email is known.'); return; }
+  if(!myEmail){ alert(appDir==='vi-en' ? 'Hãy đăng nhập trước để có email của bạn.' : 'Sign in first so your email is known.'); return; }
   const code = roomCodeFromEmails(myEmail, c.email);
 
   // Pre-fill both local and Firebase room code fields
@@ -5515,7 +5526,7 @@ function openLiveSessionForContact(){
 // ── Local tab-to-tab mode (BroadcastChannel, no backend) ──
 function connectLocal(){
   const code = (document.getElementById('localRoomCode').value||'').trim().toUpperCase();
-  if(!code||code.length<4){ alert('Enter a room code (4–8 characters).'); return; }
+  if(!code||code.length<4){ alert(appDir==='vi-en' ? 'Hãy nhập mã phòng (4 đến 8 ký tự).' : 'Enter a room code (4–8 characters).'); return; }
   localMode = true;
   roomCode  = code;
   localChannel = new BroadcastChannel('mta_room_' + code);
@@ -5566,8 +5577,8 @@ function startLocalListeners(){
 
 async function connectFirebase(){
   const code=(document.getElementById('fbRoomCode').value||'').trim().toUpperCase();
-  if(!code||code.length<4){ alert('Enter a room code (4–8 characters).'); return; }
-  if(!currentUser){ alert('You need to be signed in to start a Live Session.'); return; }
+  if(!code||code.length<4){ alert(appDir==='vi-en' ? 'Hãy nhập mã phòng (4 đến 8 ký tự).' : 'Enter a room code (4–8 characters).'); return; }
+  if(!currentUser){ alert(appDir==='vi-en' ? 'Bạn cần đăng nhập để bắt đầu phiên Live.' : 'You need to be signed in to start a Live Session.'); return; }
   try{
     // Firebase app is already initialized at script load with our shared
     // production config — we just grab the database handle and start listening.
@@ -5581,7 +5592,7 @@ async function connectFirebase(){
     startFirebaseListeners();
     launchApp();
   }catch(e){
-    alert('Could not connect to the live session: '+e.message);
+    alert((appDir==='vi-en' ? 'Không thể kết nối đến phiên Live: ' : 'Could not connect to the live session: ')+e.message);
   }
 }
 
@@ -6458,7 +6469,7 @@ function switchTab(tab){
   navProfile.style.opacity = '0.6';
 
   if(tab === 'contacts'){
-    sbTitle.textContent = 'Contacts';
+    sbTitle.textContent = appDir==='vi-en' ? 'Liên hệ' : 'Contacts';
     if(sidebar) {
       sidebar.style.setProperty('display', 'flex', 'important');
       sidebar.classList.remove('slide-out');
@@ -6498,7 +6509,7 @@ function switchTab(tab){
     navMessages.style.color = 'var(--primary)';
     navMessages.style.opacity = '1';
   } else if(tab === 'profile'){
-    sbTitle.textContent = 'Profile';
+    sbTitle.textContent = appDir==='vi-en' ? 'Hồ sơ' : 'Profile';
     if(sidebar) sidebar.style.setProperty('display', 'none', 'important');
     if(cpanel) cpanel.style.setProperty('display', 'none', 'important');
     if(profilePanel) profilePanel.style.setProperty('display', 'flex', 'important');
@@ -6524,7 +6535,8 @@ function renderChatList(){
   if(typeof updateChatViewClass === 'function') updateChatViewClass();
 
   if(!contacts || contacts.length === 0){
-    chatListItems.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);">No conversations yet</div>';
+    const isVI = appDir === 'vi-en';
+    chatListItems.innerHTML = `<div style="padding:20px;text-align:center;color:var(--muted);">${isVI?'Chưa có cuộc trò chuyện nào':'No conversations yet'}</div>`;
     return;
   }
 
@@ -6822,17 +6834,18 @@ function renderBridgesLibrary(){
 
 function formatBridgeTime(ts){
   if(!ts) return '';
+  const isVI = appDir === 'vi-en';
   const diff = Date.now() - ts;
   const min = Math.floor(diff / 60000);
-  if(min < 1) return 'just now';
-  if(min < 60) return `${min}m ago`;
+  if(min < 1) return isVI ? 'vừa xong' : 'just now';
+  if(min < 60) return isVI ? `${min} phút trước` : `${min}m ago`;
   const hr = Math.floor(min / 60);
-  if(hr < 24) return `${hr}h ago`;
+  if(hr < 24) return isVI ? `${hr} giờ trước` : `${hr}h ago`;
   const day = Math.floor(hr / 24);
-  if(day < 7) return `${day}d ago`;
+  if(day < 7) return isVI ? `${day} ngày trước` : `${day}d ago`;
   const wk = Math.floor(day / 7);
-  if(wk < 4) return `${wk}w ago`;
-  return new Date(ts).toLocaleDateString(undefined, { month:'short', day:'numeric' });
+  if(wk < 4) return isVI ? `${wk} tuần trước` : `${wk}w ago`;
+  return new Date(ts).toLocaleDateString(isVI ? 'vi-VN' : undefined, { month:'short', day:'numeric' });
 }
 
 function openBridgeDetail(key){
@@ -6934,10 +6947,10 @@ function renderSidebar(list){
       </div>
       <div class="cmeta">
         ${!isContactsTab ? `<span class="ctime" style="${c.unread>0?'color:var(--blue);font-weight:600;':''}">${esc(timeStr)}</span>` : ''}
-        ${unreadBadge || `<button class="cedit" onclick="event.stopPropagation();openModal(${c.id})" title="Edit contact" aria-label="Edit contact"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</button>`}
+        ${unreadBadge || `<button class="cedit" onclick="event.stopPropagation();openModal(${c.id})" title="${isVI?'Sửa liên hệ':'Edit contact'}" aria-label="${isVI?'Sửa liên hệ':'Edit contact'}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>${isVI?'Sửa':'Edit'}</button>`}
       </div>
     </div>`;
-  }).join('') + (hasMore ? `<div style="padding:12px;text-align:center;border-top:1px solid var(--line);"><button style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:13px;font-weight:600;" onclick="renderSidebar()">Show all (${source.length})</button></div>` : '');
+  }).join('') + (hasMore ? `<div style="padding:12px;text-align:center;border-top:1px solid var(--line);"><button style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:13px;font-weight:600;" onclick="renderSidebar()">${isVI?'Hiện tất cả':'Show all'} (${source.length})</button></div>` : '');
 }
 function filterContacts(q){
   if(!q.trim()){ renderSidebar(); return; }
@@ -7237,7 +7250,7 @@ function shareContact(){
   if(navigator.share){
     navigator.share({ title:'Contact', text });
   } else {
-    navigator.clipboard.writeText(text).then(()=>alert('Contact details copied to clipboard.'));
+    navigator.clipboard.writeText(text).then(()=>alert(appDir==='vi-en' ? 'Đã sao chép thông tin liên hệ.' : 'Contact details copied to clipboard.'));
   }
 }
 
@@ -7308,20 +7321,22 @@ function isValidEmail(email){
 }
 
 async function saveContact(){
-  if(!selRelType){ alert('Please select a relationship type.'); return; }
+  if(!selRelType){ alert(appDir==='vi-en' ? 'Hãy chọn một loại mối quan hệ.' : 'Please select a relationship type.'); return; }
   const name=document.getElementById('mcName').value.trim();
   const phone=document.getElementById('mcPhone').value.trim();
   const email=document.getElementById('mcEmail').value.trim().toLowerCase();
-  if(!email){ alert('Please enter an email address.'); return; }
-  if(!isValidEmail(email)){ alert('Please enter a valid email address.'); return; }
-  if(email === (currentUser?.email||'').toLowerCase()){ alert('You cannot add yourself as a contact.'); return; }
+  if(!email){ alert(appDir==='vi-en' ? 'Hãy nhập địa chỉ email.' : 'Please enter an email address.'); return; }
+  if(!isValidEmail(email)){ alert(appDir==='vi-en' ? 'Hãy nhập một địa chỉ email hợp lệ.' : 'Please enter a valid email address.'); return; }
+  if(email === (currentUser?.email||'').toLowerCase()){ alert(appDir==='vi-en' ? 'Bạn không thể thêm chính mình làm liên hệ.' : 'You cannot add yourself as a contact.'); return; }
 
   // Rate limiting check: warn user if they've sent to this person recently
   const lastRequest = friendRequestTimestamps[email] || 0;
   const timeSinceLastRequest = Date.now() - lastRequest;
   if(timeSinceLastRequest < FRIEND_REQUEST_COOLDOWN){
     const minutesLeft = Math.ceil((FRIEND_REQUEST_COOLDOWN - timeSinceLastRequest) / 60000);
-    alert(`You can send another request to this person in ${minutesLeft} minute${minutesLeft>1?'s':''}.`);
+    alert(appDir==='vi-en'
+      ? `Bạn có thể gửi yêu cầu khác đến người này sau ${minutesLeft} phút.`
+      : `You can send another request to this person in ${minutesLeft} minute${minutesLeft>1?'s':''}.`);
     return;
   }
 
@@ -7330,7 +7345,7 @@ async function saveContact(){
     // When editing, check if new email is already used by another contact
     const existingContact = contacts.find(x => x.email === email && x.id !== editingId);
     if(existingContact){
-      alert('You already have a contact with this email address.');
+      alert(appDir==='vi-en' ? 'Bạn đã có một liên hệ với địa chỉ email này.' : 'You already have a contact with this email address.');
       return;
     }
     const c=contacts.find(x=>x.id===editingId);
@@ -7341,7 +7356,7 @@ async function saveContact(){
   } else {
     // Check if this email is already in contacts (prevent duplicates)
     if(contacts.find(x => x.email === email)){
-      alert('You already have a contact with this email address.');
+      alert(appDir==='vi-en' ? 'Bạn đã có một liên hệ với địa chỉ email này.' : 'You already have a contact with this email address.');
       return;
     }
     const newId = generateUniqueContactId();
@@ -8216,7 +8231,9 @@ async function sendFriendRequest(toEmail){
   const timeSinceLastRequest = Date.now() - lastRequest;
   if(timeSinceLastRequest < FRIEND_REQUEST_COOLDOWN){
     const minutesLeft = Math.ceil((FRIEND_REQUEST_COOLDOWN - timeSinceLastRequest) / 60000);
-    _showToast(`Wait ${minutesLeft}m before sending another request to this person`);
+    _showToast(appDir==='vi-en'
+      ? `Chờ ${minutesLeft} phút trước khi gửi yêu cầu khác đến người này`
+      : `Wait ${minutesLeft}m before sending another request to this person`);
     return;
   }
   const req = {
@@ -8245,7 +8262,7 @@ async function sendFriendRequest(toEmail){
       friendRequestTimestamps[normalizedEmail] = Date.now();
       friendRequestHourlyCount++;
       // Confirm to user that request was sent
-      _showToast(`Friend request sent to ${normalizedEmail}`);
+      _showToast(appDir==='vi-en' ? `Đã gửi yêu cầu kết bạn đến ${normalizedEmail}` : `Friend request sent to ${normalizedEmail}`);
 
       // If we already had a contact for this person in 'deleted' state
       // (the recipient previously removed us), flip it to 'pending_acceptance'
@@ -8266,7 +8283,7 @@ async function sendFriendRequest(toEmail){
       }
     } catch(e){
       console.error('Error saving friend request to Firebase:', e);
-      _showToast('Failed to send friend request. Try again.');
+      _showToast(appDir==='vi-en' ? 'Không gửi được yêu cầu kết bạn. Hãy thử lại.' : 'Failed to send friend request. Try again.');
       if(window.Sentry) Sentry.captureException(e);
     }
   } else {
@@ -8312,7 +8329,7 @@ async function setupSentRequestListener(toEmail, requestId){
       // status weirdness (e.g. status was already flipped by another
       // listener path, or the contact entry got rebuilt).
       const displayName = (contact && contact.name) || toEmail;
-      _showToast(`${displayName} accepted your friend request!`);
+      _showToast(appDir==='vi-en' ? `${displayName} đã chấp nhận yêu cầu kết bạn của bạn!` : `${displayName} accepted your friend request!`);
 
       if(contact && contact.status !== 'accepted'){
         contact.status = 'accepted';
@@ -8335,7 +8352,7 @@ async function setupSentRequestListener(toEmail, requestId){
       }
     } else if(data.status === 'denied'){
       const displayName = (contact && contact.name) || toEmail;
-      _showToast(`${displayName} declined your friend request.`);
+      _showToast(appDir==='vi-en' ? `${displayName} đã từ chối yêu cầu kết bạn của bạn.` : `${displayName} declined your friend request.`);
     } else {
       // Unknown status — leave it alone for forward-compatibility.
       return;
@@ -8486,7 +8503,7 @@ async function acceptFriendRequest(id, fromEmail, fromName){
   }
   // Update badge
   updateFriendRequestBadge();
-  _showToast('✅ You\'re now connected with ' + fromName + '!');
+  _showToast(appDir==='vi-en' ? '✅ Bạn đã kết nối với ' + fromName + '!' : '✅ You\'re now connected with ' + fromName + '!');
 }
 
 // ── Deny ───────────────────────────────────────────────
@@ -8535,6 +8552,7 @@ function roomCodeFromEmails(a, b){
 
 function refreshHeader(){
   const c=activeCont(); if(!c) return;
+  const isVI = appDir==='vi-en';
   const r=getRel(c.type);
   const hdrAv=document.getElementById('hdrAv');
   hdrAv.textContent=initialsFor(c);
@@ -8545,13 +8563,28 @@ function refreshHeader(){
   document.getElementById('hdrName').textContent=dispName(c);
   document.getElementById('hdrSub').textContent=relLabel(r);
 
+  // Localize the rel-edit chip ("Edit") and surrounding tooltips
+  const relChip = document.querySelector('.rel-edit-chip');
+  if(relChip){
+    relChip.title = isVI ? 'Sửa liên hệ' : 'Edit contact';
+    relChip.setAttribute('aria-label', isVI ? 'Sửa liên hệ' : 'Edit contact');
+    // Replace the trailing text node with localized label
+    const lastText = [...relChip.childNodes].reverse().find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
+    if(lastText) lastText.textContent = isVI ? ' Sửa' : ' Edit';
+  }
+  const encChip = document.querySelector('.enc-info-chip');
+  if(encChip){
+    encChip.title = isVI ? 'Đã mã hoá' : 'Encrypted';
+    encChip.setAttribute('aria-label', isVI ? 'Thông tin mã hoá' : 'Encryption info');
+  }
+
   // Show/hide the "Connect" button depending on whether contact has an email
   const myEmail = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
   const btn = document.getElementById('btnConnectEmail');
   if(btn){
     if(c.email && myEmail && c.email !== myEmail){
       btn.style.display='flex';
-      btn.title = 'Connect to live session with '+c.email;
+      btn.title = (isVI ? 'Kết nối phiên Live với ' : 'Connect to live session with ')+c.email;
     } else {
       btn.style.display='none';
     }
@@ -8714,6 +8747,31 @@ function updPlaceholder(){
   // Picker subtitle
   const shLbl=document.querySelector('.shlabel');
   if(shLbl) shLbl.textContent=isVI?'Chọn cách nói':'Choose how to say it';
+
+  // Chat header icon-button tooltips/aria-labels
+  const setTitle=(sel,t)=>{ const el=document.querySelector(sel); if(el){ el.title=t; el.setAttribute('aria-label', t); } };
+  setTitle('#btnVideoCall', isVI?'Gọi video':'Video call');
+  setTitle('#btnVoiceCall', isVI?'Gọi thoại':'Voice call');
+  setTitle('#btnMoreContact', isVI?'Thêm':'More');
+  setTitle('#btnConnectEmail', isVI?'Kết nối phiên Live':'Connect live session');
+  setTitle('#plusBtn', isVI?'Mở bộ chọn media':'Open media picker');
+  setTitle('#micBtn', isVI?'Nhấn để ghi âm':'Tap to record a voice note');
+  setTitle('.gear-btn', isVI?'Cài đặt':'Settings');
+  document.querySelectorAll('.req-bell').forEach(b=>{ b.title = isVI?'Thông báo':'Notifications'; b.setAttribute('aria-label', b.title); });
+  // Reply bar close + grammar dismiss aria-labels
+  const replyClose=document.getElementById('replyBarClose');
+  if(replyClose) replyClose.setAttribute('aria-label', isVI?'Hủy trả lời':'Cancel reply');
+  const gcDismiss=document.querySelector('.gc-dismiss');
+  if(gcDismiss) gcDismiss.setAttribute('aria-label', isVI?'Bỏ qua':'Dismiss');
+  // Direct-send button (hover hint)
+  const directBtnEl=document.getElementById('directBtn');
+  if(directBtnEl) directBtnEl.title = isVI?'Gửi đúng như đã gõ, không có tùy chọn':'Send exactly as typed — no options';
+  const sendBtnEl=document.getElementById('sendBtn');
+  if(sendBtnEl) sendBtnEl.title = isVI?'Gửi (Shift+Enter để mở picker)':'Send (Shift+Enter forces the picker)';
+  // GIF search placeholder
+  const gifSearch=document.getElementById('gifSearchInp');
+  if(gifSearch) gifSearch.placeholder = isVI?'Tìm GIF…':'Search GIFs…';
+
   // Re-render sidebar + active chat so text updates immediately
   renderSidebar();
   if(activeId) renderMsgs();
@@ -9623,12 +9681,12 @@ function buildStickerPane(pane){
 async function loadStickers(query){
   const wrap = document.getElementById('stickerGridWrap');
   if(!wrap) return;
-  wrap.innerHTML = '<div class="sticker-loading">Loading stickers…</div>';
+  wrap.innerHTML = `<div class="sticker-loading">${appDir==='vi-en'?'Đang tải sticker…':'Loading stickers…'}</div>`;
 
   // Recent tab — loads instantly from localStorage, no network call
   if(query === '__recent__'){
     const recents = getRecentStickers();
-    if(!recents.length){ wrap.innerHTML = '<div class="sticker-loading">No recently used stickers yet</div>'; return; }
+    if(!recents.length){ wrap.innerHTML = `<div class="sticker-loading">${appDir==='vi-en'?'Chưa có sticker nào dùng gần đây':'No recently used stickers yet'}</div>`; return; }
     wrap.innerHTML = `<div class="sticker-grid">${recents.map(s=>
       `<div class="sticker-item" data-gif="${esc(s.full)}" data-preview="${esc(s.preview)}"><img src="${esc(s.preview)}" alt="sticker" loading="lazy"/></div>`
     ).join('')}</div>`;
@@ -9646,7 +9704,7 @@ async function loadStickers(query){
     const res = await fetch(url);
     const data = await res.json();
     const results = data.results || [];
-    if(!results.length){ wrap.innerHTML = '<div class="sticker-loading">No stickers found</div>'; return; }
+    if(!results.length){ wrap.innerHTML = `<div class="sticker-loading">${appDir==='vi-en'?'Không tìm thấy sticker nào':'No stickers found'}</div>`; return; }
     wrap.innerHTML = `<div class="sticker-grid">${results.map(r=>{
       const preview = r.media_formats?.tinygif?.url || r.media_formats?.gif?.url || '';
       const full = r.media_formats?.gif?.url || preview;
@@ -9659,14 +9717,14 @@ async function loadStickers(query){
       });
     });
   }catch(err){
-    wrap.innerHTML = '<div class="sticker-loading">Couldn\'t load stickers</div>';
+    wrap.innerHTML = `<div class="sticker-loading">${appDir==='vi-en'?'Không thể tải sticker':"Couldn't load stickers"}</div>`;
   }
 }
 
 async function fetchGifs(query){
   const grid = document.getElementById('gifGrid');
   if(!grid) return;
-  grid.innerHTML = '<div class="gif-loading">Loading…</div>';
+  grid.innerHTML = `<div class="gif-loading">${appDir==='vi-en'?'Đang tải…':'Loading…'}</div>`;
   try{
     const endpoint = query.trim()
       ? `${TENOR_BASE}/search?q=${encodeURIComponent(query)}&key=${TENOR_KEY}&limit=20&media_filter=gif`
@@ -9674,7 +9732,7 @@ async function fetchGifs(query){
     const res = await fetch(endpoint);
     const data = await res.json();
     const results = data.results || [];
-    if(!results.length){ grid.innerHTML = '<div class="gif-loading">No GIFs found</div>'; return; }
+    if(!results.length){ grid.innerHTML = `<div class="gif-loading">${appDir==='vi-en'?'Không tìm thấy GIF nào':'No GIFs found'}</div>`; return; }
     grid.innerHTML = results.map(r=>{
       const tiny = r.media_formats?.tinygif?.url || r.media_formats?.gif?.url || '';
       const full = r.media_formats?.gif?.url || tiny;
@@ -9686,7 +9744,7 @@ async function fetchGifs(query){
       item.addEventListener('click', ()=>{ sendGif(item.dataset.gif || item.dataset.preview); closeMediaPop(); });
     });
   }catch(err){
-    grid.innerHTML = '<div class="gif-loading">Couldn\'t load GIFs</div>';
+    grid.innerHTML = `<div class="gif-loading">${appDir==='vi-en'?'Không thể tải GIF':"Couldn't load GIFs"}</div>`;
   }
 }
 
@@ -9975,7 +10033,7 @@ function sendAsIs(text){
   const c = activeCont();
   if(!c) return;
   if(!c.msgs) c.msgs = []; // Ensure msgs array exists
-  if(c.blocked){ alert('You have blocked this contact. Unblock them to message.'); return; }
+  if(c.blocked){ alert(appDir==='vi-en' ? 'Bạn đã chặn liên hệ này. Hãy bỏ chặn để nhắn tin.' : 'You have blocked this contact. Unblock them to message.'); return; }
   if(c.status === 'deleted'){ _explainContactRemoved(c); return; }
   const now = new Date();
   const reply = _replyState ? { id: _replyState.id, text: _replyState.text } : null;
@@ -10001,7 +10059,7 @@ async function sendOptimistic(text, direction){
   const c = activeCont();
   if(!c) { console.log(`[sendOptimistic] No active contact!`); return; }
   if(!c.msgs) c.msgs = []; // Ensure msgs array exists
-  if(c.blocked){ console.log(`[sendOptimistic] Contact is blocked`); alert('You have blocked this contact. Unblock them to message.'); return; }
+  if(c.blocked){ console.log(`[sendOptimistic] Contact is blocked`); alert(appDir==='vi-en' ? 'Bạn đã chặn liên hệ này. Hãy bỏ chặn để nhắn tin.' : 'You have blocked this contact. Unblock them to message.'); return; }
   if(c.status === 'deleted'){ _explainContactRemoved(c); return; }
   const now = new Date();
   const isMe = true;
@@ -10053,7 +10111,7 @@ async function sendWithLearnedTone(text, direction, learnedTone){
   const c = activeCont();
   if(!c) return;
   if(!c.msgs) c.msgs = []; // Ensure msgs array exists
-  if(c.blocked){ alert('You have blocked this contact. Unblock them to message.'); return; }
+  if(c.blocked){ alert(appDir==='vi-en' ? 'Bạn đã chặn liên hệ này. Hãy bỏ chặn để nhắn tin.' : 'You have blocked this contact. Unblock them to message.'); return; }
   if(c.status === 'deleted'){ _explainContactRemoved(c); return; }
   const now = new Date();
   const isMe = true;
@@ -10784,8 +10842,9 @@ function finalizeStreamedSheet(result, original){
   // Update the "You said" header with the detected emotion
   const emo = result.detectedEmotion || '';
   const isVI = appDir === 'vi-en';
+  const emoLbl = emo ? (emotionLabels[emo.toLowerCase()]?.[isVI?'vi':'en'] || emo) : '';
   document.getElementById('shSaid').innerHTML =
-    `<span class="sh-label">${isVI?'Bạn đã nói':'You said'}</span><strong>${esc(original)}</strong>${emo?`<span class="shemo">${esc(emo)}</span>`:''}`;
+    `<span class="sh-label">${isVI?'Bạn đã nói':'You said'}</span><strong>${esc(original)}</strong>${emoLbl?`<span class="shemo">${esc(emoLbl)}</span>`:''}`;
 }
 
 // Slang dismissal — stored in localStorage so it persists across sessions
@@ -11048,15 +11107,16 @@ function buildEquivBanner(phraseEntry, phraseKey, scopeKey){
   const equiv = getEquivTranslation(phraseEntry);
   const isViEn = appDir === 'vi-en';
   const headline = isViEn
-    ? `There's no word-for-word English for <strong>"${esc(phraseEntry.phrase)}"</strong> — but <strong>"${esc(equiv)}"</strong> means the same thing.`
+    ? `Không có từ tiếng Anh tương đương cho <strong>"${esc(phraseEntry.phrase)}"</strong>. <strong>"${esc(equiv)}"</strong> mang cùng ý nghĩa.`
     : `There's no word-for-word Vietnamese for <strong>"${esc(phraseEntry.phrase)}"</strong> — but <strong>"${esc(equiv)}"</strong> means the same thing.`;
+  const dismissLbl = isViEn ? 'Bỏ qua, đừng hiện lại' : 'Dismiss, never show again';
 
   const banner = document.createElement('div');
   banner.className = 'eeb';
   banner.innerHTML =
     `<div class="eeb-headline">${headline}</div>`
-    + `<div class="eeb-reason">${esc(phraseEntry.reason)}</div>`
-    + `<button class="eeb-dismiss-btn">Dismiss, never show again</button>`;
+    + `<div class="eeb-reason">${esc(pickUi(phraseEntry.reason))}</div>`
+    + `<button class="eeb-dismiss-btn">${esc(dismissLbl)}</button>`;
 
   banner.querySelector('.eeb-dismiss-btn')?.addEventListener('click', () => {
     setEquivDismissed(phraseKey, scopeKey);
@@ -11070,7 +11130,9 @@ function buildCulturalWarningsBlock(cws){
   const isVI = appDir === 'vi-en';
   const dismissLabel = isVI ? "Đừng cảnh báo tôi về câu này nữa" : "Don't warn me about this again";
   const showAgainLabel = isVI ? "Hiển thị lại lần sau" : "Show this again next time";
-  const tm = {kinship:'Kinship',face_threat:'Face-threatening',idiom:'Idiom',slang:'Slang',cultural_concept:'Cultural concept',dish_name:'Dish name',other:'Cultural note'};
+  const tm = isVI
+    ? {kinship:'Quan hệ họ hàng',face_threat:'Dễ mất mặt',idiom:'Thành ngữ',slang:'Tiếng lóng',cultural_concept:'Khái niệm văn hóa',dish_name:'Tên món ăn',other:'Lưu ý văn hóa'}
+    : {kinship:'Kinship',face_threat:'Face-threatening',idiom:'Idiom',slang:'Slang',cultural_concept:'Cultural concept',dish_name:'Dish name',other:'Cultural note'};
 
   // Filter out phrases the user has already dismissed
   const visible = cws.filter(w => {
@@ -11412,9 +11474,10 @@ function showSheet(result, original){
 
   const emo=result.detectedEmotion||'';
   const isVI=appDir==='vi-en';
+  const emoLbl=emo?(emotionLabels[emo.toLowerCase()]?.[isVI?'vi':'en']||emo):'';
   document.getElementById('shSaid').innerHTML=
     `<span class="sh-label">${isVI?'Bạn đã nói':'You said'}</span><strong>${esc(original)}</strong>`
-    +(emo?`<span class="shemo">${esc(emo)}</span>`:'');
+    +(emoLbl?`<span class="shemo">${esc(emoLbl)}</span>`:'');
 
   const list=document.getElementById('optList');
   list.innerHTML='';
@@ -12183,7 +12246,7 @@ async function syncToFirebase(msg){
   } else if(roomCode){
     // If offline, don't send (live sessions require real-time connection)
     if(!isOnline){
-      _showToast('Cannot send to live session while offline');
+      _showToast(appDir==='vi-en' ? 'Không thể gửi vào phiên Live khi đang ngoại tuyến' : 'Cannot send to live session while offline');
       return;
     }
     const msgRef = firebaseDb.ref(`rooms/${roomCode}/messages`).push(msgData);
@@ -12354,6 +12417,11 @@ function showGrammarChip(corrected){
   const chip = document.getElementById('grammarChip');
   const txt  = document.getElementById('gcText');
   if(!chip || !txt) return;
+  const isVI = appDir === 'vi-en';
+  const lbl = chip.querySelector('.gc-label');
+  const useBtn = chip.querySelector('.gc-use');
+  if(lbl)    lbl.textContent    = isVI ? 'Gợi ý ngữ pháp:' : 'Grammar suggestion:';
+  if(useBtn) useBtn.textContent  = isVI ? 'Dùng' : 'Use it';
   txt.textContent = corrected;
   chip.classList.remove('hidden');
 }
@@ -12742,11 +12810,12 @@ function onStyleToggleChange(checked){
 
 function renderStylePanel(){
   const el = document.getElementById('stylePanelContent');
+  const isVI = appDir === 'vi-en';
   try{
     const prefs = JSON.parse(localStorage.getItem('pick_prefs')||'[]');
     const errors = JSON.parse(localStorage.getItem('pattern_errors')||'[]');
     if(!prefs.length && !errors.length){
-      el.innerHTML = '<div class="style-empty">Keep using the app — your style will start to appear here after a few conversations.</div>';
+      el.innerHTML = `<div class="style-empty">${isVI?'Hãy tiếp tục dùng ứng dụng. Phong cách của bạn sẽ xuất hiện ở đây sau vài cuộc trò chuyện.':'Keep using the app — your style will start to appear here after a few conversations.'}</div>`;
       return;
     }
     // Group picks by relationship
@@ -12763,7 +12832,9 @@ function renderStylePanel(){
     }).join('');
     const errCount = errors.length;
     const errNote = errCount
-      ? `<div class="style-note">The app has self-corrected its pattern read ${errCount} time${errCount!==1?'s':''} based on your choices.</div>`
+      ? `<div class="style-note">${isVI
+          ? `Ứng dụng đã tự điều chỉnh cách đọc phong cách ${errCount} lần dựa trên lựa chọn của bạn.`
+          : `The app has self-corrected its pattern read ${errCount} time${errCount!==1?'s':''} based on your choices.`}</div>`
       : '';
     // Auto-learned phrases (graduated from candidates after LEARN_THRESHOLD uses)
     const learnedDict = JSON.parse(localStorage.getItem('learned_dictionary')||'{}');
@@ -12780,16 +12851,16 @@ function renderStylePanel(){
 
     const abbrevNote = abbrevEntries.length
       ? `<div class="style-note" style="margin-top:10px;border-left:3px solid var(--blue,#007AFF);padding-left:8px;">
-           <strong>Abbreviations (${abbrevEntries.length})</strong><br>
-           Text shortcuts you've learned:<br>
+           <strong>${isVI?'Viết tắt':'Abbreviations'} (${abbrevEntries.length})</strong><br>
+           ${isVI?'Các phím tắt văn bản bạn đã học:':"Text shortcuts you've learned:"}<br>
            ${abbrevEntries.map(e=>`<code style="font-size:11px;background:var(--chip);padding:1px 5px;border-radius:4px;">${esc(e.text)}</code>`).join(' ')}
          </div>`
       : '';
 
     const learnedNote = regularEntries.length
       ? `<div class="style-note" style="margin-top:10px;border-left:3px solid var(--green,#34c759);padding-left:8px;">
-           <strong>Learned phrases (${regularEntries.length})</strong><br>
-           The app now answers these without calling the AI:<br>
+           <strong>${isVI?'Cụm từ đã học':'Learned phrases'} (${regularEntries.length})</strong><br>
+           ${isVI?'Ứng dụng giờ trả lời các cụm này mà không cần gọi AI:':'The app now answers these without calling the AI:'}<br>
            ${regularEntries.map(e=>`<code style="font-size:11px;background:var(--chip);padding:1px 5px;border-radius:4px;">${esc(e.text.slice(0,50))}</code> ×${e.count}`).join('<br>')}
          </div>`
       : '';
@@ -12799,14 +12870,14 @@ function renderStylePanel(){
     const hotCandidates = unknownLog.filter(e => e.count >= 2).sort((a,b)=>b.count-a.count).slice(0,5);
     const unknownNote = hotCandidates.length
       ? `<div class="style-note" style="margin-top:10px;border-left:3px solid var(--gold);padding-left:8px;">
-           <strong>Learning (${hotCandidates.length} phrase${hotCandidates.length!==1?'s':''})</strong><br>
-           Seen multiple times — will auto-learn after ${LEARN_THRESHOLD} uses:<br>
+           <strong>${isVI?'Đang học':'Learning'} (${hotCandidates.length} ${isVI?'cụm':`phrase${hotCandidates.length!==1?'s':''}`})</strong><br>
+           ${isVI?`Đã thấy nhiều lần, sẽ tự học sau ${LEARN_THRESHOLD} lần dùng:`:`Seen multiple times — will auto-learn after ${LEARN_THRESHOLD} uses:`}<br>
            ${hotCandidates.map(e=>`<code style="font-size:11px;background:var(--chip);padding:1px 5px;border-radius:4px;">${esc(e.text.slice(0,50))}</code> ×${e.count}/${LEARN_THRESHOLD}`).join('<br>')}
          </div>`
       : '';
     el.innerHTML = rows + errNote + abbrevNote + learnedNote + unknownNote;
   }catch(_){
-    el.innerHTML = '<div class="style-empty">Nothing recorded yet.</div>';
+    el.innerHTML = `<div class="style-empty">${isVI?'Chưa có gì được ghi lại.':'Nothing recorded yet.'}</div>`;
   }
 }
 
