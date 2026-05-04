@@ -33,6 +33,11 @@ export interface PronounSignals {
   // 0.5–0.8 just appends evidence to the system prompt.
   confidence: number;
   matchedTokens: string[];
+  // True when em+anh or em+chị are both present without a vocative marker
+  // and without contact memory — the speaker is genuinely ambiguous from
+  // surface text alone. Caller should inject buildAmbiguousPronounPrompt
+  // instead of buildPronounContextPrompt.
+  ambiguousPair: boolean;
 }
 
 export interface PronounVerification {
@@ -120,6 +125,7 @@ export function detectPronounSignals(
   let confidence = 0;
   let speakerGender: 'm' | 'f' | null = null;
   let otherGender: 'm' | 'f' | null = null;
+  let ambiguousPair = false;
 
   // 1. Strongest signal: con/cháu + bác/cô/chú/ông/bà → elder
   const ELDER_OTHER = ['bác', 'cô', 'chú', 'ông', 'bà'] as const;
@@ -164,26 +170,26 @@ export function detectPronounSignals(
       confidence = 0.9;
       speakerGender = 'm';
     } else {
-      // Word-order heuristic: in casual VN, the first first-person reference
-      // tends to come before the second-person one. Fragile but good enough
-      // when no vocative is present.
-      const firstEm = lower.indexOf('em');
-      const firstAnh = lower.indexOf('anh');
-      if (firstEm < firstAnh) {
-        self = 'em';
-        other = 'anh';
-        rel = 'senior';
-        otherGender = 'm';
-      } else {
-        self = 'anh';
-        other = 'em';
-        rel = 'junior';
-        speakerGender = 'm';
-      }
-      confidence = 0.65;
+      // No vocative, no memory. The speaker is genuinely ambiguous from
+      // surface text alone — Vietnamese SVO puts the grammatical subject
+      // first regardless of who is speaking, so word-order heuristics
+      // ("first pronoun must be the speaker") are wrong ~50% of the time.
+      // Bug example: "Mà anh rủ em đi chơi 2 ngày rồi lúc về em về 1 mình hà"
+      // is sent by em (complaining that anh invited her then ditched her),
+      // but the old heuristic picked self=anh because firstAnh < firstEm,
+      // producing "I invited you and you went home alone" — exact inversion.
+      // We now emit low confidence + ambiguousPair so the caller injects
+      // a dedicated ambiguous-pronoun prompt block instead of a wrong pair.
+      ambiguousPair = true;
+      rel = 'senior';
+      otherGender = 'm';
+      confidence = 0.4;
       if (PARTNER_MARKERS_RE.test(lower)) {
         rel = 'partner';
-        confidence = 0.7;
+        // Romantic frame is real evidence for the relationship register,
+        // but does NOT pin direction ("em yêu anh" and "anh yêu em" are
+        // both common). Keep ambiguousPair=true; bump confidence a bit.
+        confidence = 0.55;
       }
     }
   }
@@ -202,20 +208,13 @@ export function detectPronounSignals(
       confidence = 0.9;
       speakerGender = 'f';
     } else {
-      const firstEm = lower.indexOf('em');
-      const firstChi = lower.indexOf('chị');
-      if (firstEm < firstChi) {
-        self = 'em';
-        other = 'chị';
-        rel = 'senior';
-        otherGender = 'f';
-      } else {
-        self = 'chị';
-        other = 'em';
-        rel = 'junior';
-        speakerGender = 'f';
-      }
-      confidence = 0.65;
+      // Same logic as em+anh no-vocative branch above: the speaker is
+      // ambiguous from surface text. Emit low confidence + ambiguousPair
+      // so the caller injects the ambiguous-pronoun prompt block.
+      ambiguousPair = true;
+      rel = 'senior';
+      otherGender = 'f';
+      confidence = 0.4;
     }
   }
   // 6. tôi → formal (with whatever neutral other we can find)
@@ -314,6 +313,9 @@ export function detectPronounSignals(
       }
     }
     confidence = Math.max(confidence, 0.9);
+    // Memory pins the direction — no longer ambiguous regardless of how
+    // the in-text branch reached its tentative pick.
+    ambiguousPair = false;
   }
 
   return {
@@ -324,6 +326,7 @@ export function detectPronounSignals(
     formalityLevel: formality,
     confidence,
     matchedTokens: matched,
+    ambiguousPair,
   };
 }
 
@@ -412,6 +415,39 @@ export function buildPronounContextPrompt(signals: PronounSignals): string {
   } else {
     lines.push(
       'Anchor your translation to this evidence. The detected pair takes priority over generic relationship guidance when they conflict.'
+    );
+  }
+  return lines.join('\n');
+}
+
+// Build a prompt block for the genuinely-ambiguous case: the source has
+// both anh+em (or em+chị) but no vocative marker and no contact memory,
+// so the speaker cannot be determined from surface text alone. Tells the
+// model not to default to "first pronoun = speaker" and gives it concrete
+// disambiguation evidence to weigh.
+export function buildAmbiguousPronounPrompt(signals: PronounSignals): string {
+  if (!signals.ambiguousPair) return '';
+
+  const isPartner = signals.inferredRelationship === 'partner';
+  const otherPronoun =
+    signals.otherPronoun ||
+    (signals.inferredGender.other === 'f' ? 'chị' : 'anh');
+
+  const lines: string[] = [
+    '',
+    '# AMBIGUOUS PRONOUN PAIR (no vocative, no established memory):',
+    `- The Vietnamese source contains both "em" and "${otherPronoun}", but neither is marked as the addressee (no "X ơi" vocative) and we have no prior conversation memory to lock the speaker's identity.`,
+    '- CRITICAL: in Vietnamese SVO, the FIRST pronoun in the sentence is just the grammatical subject — it is NOT a reliable indicator of who is speaking. The same string "anh VERB em" can mean either "I (em) am reporting that anh did VERB to me" or "I (anh) did VERB to em" — opposite speakers.',
+    '- Disambiguate from CONTENT, not surface order:',
+    '  • Who is reporting the experience or feeling?',
+    '  • Whose situation is being described?',
+    '  • Who is the natural narrator of a 1v1 chat message in this tone?',
+    '  • Is there an action-verb directionality that only makes sense one way?',
+    '- TIE-BREAKER: pick the reading that is consistent across ALL clauses of the message. Do NOT flip the speaker mid-message. If interpretation A makes one clause coherent but produces a contradiction in another clause, interpretation B is correct.',
+  ];
+  if (isPartner) {
+    lines.push(
+      '- Romantic register hint: intimacy markers (yêu/nhớ/thương/cưng) suggest a partner relationship. Use this for tone/register only — it does NOT pin direction (both "em yêu anh" and "anh yêu em" are common).'
     );
   }
   return lines.join('\n');

@@ -3032,14 +3032,15 @@ function getContactPronounMemory(contactId){
   return m;
 }
 
-// One-time migration: the pronoun-resolver word-order heuristic before
-// commit 47077ea could write inverted pronoun pairs to contact profiles
-// (e.g., when a partner who calls themselves "em" sent "Anh nịnh em thôi"
-// the detector incorrectly stored selfPronoun: "anh"). After the fix,
-// stored memory might still be poisoned. This migration clears all
-// pronoun memory once per device so it rebuilds with the corrected
-// detector. Runs at script load, then never again.
-const PRONOUN_MEMORY_SCHEMA_VERSION = 2;
+// One-time migration: the pronoun-resolver word-order heuristic could write
+// inverted pronoun pairs to contact profiles when there was no vocative
+// marker — it picked self/other based purely on which substring came first
+// in the sentence, which is wrong ~50% of the time. The bug recurred at
+// schema v2: example "Mà anh rủ em đi chơi 2 ngày..." (sent by em
+// complaining about anh) was stored as self=anh because firstAnh < firstEm.
+// v3 drops the heuristic; this migration clears any v2-poisoned memory so
+// it rebuilds against the new ambiguous-pair logic. Runs once per device.
+const PRONOUN_MEMORY_SCHEMA_VERSION = 3;
 function migratePronounMemoryV2(){
   try{
     const currentVersion = parseInt(localStorage.getItem('pronoun_memory_schema') || '1', 10);

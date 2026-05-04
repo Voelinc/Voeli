@@ -15,6 +15,7 @@ import { detectColloquialTerms } from './vietnamese-colloquial-terms';
 import {
   detectPronounSignals,
   buildPronounContextPrompt,
+  buildAmbiguousPronounPrompt,
   fixPronounPairs,
   type RelationshipKey,
 } from './vietnamese-pronoun-resolver';
@@ -929,8 +930,13 @@ export async function handleTranslate(
   // Append pronoun evidence at medium confidence (or always, if we have any
   // matched signals — the model benefits from the explicit "speaker says em,
   // calls listener anh" framing even when the relationship was already correct).
-  if (pronounSignals && pronounSignals.confidence >= 0.5) {
+  // Ambiguous-pair cases (em+anh or em+chị with no vocative and no memory) get
+  // a different prompt block that tells the model to disambiguate from content
+  // instead of trusting a wrong-50%-of-the-time pair.
+  if (pronounSignals && pronounSignals.confidence >= 0.5 && !pronounSignals.ambiguousPair) {
     systemPrompt += buildPronounContextPrompt(pronounSignals);
+  } else if (pronounSignals && pronounSignals.ambiguousPair) {
+    systemPrompt += buildAmbiguousPronounPrompt(pronounSignals);
   }
 
   // Detect Vietnamese topic-comment structures (e.g., "Quyển sách này tôi đọc
@@ -1171,9 +1177,14 @@ export async function handleQuick(
     if (ambiguityEnhancement) systemPrompt += ambiguityEnhancement;
   }
 
-  // Pronoun evidence block (when we have any detected signal).
-  if (pronounSignals && pronounSignals.confidence >= 0.5) {
+  // Pronoun evidence block (when we have any detected signal). Ambiguous-pair
+  // cases (em+anh or em+chị with no vocative and no memory) get a different
+  // block that asks the model to disambiguate from content rather than trust
+  // a wrong-50%-of-the-time pair.
+  if (pronounSignals && pronounSignals.confidence >= 0.5 && !pronounSignals.ambiguousPair) {
     systemPrompt += buildPronounContextPrompt(pronounSignals);
+  } else if (pronounSignals && pronounSignals.ambiguousPair) {
+    systemPrompt += buildAmbiguousPronounPrompt(pronounSignals);
   }
 
   // Topic-comment (VI→EN).
