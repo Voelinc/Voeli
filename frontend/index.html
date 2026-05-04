@@ -319,6 +319,9 @@ body.is-offline::before{
   color:var(--muted);transition:background .15s,color .15s;margin-left:2px;}
 .rel-edit-chip:hover{background:var(--chip);color:var(--ink);}
 .rel-edit-chip svg{opacity:.6;}
+.enc-info-chip{display:inline-flex;align-items:center;justify-content:center;padding:3px;margin-left:4px;border-radius:999px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;-webkit-appearance:none;}
+.enc-info-chip:hover{background:var(--chip);color:var(--ink);}
+.enc-info-chip svg{opacity:.7;}
 
 /* Relationship editor overlay */
 #relEditOverlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:700;
@@ -1428,6 +1431,9 @@ body.is-offline::before{
             <button class="rel-edit-chip" onclick="openModal(activeId)" title="Edit contact" aria-label="Edit contact">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               Edit
+            </button>
+            <button class="enc-info-chip" onclick="showEncryptionInfo()" title="Encrypted" aria-label="Encryption info">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             </button>
           </div>
         </div>
@@ -12615,6 +12621,29 @@ function openSettings(){
 function closeSettings(){
   document.getElementById('settingsOverlay').style.display = 'none';
 }
+
+function showEncryptionInfo(){
+  const isVI = appDir === 'vi-en';
+  const t = (id, en, vi) => { const el = document.getElementById(id); if(el) el.textContent = isVI ? vi : en; };
+  t('encInfoTitle',
+    'Encrypted messaging',
+    'Tin nhắn được mã hóa');
+  t('encInfoP1',
+    "Your messages and translations are encrypted before they're stored. Voeli's database holds only ciphertext, never your plain message text.",
+    'Tin nhắn và bản dịch của bạn được mã hóa trước khi lưu. Cơ sở dữ liệu của Voeli chỉ giữ dữ liệu đã mã hóa, không bao giờ giữ nội dung tin nhắn gốc.');
+  t('encInfoP2',
+    "Plain text briefly passes through Voeli's translation server while it's being translated and encrypted. It's processed in memory and not retained or logged.",
+    'Nội dung gốc đi qua máy chủ dịch của Voeli trong thời gian ngắn để được dịch và mã hóa. Nội dung được xử lý trong bộ nhớ và không bị lưu lại hoặc ghi log.');
+  t('encInfoP3',
+    'Voeli uses encryption with keys we manage, so your messages can be translated as they pass through.',
+    'Voeli dùng mã hóa với khóa do chúng tôi quản lý, nhờ vậy tin nhắn của bạn có thể được dịch khi đi qua máy chủ.');
+  t('encInfoClose', 'Close', 'Đóng');
+  document.getElementById('encInfoOverlay').style.display = 'flex';
+}
+
+function closeEncInfo(){
+  document.getElementById('encInfoOverlay').style.display = 'none';
+}
 function onGrammarToggleChange(checked){
   localStorage.setItem('grammar_check_on', checked ? 'true' : 'false');
   if(!checked) hideGrammarChip();
@@ -12845,5 +12874,20 @@ try {
     </div>
   </div>
 </div>
+
+<!-- Encryption info sheet, opened from the lock chip in the chat header. -->
+<div id="encInfoOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)closeEncInfo()">
+  <div style="background:var(--panel);border-radius:14px;padding:22px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--blue);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <h2 id="encInfoTitle" style="font-size:18px;font-weight:600;margin:0;">Encrypted messaging</h2>
+    </div>
+    <p id="encInfoP1" style="font-size:14px;line-height:1.55;color:var(--ink);margin:0 0 12px;"></p>
+    <p id="encInfoP2" style="font-size:14px;line-height:1.55;color:var(--ink);margin:0 0 12px;"></p>
+    <p id="encInfoP3" style="font-size:14px;line-height:1.55;color:var(--muted);margin:0 0 18px;"></p>
+    <button id="encInfoClose" onclick="closeEncInfo()" style="width:100%;padding:12px;border-radius:10px;border:none;background:var(--blue);color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;-webkit-appearance:none;">Close</button>
+  </div>
+</div>
+
 </body>
 </html>
