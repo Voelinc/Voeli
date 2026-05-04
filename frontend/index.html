@@ -1710,6 +1710,9 @@ body.is-offline::before{
         <button class="cact" id="actReadReceipts" onclick="toggleReadReceipts()">
           <span class="cact-ico">✓✓</span><span class="cact-lbl">Read Receipts</span>
         </button>
+        <button class="cact cact-danger" id="actReport" style="grid-column:1/-1;" onclick="reportContact()">
+          <span class="cact-ico">⚑</span><span class="cact-lbl">Report</span>
+        </button>
       </div>
     </div>
     <div class="mactions" id="mActions"></div>
@@ -7120,6 +7123,8 @@ function _refreshActionGrid(c){
   rr.classList.toggle('active', readReceiptsOn);
   rr.querySelector('.cact-ico').textContent = readReceiptsOn ? '✓✓' : '✓';
   rr.querySelector('.cact-lbl').textContent = isVI ? 'Xác nhận đã đọc' : 'Read Receipts';
+  const rep = document.getElementById('actReport');
+  if(rep) rep.querySelector('.cact-lbl').textContent = isVI ? 'Báo cáo' : 'Report';
 }
 
 async function toggleContactFlag(flag){
@@ -9042,6 +9047,47 @@ function deleteMessage(msgId){
     firebaseDb.ref(`dms/${c.dmRoomId}/messages/${msg.id}/deleted`).set(true).catch(err => {
       console.warn('[deleteMessage] Failed to sync deletion:', err);
     });
+  }
+}
+
+async function reportContact(){
+  if(!editingId) return;
+  const c = contacts.find(x=>x.id===editingId);
+  if(!c) return;
+  const isVI = appDir==='vi-en';
+  if(!firebaseDb || !currentUser){
+    alert(isVI?'Vui lòng đăng nhập để báo cáo':'Please sign in to report');
+    return;
+  }
+  const reasons = isVI
+    ? ['Spam','Quấy rối','Nội dung phản cảm','Lừa đảo','Khác']
+    : ['Spam','Harassment','Inappropriate','Scam','Other'];
+  const promptMsg = isVI
+    ? `Báo cáo ${c.name}?\n\nLý do: ${reasons.join(' / ')}`
+    : `Report ${c.name}?\n\nReason: ${reasons.join(' / ')}`;
+  const reason = prompt(promptMsg, reasons[0]);
+  if(reason === null) return;
+  const reportedUid = await getOtherParticipantUid(c.dmRoomId).catch(()=>null);
+  if(!reportedUid){
+    alert(isVI?'Không thể báo cáo: thiếu thông tin liên hệ':'Could not report: contact info missing');
+    return;
+  }
+  const reportId = `r_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+  const payload = {
+    reporterUid: currentUser.uid,
+    reportedUid,
+    kind: 'contact',
+    contactName: (c.name||'').slice(0,100),
+    reason: (reason||'').slice(0,200),
+    ts: Date.now()
+  };
+  if(c.dmRoomId) payload.roomId = c.dmRoomId;
+  try {
+    await firebaseDb.ref(`reports/${reportId}`).set(payload);
+    alert(isVI?'Đã gửi báo cáo. Cảm ơn bạn.':'Report submitted. Thank you.');
+  } catch(err){
+    if(window.Sentry) Sentry.captureException(err);
+    alert(isVI?'Không thể gửi báo cáo':'Could not submit report');
   }
 }
 
