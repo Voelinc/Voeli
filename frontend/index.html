@@ -1245,7 +1245,12 @@ body.is-offline::before{
   .sidebar { position: absolute !important; inset: 0 !important; width: 100% !important; min-width: 100% !important; flex-direction: column !important; }
   .cpanel { position: absolute !important; inset: 0 !important; width: 100% !important; flex-direction: column !important; }
   #profilePanel { position: absolute !important; inset: 0 !important; width: 100% !important; flex-direction: column !important; }
-  #bottomNav { flex-shrink: 0 !important; height: calc(60px + env(safe-area-inset-bottom)) !important; border-top: 1px solid var(--line) !important; background: var(--panel) !important; display: flex !important; width: 100% !important; padding: 0 calc(18px + env(safe-area-inset-right)) env(safe-area-inset-bottom) calc(18px + env(safe-area-inset-left)) !important; box-sizing: border-box !important; }
+  #bottomNav { flex-shrink: 0 !important; height: calc(48px + env(safe-area-inset-bottom)) !important; border-top: 1px solid var(--line) !important; background: var(--panel) !important; display: flex !important; width: 100% !important; padding: 0 calc(18px + env(safe-area-inset-right)) env(safe-area-inset-bottom) calc(18px + env(safe-area-inset-left)) !important; box-sizing: border-box !important; }
+  /* Tighten tab buttons against the bottom of the bar's content area so the
+     labels sit just above the iOS home-indicator safe area, not floating
+     mid-bar with empty white below. The 6px bottom-padding gives a hair of
+     breathing room above the safe-area edge. */
+  .nav-btn { padding: 0 0 6px 0 !important; justify-content: flex-end !important; }
 
   /* Top-right "signed in as" pill once authed */
   .auth-pill{display:flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;
