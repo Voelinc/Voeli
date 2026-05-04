@@ -12710,43 +12710,52 @@ try {
   </div>
 </div>
 <script>
-// Snap the bottom nav to the physical screen bottom on iOS PWAs in non-cover
-// mode. Detection uses the gap between screen.height (physical) and
-// innerHeight (layout viewport): on an iPhone with a home indicator in
-// non-cover mode, this gap is ~93px (Dynamic Island ~59 + home indicator
-// ~34). In cover mode the gap is 0. iPhone SE / older iPhones have no
-// safe-area zones, so the gap is also small.
-//
-// gap > 50 reliably picks out the "iPhone with home indicator, non-cover
-// mode" case across modern iPhones (X, 11, 12, 13, 14, 15+). When that's
-// true we translate the bar down 34px (the bottom safe-area inset) and
-// shrink #appContent padding-bottom in lock-step so content still meets
-// the bar's visual top.
-(function snapBottomNav() {
-  function apply() {
+// Diagnostic only. Reverts any nav transform and writes the actual viewport
+// numbers into a small overlay so we can see exactly what iOS reports on
+// the user's device. Once the cause is identified this whole block will be
+// removed.
+(function diag() {
+  function readEnv(side) {
+    var probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;height:env(safe-area-inset-' + side + ')';
+    document.body.appendChild(probe);
+    var v = parseFloat(getComputedStyle(probe).height) || 0;
+    probe.remove();
+    return v;
+  }
+  function show() {
     var nav = document.getElementById('bottomNav');
+    if (nav) nav.style.transform = '';
     var content = document.getElementById('appContent');
-    if (!nav) return;
-    nav.style.transform = '';
     if (content) content.style.paddingBottom = '';
-    var isIOS = /iPhone|iPad|iPod/.test(navigator.platform || '') || /iPhone|iPad|iPod/.test(navigator.userAgent || '');
-    if (!isIOS) return;
-    var sh = Math.max(window.screen.height || 0, window.screen.width || 0);
+    var sh = window.screen ? (window.screen.height || 0) : 0;
+    var sw = window.screen ? (window.screen.width || 0) : 0;
     var ih = window.innerHeight || 0;
-    var gap = sh - ih;
-    // gap > 50 → iPhone with home indicator running in non-cover mode.
-    if (gap > 50 && gap < 200) {
-      nav.style.transform = 'translateY(34px)';
-      if (content) content.style.setProperty('padding-bottom', '16px', 'important');
-    }
+    var iw = window.innerWidth || 0;
+    var envT = readEnv('top');
+    var envB = readEnv('bottom');
+    var standalone = (window.navigator && window.navigator.standalone) ? 'pwa' : 'safari';
+    var box = document.getElementById('voeliDiag') || (function(){
+      var d = document.createElement('div');
+      d.id = 'voeliDiag';
+      d.style.cssText = 'position:fixed;top:60px;left:8px;right:8px;background:#ffeb3b;color:#000;font:12px/1.3 monospace;padding:8px;border:2px solid #f00;z-index:99999;border-radius:6px;white-space:pre;';
+      document.body.appendChild(d);
+      return d;
+    })();
+    box.textContent =
+      'screen: ' + sw + 'x' + sh + '\n' +
+      'inner:  ' + iw + 'x' + ih + '\n' +
+      'gap:    w=' + (sw - iw) + ' h=' + (sh - ih) + '\n' +
+      'env:    top=' + envT + ' bottom=' + envB + '\n' +
+      'mode:   ' + standalone + '\n' +
+      'dpr:    ' + (window.devicePixelRatio || 0);
   }
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', apply);
+    document.addEventListener('DOMContentLoaded', show);
   } else {
-    apply();
+    show();
   }
-  window.addEventListener('resize', apply);
-  window.addEventListener('orientationchange', function(){ setTimeout(apply, 100); });
+  window.addEventListener('resize', show);
 })();
 </script>
 </body>
