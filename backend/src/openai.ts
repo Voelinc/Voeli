@@ -19,6 +19,10 @@ import {
   fixPronounPairs,
   type RelationshipKey,
 } from './vietnamese-pronoun-resolver';
+import {
+  detectMissingDiacritics,
+  buildMissingDiacriticsPrompt,
+} from './vietnamese-missing-diacritics';
 import { detectTopicComment, buildTopicCommentPrompt } from './vietnamese-topic-comment';
 import {
   detectRegisterSignal,
@@ -996,6 +1000,16 @@ export async function handleTranslate(
     }
   }
 
+  // Missing diacritics (VI→EN only): when the user typed Vietnamese without
+  // tone marks (mobile-keyboard pattern), surface the candidate readings for
+  // ambiguous tokens (e.g. "com chay" → cơm chay / cơm cháy).
+  if (payload.direction === 'vi-en') {
+    const diacriticMatches = detectMissingDiacritics(payload.text);
+    if (diacriticMatches.length > 0) {
+      systemPrompt += buildMissingDiacriticsPrompt(diacriticMatches);
+    }
+  }
+
   // Dish names (VI→EN only): preserve dish names as proper nouns; gloss on
   // first encounter, translate plain after the user has learned them.
   if (payload.direction === 'vi-en') {
@@ -1231,6 +1245,14 @@ export async function handleQuick(
     const segmentation = detectSegmentationIssues(payload.text);
     if (segmentation.ambiguous.length > 0 || segmentation.reduplicatives.length > 0) {
       systemPrompt += buildSegmentationPrompt(segmentation);
+    }
+  }
+
+  // Missing diacritics (VI→EN): mobile-keyboard tone-mark loss.
+  if (payload.direction === 'vi-en') {
+    const diacriticMatches = detectMissingDiacritics(payload.text);
+    if (diacriticMatches.length > 0) {
+      systemPrompt += buildMissingDiacriticsPrompt(diacriticMatches);
     }
   }
 
