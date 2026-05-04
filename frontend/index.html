@@ -12710,42 +12710,32 @@ try {
   </div>
 </div>
 <script>
-// Detect iOS PWA non-cover mode and snap the bottom nav to the physical
-// screen bottom. In cover mode env(safe-area-inset-bottom) reports ~34px;
-// in non-cover mode it reports 0 (the page is already clear of the safe
-// area, just sitting above it). When that happens on an iPhone that has a
-// home indicator, position:fixed bottom:0 lands above the indicator zone
-// and labels float ~34px above the screen edge no matter what CSS we use.
+// Snap the bottom nav to the physical screen bottom on iOS PWAs in non-cover
+// mode. Detection uses the gap between screen.height (physical) and
+// innerHeight (layout viewport): on an iPhone with a home indicator in
+// non-cover mode, this gap is ~93px (Dynamic Island ~59 + home indicator
+// ~34). In cover mode the gap is 0. iPhone SE / older iPhones have no
+// safe-area zones, so the gap is also small.
 //
-// The fix: detect the situation in JS and translate the entire bar down
-// by 34px so it crosses the safe-area zone visually. #appContent's
-// padding-bottom shrinks in lock-step so content still meets the bar's
-// visual top edge.
+// gap > 50 reliably picks out the "iPhone with home indicator, non-cover
+// mode" case across modern iPhones (X, 11, 12, 13, 14, 15+). When that's
+// true we translate the bar down 34px (the bottom safe-area inset) and
+// shrink #appContent padding-bottom in lock-step so content still meets
+// the bar's visual top.
 (function snapBottomNav() {
-  function readEnvSafeBottom() {
-    var probe = document.createElement('div');
-    probe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;height:env(safe-area-inset-bottom)';
-    document.body.appendChild(probe);
-    var v = parseFloat(getComputedStyle(probe).height) || 0;
-    probe.remove();
-    return v;
-  }
   function apply() {
     var nav = document.getElementById('bottomNav');
     var content = document.getElementById('appContent');
     if (!nav) return;
     nav.style.transform = '';
     if (content) content.style.paddingBottom = '';
-    // iPhones with a home indicator are 6.1"+ models, screen.height >= 812 in
-    // portrait. iPhone SE / 8 / older are smaller and have no home indicator.
-    var isIOS = /iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
-    var hasHomeIndicator = isIOS && Math.max(window.screen.height || 0, window.screen.width || 0) >= 812;
-    if (!hasHomeIndicator) return;
-    var envBottom = readEnvSafeBottom();
-    // env=0 here means non-cover mode (page constrained above the safe area).
-    // Push the bar across that 34px gap. We use 34 directly rather than env,
-    // because env returns 0 in this exact situation.
-    if (envBottom === 0) {
+    var isIOS = /iPhone|iPad|iPod/.test(navigator.platform || '') || /iPhone|iPad|iPod/.test(navigator.userAgent || '');
+    if (!isIOS) return;
+    var sh = Math.max(window.screen.height || 0, window.screen.width || 0);
+    var ih = window.innerHeight || 0;
+    var gap = sh - ih;
+    // gap > 50 → iPhone with home indicator running in non-cover mode.
+    if (gap > 50 && gap < 200) {
       nav.style.transform = 'translateY(34px)';
       if (content) content.style.setProperty('padding-bottom', '16px', 'important');
     }
