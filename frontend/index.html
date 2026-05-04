@@ -8984,6 +8984,11 @@ function showBubbleCtxMenu(x, y, msgId, isMe){
   // Reply (always)
   html += `<div class="edit-ctx-item" id="ctxReply"><span>${isVI?'Trả lời':'Reply'}</span></div>`;
 
+  // Copy (any non-deleted message)
+  if(!msg.deleted){
+    html += `<div class="edit-ctx-item" id="ctxCopy"><span>${isVI?'Sao chép':'Copy'}</span></div>`;
+  }
+
   // Show/hide original
   if(hasOrig){
     html += `<div class="edit-ctx-item" id="ctxOrig"><span>${isShowingOrig?(isVI?'Ẩn bản gốc':'Hide original'):(isVI?'Xem bản gốc':'Show original')}</span></div>`;
@@ -9019,6 +9024,7 @@ function showBubbleCtxMenu(x, y, msgId, isMe){
   });
   menu.querySelector('#ctxDetails')?.addEventListener('click', ()=>{ removeEditCtxMenu(); showMessageDetails(msgId); });
   menu.querySelector('#ctxReply')?.addEventListener('click', ()=>{ removeEditCtxMenu(); startReply(msgId); });
+  menu.querySelector('#ctxCopy')?.addEventListener('click', ()=>{ removeEditCtxMenu(); copyMessageText(msgId); });
   menu.querySelector('#ctxOrig')?.addEventListener('click', ()=>{ removeEditCtxMenu(); if(bubble) bubble.classList.toggle('showorig'); });
   if(isMe && !msg.deleted){
     if(canEdit) menu.querySelector('#ctxEdit')?.addEventListener('click', ()=>{ removeEditCtxMenu(); startInlineEdit(msgId); });
@@ -9047,6 +9053,24 @@ function deleteMessage(msgId){
     firebaseDb.ref(`dms/${c.dmRoomId}/messages/${msg.id}/deleted`).set(true).catch(err => {
       console.warn('[deleteMessage] Failed to sync deletion:', err);
     });
+  }
+}
+
+async function copyMessageText(msgId){
+  const c = activeCont();
+  if(!c) return;
+  const msg = c.msgs.find(m=>m.id===msgId);
+  if(!msg) return;
+  // Prefer the displayed (translated) text — what the user sees in the bubble.
+  const text = msg.text || msg.translated || msg.original || '';
+  if(!text) return;
+  const isVI = appDir==='vi-en';
+  try {
+    await navigator.clipboard.writeText(text);
+    _showToast(isVI ? 'Đã sao chép' : 'Copied');
+  } catch(e){
+    if(window.Sentry) Sentry.captureException(e);
+    _showToast(isVI ? 'Không thể sao chép' : 'Could not copy');
   }
 }
 
