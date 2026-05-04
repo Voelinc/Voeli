@@ -12708,5 +12708,34 @@ try {
     </div>
   </div>
 </div>
+<script>
+// Snap the bottom nav to the physical screen bottom on iOS PWAs.
+// On some installs, position:fixed bottom:0 lands at the layout-viewport bottom
+// which sits above the home-indicator zone. screen.height - innerHeight measures
+// that gap; we translate the bar down by it and shrink #appContent's
+// padding-bottom in lock-step so content still meets the bar's visual top.
+(function snapBottomNav() {
+  var BAR = 50;
+  function apply() {
+    var nav = document.getElementById('bottomNav');
+    var content = document.getElementById('appContent');
+    if (!nav) return;
+    nav.style.transform = '';
+    if (content) content.style.paddingBottom = '';
+    var gap = (window.screen && window.screen.height ? window.screen.height : window.innerHeight) - window.innerHeight;
+    if (gap > 0 && gap < 200) {
+      nav.style.transform = 'translateY(' + gap + 'px)';
+      if (content) content.style.setProperty('padding-bottom', Math.max(0, BAR - gap) + 'px', 'important');
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', apply);
+  } else {
+    apply();
+  }
+  window.addEventListener('resize', apply);
+  window.addEventListener('orientationchange', function(){ setTimeout(apply, 100); });
+})();
+</script>
 </body>
 </html>
