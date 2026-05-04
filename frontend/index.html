@@ -7122,10 +7122,49 @@ function _refreshActionGrid(c){
   rr.querySelector('.cact-lbl').textContent = isVI ? 'Xác nhận đã đọc' : 'Read Receipts';
 }
 
-function toggleContactFlag(flag){
+async function toggleContactFlag(flag){
   if(!editingId) return;
   const c=contacts.find(x=>x.id===editingId);
   if(!c) return;
+
+  // Block toggle: persists to dms/{roomId}/blockedSenders/{otherUid} so the
+  // other party's existing listener (setupDMListener) flips their composer to
+  // read-only with the "Contact removed you" banner. Same wire format as
+  // deleteContact's block step, but without removing the contact locally.
+  if(flag === 'blocked'){
+    const isVI = appDir === 'vi-en';
+    const willBlock = !c.blocked;
+    if(willBlock){
+      const msg = isVI
+        ? `Chặn ${c.name}? Họ sẽ không thể gửi tin nhắn cho bạn nữa.`
+        : `Block ${c.name}? They won't be able to send you messages.`;
+      if(!confirm(msg)) return;
+    }
+    c.blocked = willBlock;
+    _refreshActionGrid(c);
+    renderSidebar();
+    if(currentUser && firebaseDb && c.dmRoomId){
+      try {
+        const otherUid = await getOtherParticipantUid(c.dmRoomId);
+        if(otherUid){
+          const ref = firebaseDb.ref(`dms/${c.dmRoomId}/blockedSenders/${otherUid}`);
+          if(willBlock) await ref.set(true);
+          else await ref.remove();
+        }
+      } catch(e){
+        console.error('[toggleContactFlag/blocked] Firebase sync failed:', e);
+        if(window.Sentry) Sentry.captureException(e);
+        c.blocked = !willBlock;
+        _refreshActionGrid(c);
+        renderSidebar();
+        alert(isVI ? 'Lỗi mạng, vui lòng thử lại.' : 'Network error, please try again.');
+        return;
+      }
+    }
+    try { await saveContactToFirebase(c); } catch(_){}
+    return;
+  }
+
   c[flag]=!c[flag];
   _refreshActionGrid(c);
   renderSidebar();
