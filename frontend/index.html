@@ -7988,6 +7988,16 @@ function openChat(id){
       // with the OLDEST messages at the bottom of the chat.
       participantWrite.then(async () => {
         await loadHistoricalMessages(c);
+        // Load this user's hidden-for-me list for the room and re-render so
+        // any locally-deleted messages are filtered out before the listener
+        // attaches.
+        try {
+          const snap = await firebaseDb.ref(`users/${currentUser.uid}/hiddenMessages/${c.dmRoomId}`).once('value');
+          c.hiddenMessages = new Set(Object.keys(snap.val() || {}));
+          renderMsgs();
+        } catch(_){
+          c.hiddenMessages = c.hiddenMessages || new Set();
+        }
         const anchorKey = c.msgs && c.msgs.length ? c.msgs[c.msgs.length - 1].id : null;
         setupDMListener(c.dmRoomId, anchorKey);
       });
@@ -8794,14 +8804,16 @@ function renderMsgs(){
       paginationHeader = `<div class="msgs-paging-header start">${isVI?'Đầu cuộc trò chuyện':'Start of conversation'}</div>`;
     }
   }
-  area.innerHTML=paginationHeader + statusBanner + c.msgs.map((m,i)=>{
+  const hiddenSet = c.hiddenMessages instanceof Set ? c.hiddenMessages : null;
+  const visibleMsgs = (hiddenSet && hiddenSet.size) ? c.msgs.filter(m => !hiddenSet.has(m.id)) : c.msgs;
+  area.innerHTML=paginationHeader + statusBanner + visibleMsgs.map((m,i)=>{
     let h='';
     const d=fmtDay(m.ts)||todayLbl;
-    const prevD=i>0?fmtDay(c.msgs[i-1].ts):'';
+    const prevD=i>0?fmtDay(visibleMsgs[i-1].ts):'';
     if(i===0||prevD!==d) h+=`<div class="mday">${esc(d)}</div>`;
     const side=m.isMe?'me':'them';
     // Bubble tail shows only on the LAST bubble in a same-sender streak.
-    const next = c.msgs[i+1];
+    const next = visibleMsgs[i+1];
     const isLastInStreak = !next || next.isMe !== m.isMe;
     const tailCls = isLastInStreak ? ' tail' : '';
     const translatingCls = m.translating ? ' translating' : '';
@@ -9048,7 +9060,14 @@ function showBubbleCtxMenu(x, y, msgId, isMe){
   if(isMe && !msg.deleted){
     html += `<div class="ctx-sep"></div>`;
     html += `<div class="edit-ctx-item${canEdit?'':' disabled'}" id="ctxEdit"><span>${isVI?'Sửa':'Edit'}</span></div>`;
-    html += `<div class="edit-ctx-item danger" id="ctxDelete"><span>${isVI?'Xóa tin nhắn':'Delete'}</span></div>`;
+    html += `<div class="edit-ctx-item danger" id="ctxDeleteEveryone"><span>${isVI?'Xóa với mọi người':'Delete for everyone'}</span></div>`;
+  }
+  // Delete-for-me works on any non-deleted message (own or received). It hides
+  // the message in this user's view across their devices, but the message
+  // remains visible to the other party.
+  if(!msg.deleted){
+    if(!isMe) html += `<div class="ctx-sep"></div>`;
+    html += `<div class="edit-ctx-item danger" id="ctxDeleteForMe"><span>${isVI?'Xóa với tôi':'Delete for me'}</span></div>`;
   }
 
   const menu = document.createElement('div');
@@ -9072,7 +9091,10 @@ function showBubbleCtxMenu(x, y, msgId, isMe){
   menu.querySelector('#ctxOrig')?.addEventListener('click', ()=>{ removeEditCtxMenu(); if(bubble) bubble.classList.toggle('showorig'); });
   if(isMe && !msg.deleted){
     if(canEdit) menu.querySelector('#ctxEdit')?.addEventListener('click', ()=>{ removeEditCtxMenu(); startInlineEdit(msgId); });
-    menu.querySelector('#ctxDelete')?.addEventListener('click', ()=>{ removeEditCtxMenu(); deleteMessage(msgId); });
+    menu.querySelector('#ctxDeleteEveryone')?.addEventListener('click', ()=>{ removeEditCtxMenu(); deleteMessage(msgId); });
+  }
+  if(!msg.deleted){
+    menu.querySelector('#ctxDeleteForMe')?.addEventListener('click', ()=>{ removeEditCtxMenu(); deleteMessageForMe(msgId); });
   }
   if(!isMe && !msg.deleted){
     menu.querySelector('#ctxReport')?.addEventListener('click', ()=>{ removeEditCtxMenu(); reportMessage(msgId); });
@@ -9097,6 +9119,28 @@ function deleteMessage(msgId){
     firebaseDb.ref(`dms/${c.dmRoomId}/messages/${msg.id}/deleted`).set(true).catch(err => {
       console.warn('[deleteMessage] Failed to sync deletion:', err);
     });
+  }
+}
+
+// Delete-for-me: hides the message in this user's view (and on their other
+// devices once they sync) without touching the shared message record. The
+// other party still sees it. Stored under users/{uid}/hiddenMessages/{roomId}/
+// {msgId}: true, which is covered by the existing self-write rule.
+async function deleteMessageForMe(msgId){
+  const c = activeCont();
+  if(!c) return;
+  const msg = c.msgs.find(m=>m.id===msgId);
+  if(!msg) return;
+  c.hiddenMessages = c.hiddenMessages instanceof Set ? c.hiddenMessages : new Set();
+  c.hiddenMessages.add(msgId);
+  renderMsgs(); renderSidebar();
+  if(firebaseDb && currentUser && c.dmRoomId){
+    try {
+      await firebaseDb.ref(`users/${currentUser.uid}/hiddenMessages/${c.dmRoomId}/${msgId}`).set(true);
+    } catch(err){
+      console.warn('[deleteMessageForMe] sync failed:', err);
+      if(window.Sentry) Sentry.captureException(err);
+    }
   }
 }
 
