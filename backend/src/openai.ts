@@ -23,6 +23,10 @@ import {
   detectMissingDiacritics,
   buildMissingDiacriticsPrompt,
 } from './vietnamese-missing-diacritics';
+import {
+  detectFigurativePatterns,
+  buildFigurativePatternsPrompt,
+} from './vietnamese-figurative-patterns';
 import { detectTopicComment, buildTopicCommentPrompt } from './vietnamese-topic-comment';
 import {
   detectRegisterSignal,
@@ -165,7 +169,11 @@ function buildPickerSystemPrompt(
     '',
     `# FACE-THREATENING: "you're lying/crazy/stupid", "shut up", "I hate you" (when playful), sarcasm — land as REAL insults in VN. If tone is warm/teasing, rewrite with softeners (nha, nhé) or hedges. ALWAYS flag as "face_threat".`,
     '',
-    `# IDIOMS: Always flag. Examples: "I'm dying", "break a leg", "spill the tea", "kill it", "hit me up". Provide literalMeaning, likelyMeaning, and natural rewrite.`,
+    `# FIGURATIVE LANGUAGE — scan FIRST, render meaning, not words:`,
+    `Most translation failures come from word-for-word rendering of phrases that aren't literal. Before committing, ask: is any phrase here an idiom, dead metaphor, body-part/animal metaphor, pun, or wordplay? If yes, render the natural equivalent in the target language, NOT a literal gloss.`,
+    `Failure modes to AVOID: "out of sight, out of mind" → "khi mắt không nhìn, tâm trí biến mất" (literal nonsense, lose the saying); "đứng núi này trông núi kia" → "stand on this mountain looking at that one" (loses "envying others"); "ruột để ngoài da" → "guts outside skin" (loses "transparent / can't hide feelings"); "I'm dying" (laughing) → "tôi đang chết" (alarming).`,
+    `For ANY phrase you translated non-literally, add a culturalWarning entry (type: "idiom"|"slang"|"wordplay"|"face_threat") with literalMeaning, likelyMeaning, and the natural rewrite. The receiver should see what was happening underneath.`,
+    `Default: when the source has both a literal and a figurative reading, prefer the figurative unless context (technical/legal/literal action) forces literal. Vietnamese in particular leans heavily on body-part and nature metaphors that don't exist in English.`,
     '',
     srcIsVietnamese
       ? `# VN COLLOQUIAL (preserve warmth — don't sanitize): terms of endearment (cục vàng, bé+name), affectionate calls (anh/chị/em+ơi), shortened forms (k, r, vs, j) signal closeness. Warm option keeps endearment; playful matches teasing; casual stays light.`
@@ -271,6 +279,7 @@ function buildQuickSystemPrompt(payload: QuickTranslatePayload): string {
     '',
     `Preserve the sender's register and any emoji they used. Do NOT add punctuation or emoji the sender did not use — if the source had no emoji, the translation must have no emoji.`,
     `If ${tgt} is Vietnamese, choose the correct pronoun pair, softeners, and any appropriate sentence-final particle based on the relationship. No explanations, no options.`,
+    `Figurative language: if any phrase is an idiom, dead metaphor, pun, or body-part/animal metaphor, render the natural equivalent — not the literal words. "I'm dying" (laughing) ≠ "tôi đang chết". "đứng núi này trông núi kia" ≠ "stand on this mountain looking at that one". When in doubt, prefer the figurative reading.`,
     '',
     `Return STRICT JSON: { "translation": "<${tgt} text>", "culturalWarnings": [optional array — include only when a detector explicitly asks you to populate it; omit or use [] otherwise] }. No markdown, no commentary.`,
     `Each culturalWarnings entry: { "type": "idiom"|"slang"|"cultural_concept"|"dish_name"|"face_threat"|"kinship"|"other", "term": "<source phrase>", "literalMeaning": "<short explanation>", "suggestion": "<the rendering you chose>" }.`,
@@ -1010,6 +1019,16 @@ export async function handleTranslate(
     }
   }
 
+  // Figurative-language patterns (VI→EN only): classical idioms, body-part
+  // metaphors, animal-as-character comparisons. Catches the long tail beyond
+  // the cross-language idiom dictionary.
+  if (payload.direction === 'vi-en') {
+    const figurativeMatches = detectFigurativePatterns(payload.text);
+    if (figurativeMatches.length > 0) {
+      systemPrompt += buildFigurativePatternsPrompt(figurativeMatches);
+    }
+  }
+
   // Dish names (VI→EN only): preserve dish names as proper nouns; gloss on
   // first encounter, translate plain after the user has learned them.
   if (payload.direction === 'vi-en') {
@@ -1253,6 +1272,14 @@ export async function handleQuick(
     const diacriticMatches = detectMissingDiacritics(payload.text);
     if (diacriticMatches.length > 0) {
       systemPrompt += buildMissingDiacriticsPrompt(diacriticMatches);
+    }
+  }
+
+  // Figurative-language patterns (VI→EN).
+  if (payload.direction === 'vi-en') {
+    const figurativeMatches = detectFigurativePatterns(payload.text);
+    if (figurativeMatches.length > 0) {
+      systemPrompt += buildFigurativePatternsPrompt(figurativeMatches);
     }
   }
 
