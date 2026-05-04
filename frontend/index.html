@@ -7618,12 +7618,14 @@ function setupPaginationScroll(){
   });
 }
 
-function setupDMListener(dmRoomId){
+function setupDMListener(dmRoomId, anchorKey){
   if(!firebaseDb || !currentUser || !dmRoomId) return;
   // Skip if we're already listening to this room
   if(activeDMRoomId === dmRoomId) return;
 
-  // Remove the previous listener if switching to a different room
+  // Remove the previous listener if switching to a different room. We may
+  // have stored a query (orderByKey().startAt(anchor)) rather than the bare
+  // ref — call .off() on whatever was stored.
   if(currentDMListenerRef){
     currentDMListenerRef.off('child_added');
   }
@@ -7634,8 +7636,17 @@ function setupDMListener(dmRoomId){
 
   activeDMRoomId = dmRoomId;
   const msgRef = firebaseDb.ref(`dms/${dmRoomId}/messages`);
-  currentDMListenerRef = msgRef;
-  console.log(`[setupDMListener] Setting up listener for DM room: ${dmRoomId}`);
+  // When we already have historical messages loaded, anchor the live listener
+  // at the newest loaded key so child_added doesn't replay every existing
+  // message in the room. Firebase's startAt is inclusive, so the anchor
+  // itself fires once — the in-handler ID dedup catches that. When there's
+  // no anchor (first-time empty room or load failure), fall back to the bare
+  // ref and the dedup carries the load.
+  const childAddedQuery = anchorKey
+    ? msgRef.orderByKey().startAt(anchorKey)
+    : msgRef;
+  currentDMListenerRef = childAddedQuery;
+  console.log(`[setupDMListener] Setting up listener for DM room: ${dmRoomId}${anchorKey ? ` (anchored at ${anchorKey})` : ''}`);
 
   // Watch whether the OTHER party has marked us as blocked-from-sending
   // (i.e. they removed us as a contact). When they do, flip the local
@@ -7669,8 +7680,8 @@ function setupDMListener(dmRoomId){
     console.warn('[setupDMListener] blockedSenders read failed:', err);
   });
 
-  // Listen for incoming messages in this DM room
-  msgRef.on('child_added', async snap=>{
+  // Listen for incoming messages in this DM room (anchored when possible).
+  childAddedQuery.on('child_added', async snap=>{
     console.log(`[setupDMListener] Message received in ${dmRoomId}`);
     const raw = snap.val();
     if(!raw || raw.senderId === currentUser.uid) return;
@@ -7706,6 +7717,10 @@ function setupDMListener(dmRoomId){
       time: d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
       day: d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'})
     });
+    // Defensive sort: anchored listeners only receive messages at-or-after
+    // the newest loaded key, so this is normally a no-op. Guards against
+    // clock skew and the unanchored fallback path.
+    c.msgs.sort((a, b) => a.ts - b.ts);
     if(activeId === c.id) renderMsgs();
     renderSidebar();
 
@@ -7811,9 +7826,15 @@ function openChat(id){
         .ref(`dms/${c.dmRoomId}/participants/${currentUser.uid}`)
         .set(true)
         .catch(e => console.error('Error adding user to DM room participants:', e));
-      participantWrite.then(() => {
-        loadHistoricalMessages(c);
-        setupDMListener(c.dmRoomId);
+      // Await the historical load before attaching the live listener so the
+      // listener can be anchored to the newest loaded key. Without the anchor,
+      // Firebase's child_added fires once for every existing message at attach
+      // time and pushes them past the loaded last-50 batch — the user ends up
+      // with the OLDEST messages at the bottom of the chat.
+      participantWrite.then(async () => {
+        await loadHistoricalMessages(c);
+        const anchorKey = c.msgs && c.msgs.length ? c.msgs[c.msgs.length - 1].id : null;
+        setupDMListener(c.dmRoomId, anchorKey);
       });
     } else {
       // Local/demo mode: no Firebase, fall through to the listener (which
