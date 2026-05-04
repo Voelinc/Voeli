@@ -106,9 +106,22 @@ export interface ContactPronounMemoryHint {
   confidence: number;
 }
 
+// Direct signal from the frontend: derived from the user's profile gender +
+// per-contact relationship type (or partner override). When present this wins
+// over everything — it's not a heuristic, it's the user's stated identity.
+// "self" / "other" are from the SPEAKER's perspective (frontend already
+// inverts for vi-en where the contact is the speaker).
+export interface SenderPronounHint {
+  selfPronoun: string | null;
+  otherPronoun: string | null;
+  source?: string | null;
+  relationship?: string | null;
+}
+
 export function detectPronounSignals(
   text: string,
-  contactMemory?: ContactPronounMemoryHint
+  contactMemory?: ContactPronounMemoryHint,
+  senderHint?: SenderPronounHint | null
 ): PronounSignals {
   const lower = text.toLowerCase();
   const tokens = tokenize(text);
@@ -318,6 +331,28 @@ export function detectPronounSignals(
     ambiguousPair = false;
   }
 
+  // ─── SENDER PROFILE OVERRIDE (highest priority) ──────────────────────
+  // The frontend computed this from the user's gender + the contact's
+  // relationship type (or an explicit per-contact partner override). It is
+  // direct stated identity, not inference. Beats memory, beats heuristic,
+  // clears ambiguousPair. Only applies when the user actually has a usable
+  // pair set (skips otherwise so the legacy detection paths still run).
+  if (senderHint && (senderHint.selfPronoun || senderHint.otherPronoun)) {
+    const hintSelf = senderHint.selfPronoun || self;
+    const hintOther = senderHint.otherPronoun || other;
+    const tagSource = senderHint.source === 'override' ? 'OVERRIDE' : 'PROFILE';
+    matched.push(
+      `[SENDER ${tagSource}] user-profile-derived pair: self=${hintSelf ?? '∅'} other=${hintOther ?? '∅'}. This wins over memory and heuristics.`
+    );
+    self = hintSelf;
+    other = hintOther;
+    if (senderHint.relationship) {
+      rel = senderHint.relationship as RelationshipKey;
+    }
+    confidence = Math.max(confidence, senderHint.source === 'override' ? 0.99 : 0.95);
+    ambiguousPair = false;
+  }
+
   return {
     selfPronoun: self,
     otherPronoun: other,
@@ -390,6 +425,9 @@ export function buildPronounContextPrompt(signals: PronounSignals): string {
   const memoryUsed = signals.matchedTokens.some(
     (t) => t.includes('[MEMORY OVERRIDE]') || t.includes('[MEMORY CONFIRMS]')
   );
+  const senderUsed = signals.matchedTokens.some(
+    (t) => t.includes('[SENDER OVERRIDE]') || t.includes('[SENDER PROFILE]')
+  );
 
   const lines: string[] = ['', '# PRONOUN CONTEXT (this is the speaker’s established pronoun pair):'];
   if (signals.selfPronoun)
@@ -404,7 +442,15 @@ export function buildPronounContextPrompt(signals: PronounSignals): string {
   if (signals.inferredGender.other)
     lines.push(`- Likely listener gender: ${signals.inferredGender.other}`);
 
-  if (memoryUsed) {
+  if (senderUsed) {
+    lines.push('');
+    lines.push(
+      '⚠ CRITICAL: This pair is locked from the user’s profile (gender + relationship type, or an explicit per-contact override). It is direct stated identity, not inference. Resolve every "anh"/"em"/"chị" in the source according to this map — do NOT use word order, do NOT use the grammatical-subject heuristic, do NOT flip pronouns based on which one comes first in the sentence.'
+    );
+    lines.push(
+      `Concrete example: with speaker=${signals.selfPronoun} and listener=${signals.otherPronoun}, the source "${signals.otherPronoun} mua nhà, ${signals.selfPronoun} về ở" means "the LISTENER buys the house, the SPEAKER moves in" — translate as "you buy a house, I move in" (NOT "I buy a house, you move in").`
+    );
+  } else if (memoryUsed) {
     lines.push('');
     lines.push(
       '⚠ CRITICAL: This pair is locked from prior conversation memory. When you see "anh"/"em"/"chị" in the source, resolve them according to this map — do NOT assume the first pronoun in the sentence is the speaker. In Vietnamese SVO, the first pronoun is just the grammatical subject; the speaker identity is fixed by the established pair above.'
@@ -444,6 +490,7 @@ export function buildAmbiguousPronounPrompt(signals: PronounSignals): string {
     '  • Who is the natural narrator of a 1v1 chat message in this tone?',
     '  • Is there an action-verb directionality that only makes sense one way?',
     '- TIE-BREAKER: pick the reading that is consistent across ALL clauses of the message. Do NOT flip the speaker mid-message. If interpretation A makes one clause coherent but produces a contradiction in another clause, interpretation B is correct.',
+    '- LAST-RESORT TIE-BREAKER (when both readings are equally coherent): in Vietnamese conversational chat, the SPEAKER more often uses the lower-status pronoun for themselves and reserves the higher-status pronoun for the listener. So when truly stuck, prefer the reading where the SPEAKER = "em" and the LISTENER = "anh"/"chị". This is a weak prior — content-based disambiguation always wins when it is available.',
   ];
   if (isPartner) {
     lines.push(

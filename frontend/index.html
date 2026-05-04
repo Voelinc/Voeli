@@ -168,6 +168,19 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--panel);colo
   border:1px solid rgba(220,38,38,.22);border-radius:10px;padding:10px 12px;
   font-size:13px;line-height:1.4;margin-top:14px;}
 .ob-error-v2.show{display:block;}
+.ob-gender-btn{flex:1;padding:13px 14px;border-radius:10px;font-size:15px;
+  font-weight:600;cursor:pointer;font-family:inherit;
+  background:var(--panel);color:var(--ink);border:1.5px solid var(--line);
+  transition:transform .1s, background .15s, border-color .15s, color .15s;}
+.ob-gender-btn:hover{background:var(--panel-2);}
+.ob-gender-btn:active{transform:scale(.98);}
+.ob-gender-btn.sel{background:var(--blue);color:#fff;border-color:var(--blue);}
+.prof-gender-btn{padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;
+  cursor:pointer;font-family:inherit;
+  background:var(--panel);color:var(--ink);border:1.5px solid var(--line);
+  transition:background .15s, border-color .15s, color .15s;}
+.prof-gender-btn:hover{background:var(--panel-2);}
+.prof-gender-btn.sel{background:var(--blue);color:#fff;border-color:var(--blue);}
 .ob-actions-v2{padding:0 28px 24px;padding-bottom:calc(24px + env(safe-area-inset-bottom, 0px));
   display:flex;flex-direction:column;gap:10px;flex-shrink:0;}
 .ob-langtog-v2{position:absolute;top:calc(env(safe-area-inset-top, 0px) + 14px);
@@ -1179,6 +1192,15 @@ body.is-offline::before{
           <input type="date" id="authBirthday" class="ob-input-v2" max="" style="font-family:inherit;">
         </div>
 
+        <div id="authGenderWrap" style="display:block;margin-top:14px;">
+          <label class="ob-label-v2" id="authGenderLabel">Gender</label>
+          <div id="authGenderPick" style="display:flex;gap:10px;">
+            <button type="button" class="ob-gender-btn" id="authGenderMale" data-g="male">Male</button>
+            <button type="button" class="ob-gender-btn" id="authGenderFemale" data-g="female">Female</button>
+          </div>
+          <p class="ob-hint-v2" id="authGenderHint">Used only to pick the right Vietnamese pronouns when translating. Never shown to other users.</p>
+        </div>
+
         <div id="turnstileWrap" style="display:none;margin-top:14px;">
           <div id="turnstileWidget"></div>
         </div>
@@ -1626,6 +1648,18 @@ body.is-offline::before{
 
       <!-- Privacy Section -->
       <div style="margin-top:32px;padding-top:20px;">
+        <!-- Gender — used silently to pick the right Vietnamese pronouns -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:12px;background:var(--panel-2);border-radius:8px;gap:12px;">
+          <div style="flex:1;min-width:0;">
+            <div id="profGenderTitle" style="font-size:14px;font-weight:500;margin-bottom:3px;">Gender</div>
+            <div id="profGenderSub" style="font-size:12px;color:var(--muted);line-height:1.4;">Used only to pick the right Vietnamese pronouns when translating. Never shown to other users.</div>
+          </div>
+          <div id="profGenderPick" style="display:flex;gap:6px;flex-shrink:0;">
+            <button type="button" class="prof-gender-btn" data-g="male" onclick="onProfileGenderClick('male')">Male</button>
+            <button type="button" class="prof-gender-btn" data-g="female" onclick="onProfileGenderClick('female')">Female</button>
+          </div>
+        </div>
+
         <!-- Grammar Check Toggle -->
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:12px;background:var(--panel-2);border-radius:8px;">
           <div style="font-size:14px;font-weight:500;">Grammar check</div>
@@ -1701,6 +1735,21 @@ body.is-offline::before{
     <input type="email" id="mcEmail" class="finput" placeholder="their@email.com" autocomplete="off" required>
     <label class="flabel">Relationship</label>
     <div class="relgrid" id="relGrid"></div>
+
+    <!-- Partner-only pronoun override. Hidden unless relationship type is 'partner'.
+         Lets a same-sex / age-inverted couple flip the auto-derived pair. -->
+    <div id="partnerPronounRow" style="display:none;margin-top:14px;padding:12px;background:var(--panel-2);border-radius:10px;">
+      <div id="partnerPronounLabel" style="font-size:13px;font-weight:600;margin-bottom:6px;">How you address each other in Vietnamese</div>
+      <div id="partnerPronounSub" style="font-size:11.5px;color:var(--muted);margin-bottom:10px;line-height:1.4;">
+        Most couples follow the auto-pick. Tap a different option only if it's wrong for you.
+      </div>
+      <div id="partnerPronounPick" style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button type="button" class="prof-gender-btn" data-pp="em"  onclick="onPartnerPronounClick('em')">You: em / Them: anh</button>
+        <button type="button" class="prof-gender-btn" data-pp="anh" onclick="onPartnerPronounClick('anh')">You: anh / Them: em</button>
+        <button type="button" class="prof-gender-btn" data-pp="chị" onclick="onPartnerPronounClick('chị')">You: chị / Them: em</button>
+      </div>
+    </div>
+
     <div id="cActionGrid" style="display:none;">
       <label class="flabel" style="margin-bottom:8px;">Actions</label>
       <div class="cact-grid">
@@ -3146,6 +3195,84 @@ function getPronounMemoryNote(contactId, direction){
   return lines.join('\n');
 }
 
+// ─── User gender + per-contact pronoun derivation ────────────────────────
+// Vietnamese pronouns are entirely relational: a single Vietnamese woman calls
+// herself "em" with a partner/older-sibling, "chị" with a younger person,
+// "con" with parents, "tôi" formally. Once we know her gender + the contact's
+// relationship type, the pronoun pair is fully determined for everything
+// EXCEPT romantic-partner edge cases (same-sex, age-inverted) which need a
+// per-contact override.
+function getUserGender(){
+  try{
+    const uid = (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) || '_anon';
+    return localStorage.getItem('user_gender_' + uid) || null;
+  }catch(_){ return null; }
+}
+function setUserGender(g){
+  if(g !== 'male' && g !== 'female') return;
+  try{
+    const uid = (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) || '_anon';
+    localStorage.setItem('user_gender_' + uid, g);
+    if(typeof firebaseDb !== 'undefined' && firebaseDb && currentUser){
+      firebaseDb.ref('users/'+currentUser.uid+'/gender').set(g).catch(()=>{});
+    }
+  }catch(_){}
+}
+
+// Pure derivation. Returns { selfPronoun, otherPronoun } the user uses with a
+// contact of the given relationship type, or { null, null } when the type
+// doesn't carry an anh/em pair (formal, friend) or we lack the gender input.
+// `partnerOverride` is a string ('em' | 'anh' | 'chị') stored on the contact
+// for partner relationships only; when set it overrides the gender default.
+function derivePronounPair(userGender, relType, partnerOverride){
+  if(!relType) return { selfPronoun: null, otherPronoun: null };
+  switch(relType){
+    case 'elder':
+      return { selfPronoun: 'con', otherPronoun: null };
+    case 'senior':
+      return { selfPronoun: 'em', otherPronoun: null };
+    case 'junior':
+      if(userGender === 'male')   return { selfPronoun: 'anh', otherPronoun: 'em' };
+      if(userGender === 'female') return { selfPronoun: 'chị', otherPronoun: 'em' };
+      return { selfPronoun: null, otherPronoun: 'em' };
+    case 'partner': {
+      if(partnerOverride === 'em')  return { selfPronoun: 'em',  otherPronoun: 'anh' };
+      if(partnerOverride === 'anh') return { selfPronoun: 'anh', otherPronoun: 'em'  };
+      if(partnerOverride === 'chị') return { selfPronoun: 'chị', otherPronoun: 'em'  };
+      if(userGender === 'male')   return { selfPronoun: 'anh', otherPronoun: 'em'  };
+      if(userGender === 'female') return { selfPronoun: 'em',  otherPronoun: 'anh' };
+      return { selfPronoun: null, otherPronoun: null };
+    }
+    case 'formal':
+      return { selfPronoun: 'tôi', otherPronoun: null };
+    case 'friend':
+      return { selfPronoun: null, otherPronoun: null };
+    default:
+      return { selfPronoun: null, otherPronoun: null };
+  }
+}
+
+// Convenience: build the senderSelfPronoun / senderOtherPronoun payload fields.
+// The "sender" is whoever wrote the text being translated:
+//   - en-vi: user is the sender (typed English, translating to Vietnamese)
+//   - vi-en: contact is the sender (their Vietnamese is translating to English)
+// The pair derivation produces the user's perspective; for vi-en we invert
+// it because contact's self-pronoun = what user calls contact, and vice versa.
+// Returns null when the pair can't be determined (no gender set, or
+// non-anh/em relationship type).
+function buildSenderPronounSignal(contact, direction){
+  if(!contact) return null;
+  const userPair = derivePronounPair(getUserGender(), contact.type, contact.partnerPronounOverride);
+  if(!userPair.selfPronoun && !userPair.otherPronoun) return null;
+  const isIncoming = direction === 'vi-en';
+  return {
+    selfPronoun:  isIncoming ? userPair.otherPronoun : userPair.selfPronoun,
+    otherPronoun: isIncoming ? userPair.selfPronoun  : userPair.otherPronoun,
+    source: contact.partnerPronounOverride ? 'override' : 'derived',
+    relationship: contact.type || null,
+  };
+}
+
 // ─── Cultural-concept learning state ─────────────────────
 // Per-user exposure counts for culturally-loaded Vietnamese terms. After the
 // user has seen the cultural callout for a concept N times (default 3, but
@@ -3429,6 +3556,10 @@ const AUTH_STRINGS = {
     emailPh: 'you@example.com',
     pwdPh: '••••••••',
     birthday: 'Birthday',
+    gender: 'Gender',
+    male: 'Male',
+    female: 'Female',
+    genderHint: 'Used only to pick the right Vietnamese pronouns when translating. Never shown to other users.',
     signInBtn: 'Sign in',
     createAccountBtn: 'Create account',
     forgot: 'Forgot password?',
@@ -3456,6 +3587,10 @@ const AUTH_STRINGS = {
     emailPh: 'ban@vidu.com',
     pwdPh: '••••••••',
     birthday: 'Ngày sinh',
+    gender: 'Giới tính',
+    male: 'Nam',
+    female: 'Nữ',
+    genderHint: 'Chỉ dùng để chọn đại từ tiếng Việt phù hợp khi dịch. Không hiển thị cho người khác.',
     signInBtn: 'Đăng nhập',
     createAccountBtn: 'Tạo tài khoản',
     forgot: 'Quên mật khẩu?',
@@ -3643,6 +3778,18 @@ function applyAppLang(){
   document.querySelectorAll('.shcancel').forEach(btn => {
     if(btn.textContent.includes('Cancel')) btn.textContent = s.cancel;
   });
+
+  // Profile gender setting (label, sub, button text)
+  const isVI = appDir === 'vi-en';
+  const profGT = document.getElementById('profGenderTitle');
+  if(profGT) profGT.textContent = isVI ? 'Giới tính' : 'Gender';
+  const profGS = document.getElementById('profGenderSub');
+  if(profGS) profGS.textContent = isVI
+    ? 'Chỉ dùng để chọn đại từ tiếng Việt phù hợp khi dịch. Không hiển thị cho người khác.'
+    : 'Used only to pick the right Vietnamese pronouns when translating. Never shown to other users.';
+  document.querySelectorAll('#profGenderPick .prof-gender-btn').forEach(b=>{
+    b.textContent = b.dataset.g === 'male' ? (isVI?'Nam':'Male') : (isVI?'Nữ':'Female');
+  });
 }
 
 function applyAuthLang(){
@@ -3664,6 +3811,10 @@ function applyAuthLang(){
   set('obPwdLabel',         s.pwdLabel);
   set('obPwdHint',          s.pwdHint);
   set('authBirthdayLabel',  s.birthday);
+  set('authGenderLabel',    s.gender);
+  set('authGenderMale',     s.male);
+  set('authGenderFemale',   s.female);
+  set('authGenderHint',     s.genderHint);
   set('authPrimaryBtn',     s.createAccountBtn);
   setPh('authEmail',        s.emailPh);
   setPh('authPwd',          s.pwdPh);
@@ -4846,6 +4997,7 @@ function updateAuthButtonState(){
 // Screens: 'welcome' | 'signup' | 'signin' | 'name'
 let _obCurrentScreen = 'welcome';
 let _pendingNewSignup = false; // flag: route to Name screen on next auth-state event
+let _signupGender     = null;  // 'male' | 'female' picked on the signup screen
 
 function obGoTo(screen){
   const ids = { welcome:'obWelcome', signup:'obSignup', signin:'obSignin', name:'obName' };
@@ -4953,6 +5105,16 @@ function initApp(){
   const obNameInput     = document.getElementById('obNameInput');
   const signOutBtn      = document.getElementById('signOutBtn');
 
+  // ── Gender picker (one of male/female required for signup) ─────────
+  document.querySelectorAll('#authGenderPick .ob-gender-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#authGenderPick .ob-gender-btn').forEach(b=>b.classList.remove('sel'));
+      btn.classList.add('sel');
+      _signupGender = btn.dataset.g;
+      updateAuthButtonState();
+    });
+  });
+
   // ── SIGN UP (creates new account → routes to Name screen) ─────────
   if(authPrimaryBtn) authPrimaryBtn.addEventListener('click', async ()=>{
     const email = (document.getElementById('authEmail').value||'').trim();
@@ -4964,6 +5126,7 @@ function initApp(){
     const ageNow = computeAgeFromBirthday(signupBirthday);
     if(ageNow == null || ageNow < 13){ showAuthError(appDir==='vi-en' ? 'Bạn phải đủ 13 tuổi để tạo tài khoản.' : 'You must be at least 13 to create an account.'); return; }
     if(ageNow > 120){ showAuthError(appDir==='vi-en' ? 'Ngày sinh có vẻ không đúng.' : 'That birthday doesn\'t look right.'); return; }
+    if(!_signupGender){ showAuthError(appDir==='vi-en' ? 'Hãy chọn giới tính.' : 'Please select your gender.'); return; }
     if(!_turnstileToken){
       showAuthError(appDir==='vi-en' ? 'Hãy hoàn thành captcha để tạo tài khoản.' : 'Please complete the captcha to create an account.');
       return;
@@ -4975,10 +5138,17 @@ function initApp(){
       if(cred && cred.user && cred.user.uid && signupBirthday){
         try{ localStorage.setItem('user_birthday_'+cred.user.uid, signupBirthday); }catch(_){}
       }
+      if(cred && cred.user && cred.user.uid && _signupGender){
+        try{ localStorage.setItem('user_gender_'+cred.user.uid, _signupGender); }catch(_){}
+      }
       if(cred && cred.user && cred.user.email){
         if(!firebaseDb) firebaseDb = firebase.database();
         try { await firebaseDb.ref(`users/${cred.user.uid}/email`).set(cred.user.email); }
         catch(e){ console.error('Error saving user email:', e); }
+        if(_signupGender){
+          try { await firebaseDb.ref(`users/${cred.user.uid}/gender`).set(_signupGender); }
+          catch(e){ console.error('Error saving user gender:', e); }
+        }
       }
       // Move to Name screen — onAuthStateChanged sees _pendingNewSignup and won't launchApp.
       obGoTo('name');
@@ -5441,6 +5611,19 @@ fbAuth.onAuthStateChanged(async (user)=>{
     } catch(e){
       console.error('Error saving user email:', e);
     }
+    // Pull gender from Firebase into localStorage on every sign-in so it
+    // survives device changes. Only sets when missing locally to avoid
+    // clobbering an in-flight update.
+    try {
+      const localG = localStorage.getItem('user_gender_'+user.uid);
+      if(!localG){
+        const snap = await firebaseDb.ref(`users/${user.uid}/gender`).once('value');
+        const remoteG = snap && snap.val ? snap.val() : null;
+        if(remoteG === 'male' || remoteG === 'female'){
+          localStorage.setItem('user_gender_'+user.uid, remoteG);
+        }
+      }
+    } catch(e){ /* non-fatal */ }
     // Register this device for push notifications. No-ops silently if the
     // VAPID key isn't configured yet, the browser doesn't support it, or
     // the user denies permission.
@@ -6517,6 +6700,7 @@ function switchTab(tab){
     navProfile.style.opacity = '1';
     renderProfileDictionary();
     if(typeof renderBridgesLibrary === 'function') renderBridgesLibrary();
+    if(typeof refreshProfileGenderUi === 'function') refreshProfileGenderUi();
   }
   if(typeof updateChatViewClass === 'function') updateChatViewClass();
 }
@@ -7107,7 +7291,61 @@ function initDirPick(){
     });
   });
 }
-function pickRel(id){ selRelType=id; initRelGrid(); }
+function pickRel(id){ selRelType=id; initRelGrid(); refreshPartnerPronounRow(); }
+
+// Show/hide and refresh the partner-only pronoun override row in the modal.
+// Driven by selRelType (the in-flight relationship pick) so it updates the
+// instant the user taps the Romantic Partner relationship pill.
+function refreshPartnerPronounRow(){
+  const row = document.getElementById('partnerPronounRow');
+  if(!row) return;
+  if(selRelType !== 'partner'){
+    row.style.display = 'none';
+    return;
+  }
+  row.style.display = 'block';
+  const isVI = appDir === 'vi-en';
+  const lbl = document.getElementById('partnerPronounLabel');
+  if(lbl) lbl.textContent = isVI ? 'Cách xưng hô tiếng Việt' : 'How you address each other in Vietnamese';
+  const sub = document.getElementById('partnerPronounSub');
+  if(sub) sub.textContent = isVI
+    ? 'Hầu hết các cặp đôi theo mặc định. Chỉ chọn khác nếu nó không đúng cho bạn.'
+    : "Most couples follow the auto-pick. Tap a different option only if it's wrong for you.";
+  // Localize button labels
+  document.querySelectorAll('#partnerPronounPick .prof-gender-btn').forEach(b=>{
+    const pp = b.dataset.pp;
+    if(pp === 'em')  b.textContent = isVI ? 'Bạn: em / Họ: anh' : 'You: em / Them: anh';
+    if(pp === 'anh') b.textContent = isVI ? 'Bạn: anh / Họ: em' : 'You: anh / Them: em';
+    if(pp === 'chị') b.textContent = isVI ? 'Bạn: chị / Họ: em' : 'You: chị / Them: em';
+  });
+  // Highlight the active option: explicit override wins, else auto-derived from gender.
+  const c = editingId ? contacts.find(x=>x.id===editingId) : null;
+  const override = c && c.partnerPronounOverride;
+  const derived = derivePronounPair(getUserGender(), 'partner');
+  const active = override || derived.selfPronoun || null;
+  document.querySelectorAll('#partnerPronounPick .prof-gender-btn').forEach(b=>{
+    b.classList.toggle('sel', b.dataset.pp === active);
+  });
+}
+
+function onPartnerPronounClick(pp){
+  if(pp !== 'em' && pp !== 'anh' && pp !== 'chị') return;
+  if(!editingId){
+    // For brand-new contacts, just stash the choice; saveContact() will pick it up.
+    _pendingPartnerOverride = pp;
+    refreshPartnerPronounRow();
+    document.querySelectorAll('#partnerPronounPick .prof-gender-btn').forEach(b=>{
+      b.classList.toggle('sel', b.dataset.pp === pp);
+    });
+    return;
+  }
+  const c = contacts.find(x=>x.id===editingId);
+  if(!c) return;
+  c.partnerPronounOverride = pp;
+  refreshPartnerPronounRow();
+  saveContactToFirebase(c).catch(()=>{});
+}
+let _pendingPartnerOverride = null;
 
 function openModal(id){
   editingId=id||null;
@@ -7140,6 +7378,8 @@ function openModal(id){
   // later from the contact edit screen.
   selRelType=c?c.type:'formal';
   initRelGrid();
+  _pendingPartnerOverride = null;
+  refreshPartnerPronounRow();
 
   // Action grid — only for existing contacts
   const grid=document.getElementById('cActionGrid');
@@ -7349,7 +7589,11 @@ async function saveContact(){
       return;
     }
     const c=contacts.find(x=>x.id===editingId);
-    if(c){ c.name=name; c.phone=phone; c.email=email; c.type=selRelType; c.direction=dir; }
+    if(c){
+      c.name=name; c.phone=phone; c.email=email; c.type=selRelType; c.direction=dir;
+      // Drop the partner override if user changed away from partner relationship.
+      if(c.type !== 'partner' && c.partnerPronounOverride) delete c.partnerPronounOverride;
+    }
     if(activeId===editingId) refreshHeader();
     if(c) await saveContactToFirebase(c);
     closeModal(); renderSidebar();
@@ -7362,6 +7606,10 @@ async function saveContact(){
     const newId = generateUniqueContactId();
     const newContact = {id:newId,name,phone,email,type:selRelType,direction:dir,msgs:[],
       favourite:false,emergency:false,blocked:false,status:'pending_acceptance',queuedMsgs:[]};
+    if(selRelType === 'partner' && _pendingPartnerOverride){
+      newContact.partnerPronounOverride = _pendingPartnerOverride;
+    }
+    _pendingPartnerOverride = null;
     contacts.unshift(newContact);
     // Close the modal and refresh the list FIRST so the user always sees the
     // new contact land, even if openChat or sendFriendRequest throws below.
@@ -11788,6 +12036,10 @@ async function callOpenAI(payload) {
         const c = activeCont();
         return c && c.id ? getContactPronounMemory(c.id) : null;
       })(),
+      senderPronounSignal: (() => {
+        const c = activeCont();
+        return c ? buildSenderPronounSignal(c, payload.direction) : null;
+      })(),
       stream: streaming,
     });
 
@@ -11956,6 +12208,10 @@ async function callOpenAIQuick({text, direction}) {
     contactPronounMemory: (() => {
       const c = activeCont();
       return c && c.id ? getContactPronounMemory(c.id) : null;
+    })(),
+    senderPronounSignal: (() => {
+      const c = activeCont();
+      return c ? buildSenderPronounSignal(c, direction) : null;
     })(),
   });
   const data = await res.json();
@@ -12794,6 +13050,18 @@ function showEncryptionInfo(){
 function closeEncInfo(){
   document.getElementById('encInfoOverlay').style.display = 'none';
 }
+function onProfileGenderClick(g){
+  if(g !== 'male' && g !== 'female') return;
+  setUserGender(g);
+  refreshProfileGenderUi();
+}
+function refreshProfileGenderUi(){
+  const current = getUserGender();
+  document.querySelectorAll('#profGenderPick .prof-gender-btn').forEach(b=>{
+    b.classList.toggle('sel', b.dataset.g === current);
+  });
+}
+
 function onGrammarToggleChange(checked){
   localStorage.setItem('grammar_check_on', checked ? 'true' : 'false');
   if(!checked) hideGrammarChip();

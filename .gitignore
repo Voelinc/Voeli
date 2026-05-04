@@ -25,3 +25,6 @@ desktop.ini
 .claude/scratch/
 .claude/agents/
 .claude/settings.local.json
+
+.dev.vars*
+!.dev.vars.example

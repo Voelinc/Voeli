@@ -922,7 +922,11 @@ export async function handleTranslate(
   // heuristic — see vietnamese-pronoun-resolver.ts for why.
   let pronounSignals: ReturnType<typeof detectPronounSignals> | null = null;
   if (payload.direction === 'vi-en') {
-    pronounSignals = detectPronounSignals(payload.text, payload.contactPronounMemory);
+    pronounSignals = detectPronounSignals(
+      payload.text,
+      payload.contactPronounMemory,
+      payload.senderPronounSignal ?? null
+    );
     if (
       pronounSignals.inferredRelationship &&
       pronounSignals.confidence >= 0.8 &&
@@ -1192,7 +1196,11 @@ export async function handleQuick(
   // canonical override instead of running the word-order heuristic.
   let pronounSignals: ReturnType<typeof detectPronounSignals> | null = null;
   if (payload.direction === 'vi-en') {
-    pronounSignals = detectPronounSignals(payload.text, payload.contactPronounMemory);
+    pronounSignals = detectPronounSignals(
+      payload.text,
+      payload.contactPronounMemory,
+      payload.senderPronounSignal ?? null
+    );
     if (
       pronounSignals.inferredRelationship &&
       pronounSignals.confidence >= 0.8 &&

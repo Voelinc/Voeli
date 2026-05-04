@@ -49,7 +49,21 @@ export interface TranslatePayload {
   // "you flatter me." selfPronoun is what the contact uses for themselves;
   // otherPronoun is what they call the user.
   contactPronounMemory?: ContactPronounMemory;
+  // Highest-priority pronoun signal: derived from the user's gender +
+  // contact relationship type (or per-contact partner override). The frontend
+  // computes the speaker-perspective pair (inverted for vi-en where the
+  // contact is the speaker), so the backend can lock direction without
+  // running heuristics. Bypasses memory + ambiguousPair detection.
+  senderPronounSignal?: SenderPronounSignal | null;
   stream?: boolean;
+}
+
+export interface SenderPronounSignal {
+  selfPronoun: string | null;
+  otherPronoun: string | null;
+  // 'override' = explicit per-contact tap; 'derived' = gender + relationship.
+  source: 'override' | 'derived';
+  relationship: string | null;
 }
 
 export interface ContactPronounMemory {
@@ -77,6 +91,7 @@ export interface QuickTranslatePayload {
   culturalConceptCounts?: Record<string, number>;
   dishCounts?: Record<string, number>;
   contactPronounMemory?: ContactPronounMemory;
+  senderPronounSignal?: SenderPronounSignal | null;
 }
 
 export interface VoiceTranslatePayload {
