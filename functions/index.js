@@ -93,22 +93,36 @@ exports.notifyOnDmMessage = onValueCreated(
     });
     if (!tokenEntries.length) return null;
 
+    // Prefer the sender's chosen display name (set during signup at the
+    // Name screen). Fall back to the email's local part when no display
+    // name is set (older accounts), and to a generic label as a last
+    // resort. The slice cap keeps a pathological 200-char "name" from
+    // blowing past iOS's notification title width.
     let senderName = 'New message';
     try {
-      const sSnap = await db.ref(`/users/${msg.senderId}/email`).once('value');
-      const email = sSnap.val();
-      if (typeof email === 'string' && email.includes('@')) {
-        senderName = email.split('@')[0];
-      } else if (email != null) {
-        console.warn(`[notify] unexpected email type for sender=${msg.senderId}: ${typeof email}`);
+      const dnSnap = await db.ref(`/users/${msg.senderId}/displayName`).once('value');
+      const dn = dnSnap.val();
+      if (typeof dn === 'string' && dn.trim().length) {
+        senderName = dn.trim().slice(0, 60);
+      } else {
+        const sSnap = await db.ref(`/users/${msg.senderId}/email`).once('value');
+        const email = sSnap.val();
+        if (typeof email === 'string' && email.includes('@')) {
+          senderName = email.split('@')[0].slice(0, 60);
+        } else if (email != null) {
+          console.warn(`[notify] unexpected email type for sender=${msg.senderId}: ${typeof email}`);
+        }
       }
     } catch (e) {
-      console.warn(`[notify] failed to read sender email for sender=${msg.senderId}:`, e.message);
+      console.warn(`[notify] failed to read sender profile for sender=${msg.senderId}:`, e.message);
     }
 
-    const body = (typeof msg.translated === 'string' && msg.translated.length)
-      ? msg.translated.slice(0, 140)
-      : 'Sent you a message';
+    // Body intentionally stays generic. text/original are encrypted envelopes
+    // ({v, c} objects) by the time they hit the database, and this function
+    // runs without the message-encryption key by design — leaking plaintext
+    // through the notification body would defeat the envelope. Signal and
+    // iMessage handle E2E pushes the same way: "{Name} sent a message".
+    const body = 'Sent you a message';
     const tokens = tokenEntries.map((e) => e.token);
 
     const res = await admin.messaging().sendEachForMulticast({
