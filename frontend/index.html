@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content"/>
 <!-- PWA install + iOS home-screen treatment. theme_color paints the iOS status
      bar / Android nav bar in brand blue when installed; background_color (in
      manifest) is the splash background. apple-mobile-web-app-capable removes
@@ -145,6 +145,11 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:var(--panel);colo
   /* Hint Safari to use the GPU-backed compositor for the whole document so
      transforms/scroll are smoother instead of repainting on the CPU */
   -webkit-text-size-adjust:100%;}
+/* When the on-screen keyboard is up, --kb-offset is the keyboard's height (set
+   by the visualViewport listener at the top of <script>). Shrinking the body
+   by that amount makes the existing flex column collapse so the composer
+   stays just above the keyboard instead of getting hidden under it. */
+body.kb-open{height:calc(100dvh - var(--kb-offset, 0px));}
 /* Promote scrollable / animated regions to their own compositor layer.
    Cheap iOS perf win: removes per-frame paint cost during swipes & scroll. */
 .sidebar,.cpanel,.msgs,.sb-list{will-change:transform;transform:translateZ(0);}
@@ -5080,6 +5085,33 @@ window.addEventListener('offline', () => {
   document.body.classList.add('is-offline');
   _showToast(appDir==='vi-en' ? 'Bạn đang ngoại tuyến. Tin nhắn sẽ được gửi khi bạn kết nối lại.' : 'You are offline. Messages will be sent when you reconnect.');
 });
+
+// Keyboard handling. iOS Safari (browser tab) overlays the on-screen keyboard
+// onto the visual viewport without resizing the layout viewport, which leaves
+// the composer hidden under the keyboard. The visualViewport API gives us the
+// actual on-screen height; we expose it as --kb-offset and shrink the body so
+// the existing flex layout collapses naturally above the keyboard.
+//
+// Android Chrome and iOS PWA standalone resize the layout viewport on their
+// own — the listener still runs but --kb-offset stays at 0, so this is a
+// no-op there. The viewport meta also carries `interactive-widget=resizes-
+// content` so future browser versions get the resize-by-default behaviour.
+(function setupKeyboardHandling(){
+  if(typeof window === 'undefined' || !window.visualViewport) return;
+  const vv = window.visualViewport;
+  let raf = 0;
+  const apply = () => {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      document.documentElement.style.setProperty('--kb-offset', kb + 'px');
+      document.body.classList.toggle('kb-open', kb > 100);
+    });
+  };
+  vv.addEventListener('resize', apply);
+  vv.addEventListener('scroll', apply);
+  apply();
+})();
 
 async function flushOfflineMessageQueue(){
   if(!isOnline || offlineMessageQueue.length === 0) return;
