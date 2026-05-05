@@ -578,6 +578,26 @@ body.is-offline::before{
   color:inherit;font-family:inherit;}
 .btgl:hover{opacity:.95;}
 .nomsg{text-align:center;color:var(--muted);font-size:14px;padding:40px 20px;}
+.nomsg-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;padding:48px 24px;min-height:60%;text-align:center;
+  animation:skelFade .25s ease-out;}
+.nomsg-emoji{font-size:48px;line-height:1;margin-bottom:10px;}
+.nomsg-title{font-size:16px;font-weight:600;color:var(--ink);}
+.nomsg-sub{font-size:13.5px;color:var(--muted);line-height:1.4;}
+/* Cold-open skeleton. Bubbles shimmer until loadHistoricalMessages resolves;
+   if the room turns out to be empty, this is replaced by the .nomsg copy.
+   The shimmer uses a moving gradient (animated background-position) so it
+   stays cheap to composite — no opacity flips per frame. */
+.msgs-skeleton{display:flex;flex-direction:column;padding:12px 16px;gap:8px;
+  animation:skelFade .25s ease-out;}
+.bubble-skeleton{height:34px;border-radius:18px;
+  background:linear-gradient(90deg, var(--panel-2) 0%, var(--chip) 50%, var(--panel-2) 100%);
+  background-size:200% 100%;animation:skelShimmer 1.4s linear infinite;
+  max-width:62%;box-shadow:var(--shadow-sm);}
+.bubble-skeleton.me{align-self:flex-end;border-bottom-right-radius:6px;}
+.bubble-skeleton.them{align-self:flex-start;border-bottom-left-radius:6px;}
+@keyframes skelShimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+@keyframes skelFade{from{opacity:0;}to{opacity:1;}}
 .status-banner{text-align:center;color:#d97706;font-size:14px;padding:20px;background:rgba(217,118,6,0.1);border:1px solid rgba(217,118,6,0.3);border-radius:8px;margin:20px;font-weight:500;}
 .msgs-paging-header{text-align:center;font-size:12px;color:var(--muted);padding:10px 16px;}
 .msgs-paging-header.loading{font-style:italic;}
@@ -3678,7 +3698,7 @@ const APP_STRINGS = {
     grammarDesc: 'Grammar check monitors your messages in real time as you type, offering instant suggestions to improve clarity, correctness, and professionalism. It catches spelling mistakes, grammatical errors, punctuation issues, and awkward phrasing to help you communicate more effectively.',
     commInsights: 'Communication insights',
     commDesc: 'Communication insights help you understand your own communication style and how you naturally express yourself. We analyze patterns in how you communicate, like your message length, frequency, and tone preferences. We don\'t save your messages, read their content, or know what you\'re talking about. Think of it like analyzing the shape of your handwriting, not the words you wrote.',
-    addFirstContact: 'Add your first contact to start translating.',
+    addFirstContact: 'Add your first contact to start chatting.',
     deleteConfirm: 'Delete this contact and all messages?',
     cancelRequestConfirm: 'Cancel friend request?',
     learned: 'Learned',
@@ -3711,7 +3731,7 @@ const APP_STRINGS = {
     grammarDesc: 'Kiểm tra ngữ pháp giám sát các thông báo của bạn trong thời gian thực khi bạn nhập, cung cấp các đề xuất tức thì để cải thiện tính rõ ràng, chính xác và chuyên nghiệp. Nó bắt các lỗi chính tả, lỗi ngữ pháp, vấn đề dấu câu và cụm từ khó xử để giúp bạn giao tiếp hiệu quả hơn.',
     commInsights: 'Thông tin liên lạc',
     commDesc: 'Thông tin giao tiếp giúp bạn hiểu phong cách giao tiếp của riêng mình và cách bạn tự nhiên bày tỏ bản thân. Chúng tôi phân tích các mẫu trong cách bạn giao tiếp, chẳng hạn như độ dài tin nhắn, tần suất và sở thích giọng điệu của bạn. Chúng tôi không lưu các thông báo của bạn, đọc nội dung của chúng hoặc biết bạn đang nói về cái gì. Hãy coi nó như phân tích hình dạng của chữ viết tay của bạn, chứ không phải những từ bạn viết.',
-    addFirstContact: 'Thêm liên hệ đầu tiên của bạn để bắt đầu dịch.',
+    addFirstContact: 'Thêm liên hệ đầu tiên để bắt đầu trò chuyện.',
     deleteConfirm: 'Xóa liên hệ này và tất cả tin nhắn?',
     cancelRequestConfirm: 'Hủy yêu cầu kết bạn?',
     learned: 'Đã học',
@@ -7318,7 +7338,7 @@ function renderSidebar(list){
       el.innerHTML=isVI
         ?`<div class="sb-empty">
             <div style="font-weight:600;color:var(--ink);margin-bottom:6px;">Chưa có liên hệ</div>
-            <div style="margin-bottom:16px;">Thêm người đầu tiên để bắt đầu nhắn tin.</div>
+            <div style="margin-bottom:16px;">Thêm liên hệ đầu tiên để bắt đầu trò chuyện.</div>
             <button class="sb-empty-btn" onclick="openModal()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Thêm liên hệ
@@ -7326,7 +7346,7 @@ function renderSidebar(list){
           </div>`
         :`<div class="sb-empty">
             <div style="font-weight:600;color:var(--ink);margin-bottom:6px;">No contacts yet</div>
-            <div style="margin-bottom:16px;">Add your first contact to start translating.</div>
+            <div style="margin-bottom:16px;">Add your first contact to start chatting.</div>
             <button class="sb-empty-btn" onclick="openModal()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               New Contact
@@ -8166,6 +8186,9 @@ async function loadHistoricalMessages(contact){
     }
   } catch(e){
     console.error('Error loading historical messages:', e);
+  } finally {
+    contact.loadingHistorical = false;
+    if(activeId === contact.id) renderMsgs();
   }
 }
 
@@ -8512,6 +8535,10 @@ function openChat(id){
     c.oldestLoadedMsgId = null;
     c.fullyLoaded = false;
     c.loadingOlder = false;
+    // Skeleton loading: while the historical fetch is in flight, renderMsgs
+    // shows placeholder bubbles instead of the bare "No messages yet" empty
+    // state. Cleared in loadHistoricalMessages once we have a result.
+    c.loadingHistorical = true;
   }
   renderMsgs(); renderSidebar();
   setupPaginationScroll();
@@ -9402,7 +9429,31 @@ function renderMsgs(){
   }
 
   if(!c || (!c.msgs || !c.msgs.length) && (!c.queuedMsgs || !c.queuedMsgs.length)){
-    area.innerHTML=`<div class="nomsg" id="nomsg">${isVI?'Chưa có tin nhắn — bắt đầu bên dưới':'No messages yet — start below'}</div>`;
+    // Cold open: show skeleton bubbles until loadHistoricalMessages settles.
+    // Once it does, this block runs again and either renders messages or the
+    // empty state below.
+    if(c && c.loadingHistorical){
+      area.innerHTML = `<div class="msgs-skeleton" aria-hidden="true">
+        <div class="bubble-skeleton them" style="width:62%"></div>
+        <div class="bubble-skeleton me"   style="width:48%"></div>
+        <div class="bubble-skeleton them" style="width:74%"></div>
+        <div class="bubble-skeleton them" style="width:40%"></div>
+        <div class="bubble-skeleton me"   style="width:56%"></div>
+      </div>`;
+      return;
+    }
+    const who = c ? esc(dispName(c)) : '';
+    const title = c
+      ? (isVI ? `Gửi lời chào tới ${who}` : `Say hi to ${who}`)
+      : (isVI ? 'Gửi lời chào nào' : 'Say hi');
+    const sub = isVI
+      ? 'Chưa có tin nhắn. Soạn bên dưới để bắt đầu.'
+      : 'No messages yet. Type below to start.';
+    area.innerHTML=`<div class="nomsg-empty" id="nomsg">
+      <div class="nomsg-emoji" aria-hidden="true">👋</div>
+      <div class="nomsg-title">${title}</div>
+      <div class="nomsg-sub">${sub}</div>
+    </div>`;
     return;
   }
   const todayLbl=isVI?'Hôm nay':'Today';
