@@ -578,6 +578,18 @@ body.is-offline::before{
   color:inherit;font-family:inherit;}
 .btgl:hover{opacity:.95;}
 .nomsg{text-align:center;color:var(--muted);font-size:14px;padding:40px 20px;}
+/* Pull-to-refresh spinner. Lives in the scrollable list's parent (which is
+   forced to position:relative by the JS shim) and is translated down based
+   on the user's pull distance. .spinning rotates it while the refresh
+   handler runs; we hold the spin for ~350ms so a fast Firebase round-trip
+   doesn't feel like nothing happened. */
+.p2r-spinner{position:absolute;top:-32px;left:50%;width:32px;height:32px;
+  margin-left:-16px;display:flex;align-items:center;justify-content:center;
+  color:var(--muted);background:var(--panel);border-radius:50%;
+  box-shadow:var(--shadow-sm);opacity:0;
+  transition:opacity .15s ease, transform .25s ease;pointer-events:none;z-index:5;}
+.p2r-spinner.spinning svg{animation:p2rSpin 1s linear infinite;}
+@keyframes p2rSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 .nomsg-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:6px;padding:48px 24px;min-height:60%;text-align:center;
   animation:skelFade .25s ease-out;}
@@ -5104,6 +5116,102 @@ window.addEventListener('offline', () => {
   isOnline = false;
   document.body.classList.add('is-offline');
   _showToast(appDir==='vi-en' ? 'Bạn đang ngoại tuyến. Tin nhắn sẽ được gửi khi bạn kết nối lại.' : 'You are offline. Messages will be sent when you reconnect.');
+});
+
+// Pull-to-refresh shim. Native overscroll-to-reload is disabled in standalone
+// PWA mode on both iOS and Android, so users who expect the gesture from the
+// rest of the OS get nothing without this. The handler tracks finger drag
+// while the scroll container is at top, fades a spinner in past 70px, and on
+// release runs the supplied refresh function. Refresh "work" is intentionally
+// thin — Firebase listeners keep contacts and chats live, so we just re-pull
+// friend requests + re-render — but holding the spin for ~350ms gives the
+// gesture a satisfying ack instead of an instant snap-back.
+function setupPullToRefresh(scrollEl, onRefresh){
+  if(!scrollEl || scrollEl.dataset.p2r === '1') return;
+  scrollEl.dataset.p2r = '1';
+
+  const spinner = document.createElement('div');
+  spinner.className = 'p2r-spinner';
+  spinner.setAttribute('aria-hidden', 'true');
+  spinner.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
+  // Append to the scroll container's parent — appending inside the container
+  // would put the spinner at risk of being wiped on the next innerHTML render
+  // (renderSidebar replaces #cList's contents wholesale, for example). Using
+  // the parent keeps it stable across re-renders. We position it just above
+  // scrollEl using scrollEl.offsetTop so it visually sits where the list
+  // begins, not at the panel's top edge.
+  const container = scrollEl.parentElement;
+  if(!container) return;
+  if(getComputedStyle(container).position === 'static') container.style.position = 'relative';
+  container.appendChild(spinner);
+  const positionSpinner = () => {
+    spinner.style.top = (scrollEl.offsetTop - 32) + 'px';
+  };
+  positionSpinner();
+  if(typeof ResizeObserver === 'function'){
+    new ResizeObserver(positionSpinner).observe(scrollEl);
+  }
+
+  let startY = 0, pulledY = 0, pulling = false, refreshing = false;
+  const THRESHOLD = 70;
+
+  scrollEl.addEventListener('touchstart', e => {
+    if(refreshing) return;
+    if(scrollEl.scrollTop > 0) return;
+    startY = e.touches[0].clientY;
+    pulling = true;
+    pulledY = 0;
+  }, {passive: true});
+
+  scrollEl.addEventListener('touchmove', e => {
+    if(!pulling) return;
+    const dy = e.touches[0].clientY - startY;
+    if(dy <= 0){
+      pulledY = 0;
+      spinner.style.opacity = '';
+      spinner.style.transform = '';
+      return;
+    }
+    // Rubber-band: each px of finger travel only moves the spinner half a px,
+    // capped at 1.4 × threshold so it can't run off into nowhere.
+    pulledY = Math.min(dy * 0.5, THRESHOLD * 1.4);
+    spinner.style.opacity = String(Math.min(1, pulledY / THRESHOLD));
+    spinner.style.transform = `translateY(${pulledY}px)`;
+  }, {passive: true});
+
+  scrollEl.addEventListener('touchend', async () => {
+    if(!pulling) return;
+    pulling = false;
+    if(pulledY >= THRESHOLD){
+      refreshing = true;
+      spinner.classList.add('spinning');
+      spinner.style.opacity = '1';
+      spinner.style.transform = `translateY(${THRESHOLD}px)`;
+      try { await onRefresh(); } catch(err){ if(window.Sentry) Sentry.captureException(err); }
+      setTimeout(() => {
+        spinner.classList.remove('spinning');
+        spinner.style.opacity = '';
+        spinner.style.transform = '';
+        refreshing = false;
+      }, 350);
+    } else {
+      spinner.style.opacity = '';
+      spinner.style.transform = '';
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const refresh = async () => {
+    if(typeof loadFriendRequests === 'function'){
+      try { await loadFriendRequests(); } catch(_){}
+    }
+    if(typeof renderSidebar === 'function') renderSidebar();
+  };
+  const cList = document.getElementById('cList');
+  const chatListItems = document.getElementById('chatListItems');
+  if(cList) setupPullToRefresh(cList, refresh);
+  if(chatListItems) setupPullToRefresh(chatListItems, refresh);
 });
 
 // Keyboard handling. iOS Safari (browser tab) overlays the on-screen keyboard
