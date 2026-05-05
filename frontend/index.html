@@ -1780,12 +1780,15 @@ body.is-offline::before{
 
       <!-- Privacy Section -->
       <div style="margin-top:32px;padding-top:20px;">
-        <!-- Gender — used silently to pick the right Vietnamese pronouns -->
+        <!-- Gender — used silently to pick the right Vietnamese pronouns.
+             Description hidden behind a "More details" disclosure to match
+             the rest of this section's layout (see Grammar check below). -->
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:12px;background:var(--panel-2);border-radius:8px;gap:12px;">
-          <div style="flex:1;min-width:0;">
-            <div id="profGenderTitle" style="font-size:14px;font-weight:500;margin-bottom:3px;">Gender</div>
-            <div id="profGenderSub" style="font-size:12px;color:var(--muted);line-height:1.4;">Used only to pick the right Vietnamese pronouns when translating. Never shown to other users.</div>
-          </div>
+          <div id="profGenderTitle" style="font-size:14px;font-weight:500;">Gender</div>
+          <details style="padding:0;margin:0;flex:1;text-align:right;padding-right:12px;">
+            <summary style="cursor:pointer;font-size:9px;color:var(--text);user-select:none;list-style:none;">More details</summary>
+            <p id="profGenderSub" style="font-size:13px;color:var(--muted);margin:12px 0 0 0;line-height:1.6;text-align:left;">Used only to pick the right Vietnamese pronouns when translating. Never shown to other users.</p>
+          </details>
           <div id="profGenderPick" style="display:flex;gap:6px;flex-shrink:0;">
             <button type="button" class="prof-gender-btn" data-g="male" onclick="onProfileGenderClick('male')">Male</button>
             <button type="button" class="prof-gender-btn" data-g="female" onclick="onProfileGenderClick('female')">Female</button>
