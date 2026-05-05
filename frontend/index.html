@@ -578,6 +578,22 @@ body.is-offline::before{
   color:inherit;font-family:inherit;}
 .btgl:hover{opacity:.95;}
 .nomsg{text-align:center;color:var(--muted);font-size:14px;padding:40px 20px;}
+/* In-chat search bar. Slides in below the chat header when the user taps
+   the search icon. Filters c.msgs by case-insensitive substring match
+   against text/translated/original. */
+.chat-search-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;
+  background:var(--panel);border-bottom:1px solid var(--line);flex-shrink:0;
+  animation:skelFade .18s ease-out;}
+.chat-search-bar .chat-search-ico{color:var(--muted);flex-shrink:0;}
+.chat-search-bar input{flex:1;border:none;background:var(--panel-2);
+  border-radius:999px;padding:7px 12px;font-size:14px;font-family:inherit;
+  outline:none;color:var(--ink);min-width:0;}
+.chat-search-bar input::placeholder{color:var(--muted);}
+.chat-search-count{font-size:11.5px;color:var(--muted);white-space:nowrap;}
+.chat-search-close{background:transparent;border:none;color:var(--muted);
+  cursor:pointer;font-size:16px;line-height:1;padding:6px 8px;flex-shrink:0;
+  font-family:inherit;border-radius:999px;}
+.chat-search-close:hover{background:var(--panel-2);color:var(--ink);}
 /* Pull-to-refresh spinner. Lives in the scrollable list's parent (which is
    forced to position:relative by the JS shim) and is translated down based
    on the user's pull distance. .spinning rotates it while the refresh
@@ -1563,12 +1579,24 @@ body.is-offline::before{
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
             </svg>
           </button>
+          <button class="icon-btn" id="btnSearchChat" title="Search" aria-label="Search this chat" onclick="toggleChatSearch()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </button>
           <button class="icon-btn" id="btnMoreContact" title="More" aria-label="More" onclick="if(activeId)openModal(activeId)">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
             </svg>
           </button>
         </div>
+      </div>
+
+      <div id="chatSearchBar" class="chat-search-bar" style="display:none;">
+        <svg class="chat-search-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="chatSearchInput" type="search" placeholder="Search this chat" oninput="onChatSearchInput(this.value)" onkeydown="if(event.key==='Escape')closeChatSearch()">
+        <span id="chatSearchCount" class="chat-search-count"></span>
+        <button class="chat-search-close" onclick="closeChatSearch()" aria-label="Close search">✕</button>
       </div>
 
       <div id="cStatus" class="cstatus"></div>
@@ -8634,6 +8662,14 @@ function openChat(id){
   document.getElementById('chatEmpty').style.display='none';
   document.getElementById('chatList').style.display='none';
   document.getElementById('activeChat').style.display='flex';
+  // Reset any in-chat search left over from the previous conversation.
+  if(_chatSearchQuery || (document.getElementById('chatSearchBar')||{}).style?.display === 'flex'){
+    _chatSearchQuery = '';
+    const bar = document.getElementById('chatSearchBar');
+    const inp = document.getElementById('chatSearchInput');
+    if(bar) bar.style.display = 'none';
+    if(inp) inp.value = '';
+  }
   refreshHeader(); closeSheet(); hideSt();
   // Hide any previous drift banner before checking for a new one
   dismissDriftBanner();
@@ -9452,6 +9488,7 @@ function updPlaceholder(){
   const setTitle=(sel,t)=>{ const el=document.querySelector(sel); if(el){ el.title=t; el.setAttribute('aria-label', t); } };
   setTitle('#btnVideoCall', isVI?'Gọi video':'Video call');
   setTitle('#btnVoiceCall', isVI?'Gọi thoại':'Voice call');
+  setTitle('#btnSearchChat', isVI?'Tìm trong cuộc trò chuyện':'Search this chat');
   setTitle('#btnMoreContact', isVI?'Thêm':'More');
   setTitle('#btnConnectEmail', isVI?'Kết nối phiên Live':'Connect live session');
   setTitle('#plusBtn', isVI?'Mở bộ chọn media':'Open media picker');
@@ -9593,7 +9630,25 @@ function renderMsgs(){
     }
   }
   const hiddenSet = c.hiddenMessages instanceof Set ? c.hiddenMessages : null;
-  const visibleMsgs = (hiddenSet && hiddenSet.size) ? c.msgs.filter(m => !hiddenSet.has(m.id)) : c.msgs;
+  let visibleMsgs = (hiddenSet && hiddenSet.size) ? c.msgs.filter(m => !hiddenSet.has(m.id)) : c.msgs;
+  // In-chat search: filter to messages whose text/translated/original contain
+  // the query (case-insensitive substring). Skipped when no search is active.
+  if(_chatSearchQuery){
+    const q = _chatSearchQuery;
+    visibleMsgs = visibleMsgs.filter(m => {
+      const hay = ((m.text||'') + ' ' + (m.translated||'') + ' ' + (m.original||'')).toLowerCase();
+      return hay.includes(q);
+    });
+    const countEl = document.getElementById('chatSearchCount');
+    if(countEl){
+      countEl.textContent = isVI
+        ? (visibleMsgs.length === 0 ? 'Không có kết quả' : `${visibleMsgs.length} kết quả`)
+        : (visibleMsgs.length === 0 ? 'No matches' : `${visibleMsgs.length} match${visibleMsgs.length===1?'':'es'}`);
+    }
+  } else {
+    const countEl = document.getElementById('chatSearchCount');
+    if(countEl) countEl.textContent = '';
+  }
   area.innerHTML=paginationHeader + statusBanner + visibleMsgs.map((m,i)=>{
     let h='';
     const d=fmtDay(m.ts)||todayLbl;
@@ -9954,6 +10009,43 @@ async function copyMessageText(msgId){
 // their email as a query param so the signup form on the other end can prefill
 // it. We try the native share sheet first (mobile + supported desktop), then
 // fall back to clipboard, then to a last-resort prompt() if both fail.
+// In-chat search. Global query (cleared on chat switch) keeps the state model
+// flat — no per-contact persistence needed since the gesture is short-lived.
+let _chatSearchQuery = '';
+
+function toggleChatSearch(){
+  const bar = document.getElementById('chatSearchBar');
+  if(!bar) return;
+  if(bar.style.display === 'flex'){
+    closeChatSearch();
+  } else {
+    const isVI = appDir === 'vi-en';
+    const inp = document.getElementById('chatSearchInput');
+    if(inp){
+      inp.placeholder = isVI ? 'Tìm trong cuộc trò chuyện này' : 'Search this chat';
+      inp.value = _chatSearchQuery || '';
+    }
+    bar.style.display = 'flex';
+    setTimeout(() => inp && inp.focus(), 30);
+  }
+}
+
+function closeChatSearch(){
+  const bar = document.getElementById('chatSearchBar');
+  if(bar) bar.style.display = 'none';
+  const inp = document.getElementById('chatSearchInput');
+  if(inp) inp.value = '';
+  if(_chatSearchQuery){
+    _chatSearchQuery = '';
+    if(typeof renderMsgs === 'function') renderMsgs();
+  }
+}
+
+function onChatSearchInput(value){
+  _chatSearchQuery = (value || '').trim().toLowerCase();
+  if(typeof renderMsgs === 'function') renderMsgs();
+}
+
 async function shareInvite(contactId){
   const c = contacts.find(x => x.id === contactId);
   if(!c || !c.email) return;
