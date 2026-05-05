@@ -5152,6 +5152,22 @@ let _obCurrentScreen = 'welcome';
 let _pendingNewSignup = false; // flag: route to Name screen on next auth-state event
 let _signupGender     = null;  // 'male' | 'female' picked on the signup screen
 
+// If the user landed via an invite link (https://voeli.app/?email=foo@bar.com),
+// stash the email so we can prefill the signup/signin form when they arrive on
+// it. Loose validation: must look roughly like an email, capped at 200 chars to
+// avoid a giant URL-injected payload landing in a placeholder. We never auto-
+// submit — the user sees the prefill and can change it.
+let _invitedEmail = '';
+(() => {
+  try {
+    const p = new URLSearchParams(location.search);
+    const e = (p.get('email') || '').trim().toLowerCase();
+    if(e && e.length <= 200 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){
+      _invitedEmail = e;
+    }
+  } catch(_){}
+})();
+
 function obGoTo(screen){
   const ids = { welcome:'obWelcome', signup:'obSignup', signin:'obSignin', name:'obName' };
   const toEl = document.getElementById(ids[screen]);
@@ -5176,11 +5192,15 @@ function obGoTo(screen){
     if(bday) bday.setAttribute('max', today);
     renderTurnstileIfNeeded();
     document.getElementById('turnstileWrap').style.display = 'block';
+    const emailEl = document.getElementById('authEmail');
+    if(emailEl && _invitedEmail && !emailEl.value) emailEl.value = _invitedEmail;
     updateAuthButtonState();
     setTimeout(()=>{ const e=document.getElementById('authEmail'); if(e) e.focus(); }, 320);
   } else if(screen === 'signin'){
     authMode = 'signIn';
     showAuthErrorSI('');
+    const emailSIEl = document.getElementById('authEmailSI');
+    if(emailSIEl && _invitedEmail && !emailSIEl.value) emailSIEl.value = _invitedEmail;
     setTimeout(()=>{ const e=document.getElementById('authEmailSI'); if(e) e.focus(); }, 320);
   } else if(screen === 'name'){
     showObNameError('');
@@ -9339,7 +9359,13 @@ function renderMsgs(){
   // and queued). Showing the prior conversation before the other side has
   // accepted is misleading — the relationship hasn't been re-established.
   if(c && c.status === 'pending_acceptance'){
-    area.innerHTML=`<div class="status-banner">${isVI?'⚠️ Yêu cầu kết bạn đang chờ — chờ phản hồi':'⚠️ Friend request pending — waiting for acceptance'}</div>`;
+    const inviteBtn = c.email
+      ? `<button class="btn-request" onclick="shareInvite(${c.id})">${isVI?'Mời họ vào Voeli':'Invite them to Voeli'}</button>`
+      : '';
+    const lead = isVI
+      ? '⚠️ Đang chờ chấp nhận. Nếu họ chưa dùng Voeli, hãy gửi lời mời.'
+      : '⚠️ Waiting for acceptance. If they\'re not on Voeli yet, send them an invite.';
+    area.innerHTML=`<div class="status-banner">${lead}<br>${inviteBtn}</div>`;
     return;
   }
 
@@ -9731,6 +9757,42 @@ async function copyMessageText(msgId){
     if(window.Sentry) Sentry.captureException(e);
     _showToast(isVI ? 'Không thể sao chép' : 'Could not copy');
   }
+}
+
+// Share an invite link for a contact who isn't on Voeli yet. The URL carries
+// their email as a query param so the signup form on the other end can prefill
+// it. We try the native share sheet first (mobile + supported desktop), then
+// fall back to clipboard, then to a last-resort prompt() if both fail.
+async function shareInvite(contactId){
+  const c = contacts.find(x => x.id === contactId);
+  if(!c || !c.email) return;
+  const isVI = appDir === 'vi-en';
+  let link;
+  try {
+    const u = new URL(window.location.origin || 'https://voeli.app');
+    u.searchParams.set('email', c.email);
+    link = u.toString();
+  } catch(_){
+    link = `https://voeli.app/?email=${encodeURIComponent(c.email)}`;
+  }
+  const text = isVI
+    ? `Cài Voeli để mình và bạn có thể nhắn tin: ${link}`
+    : `Install Voeli so we can chat: ${link}`;
+  const title = isVI ? 'Lời mời Voeli' : 'Voeli invite';
+  try {
+    if(navigator.share){
+      await navigator.share({ title, text, url: link });
+      return;
+    }
+  } catch(e){
+    if(e && e.name === 'AbortError') return; // user cancelled — silent
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    _showToast(isVI ? 'Đã sao chép lời mời' : 'Invite copied');
+    return;
+  } catch(_){}
+  prompt(isVI ? 'Sao chép lời mời này:' : 'Copy this invite:', text);
 }
 
 async function reportContact(){
