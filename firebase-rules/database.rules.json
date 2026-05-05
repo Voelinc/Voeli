@@ -13,6 +13,11 @@
           "$tokenKey": {
             ".validate": "newData.hasChildren(['token']) && newData.child('token').isString() && newData.child('token').val().length <= 4096"
           }
+        },
+        "mutedRooms": {
+          "$roomId": {
+            ".validate": "newData.isBoolean()"
+          }
         }
       }
     },

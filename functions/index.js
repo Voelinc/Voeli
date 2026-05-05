@@ -69,7 +69,16 @@ exports.notifyOnDmMessage = onValueCreated(
 
     const partsSnap = await db.ref(`/dms/${roomId}/participants`).once('value');
     const parts = partsSnap.val() || {};
-    const recipients = Object.keys(parts).filter((uid) => uid !== msg.senderId && parts[uid] === true);
+    const allRecipients = Object.keys(parts).filter((uid) => uid !== msg.senderId && parts[uid] === true);
+    if (!allRecipients.length) return null;
+
+    // Drop recipients who muted this room. Stored at /users/$uid/mutedRooms/$roomId
+    // (boolean true). Reading it under admin creds bypasses the rules; the
+    // user-facing rule still locks /users/$uid to that user.
+    const muteSnaps = await Promise.all(
+      allRecipients.map((uid) => db.ref(`/users/${uid}/mutedRooms/${roomId}`).once('value'))
+    );
+    const recipients = allRecipients.filter((_, i) => muteSnaps[i].val() !== true);
     if (!recipients.length) return null;
 
     const tokenSnaps = await Promise.all(

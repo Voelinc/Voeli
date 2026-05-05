@@ -293,6 +293,7 @@ body.is-offline::before{
   justify-content:center;font-size:15px;font-weight:600;flex-shrink:0;}
 .cinf{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
 .cname{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cmute-ico{display:inline-flex;align-items:center;color:var(--muted-2);margin-left:4px;vertical-align:-2px;}
 .ctype{display:none;} /* type shown in header now, not in list */
 .cprev{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cprev .you{color:var(--muted-2);}
@@ -1463,6 +1464,9 @@ body.is-offline::before{
             <button class="enc-info-chip" onclick="showEncryptionInfo()" title="Encrypted" aria-label="Encryption info">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             </button>
+            <button class="enc-info-chip hdr-mute-chip" id="hdrMuteChip" onclick="toggleActiveRoomMute()" title="Muted" aria-label="Muted, tap to unmute" style="display:none;">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
           </div>
         </div>
         <div class="ch-actions">
@@ -1765,11 +1769,14 @@ body.is-offline::before{
         <button class="cact" id="actShare"  onclick="shareContact()">
           <span class="cact-ico">↑</span><span class="cact-lbl">Share</span>
         </button>
-        <button class="cact cact-danger" id="actBlock" onclick="toggleContactFlag('blocked')">
-          <span class="cact-ico">⊘</span><span class="cact-lbl">Block</span>
-        </button>
         <button class="cact" id="actReadReceipts" onclick="toggleReadReceipts()">
           <span class="cact-ico">✓✓</span><span class="cact-lbl">Read Receipts</span>
+        </button>
+        <button class="cact" id="actMute" onclick="toggleChatMute()">
+          <span class="cact-ico">🔔</span><span class="cact-lbl">Mute</span>
+        </button>
+        <button class="cact cact-danger" id="actBlock" style="grid-column:1/-1;" onclick="toggleContactFlag('blocked')">
+          <span class="cact-ico">⊘</span><span class="cact-lbl">Block</span>
         </button>
         <button class="cact cact-danger" id="actReport" style="grid-column:1/-1;" onclick="reportContact()">
           <span class="cact-ico">⚑</span><span class="cact-lbl">Report</span>
@@ -4487,6 +4494,7 @@ async function launchApp(){
   // Load contacts from Firebase first (skip if in demo mode)
   if (!demoMode) {
     await loadContactsFromFirebase();
+    loadMutedRoomsFromFirebase().catch(()=>{});
   }
   renderSidebar(); // Pre-populate sidebar for when Contacts tab is clicked
   switchTab('messages'); // Show Messages tab with chat list by default
@@ -4523,6 +4531,12 @@ function generateUniqueContactId(){
 }
 
 let contactListenerActive = false;
+
+// Per-chat mute. Keyed by dmRoomId — the same id the Cloud Function and the
+// FCM payload use. Stored at /users/$uid/mutedRooms/$roomId so a mute set on
+// one device follows the user to another.
+let mutedRooms = new Set();
+let mutedRoomsListenerActive = false;
 
 // Paths where we've attached listeners (for cleanup on logout)
 let activeListenerPaths = new Set();
@@ -4620,6 +4634,54 @@ async function loadContactsFromFirebase(){
     console.error('Error loading contacts from Firebase:', e);
     if(window.Sentry) Sentry.captureException(e);
   }
+}
+
+// Pull the user's mute list once and stay subscribed for cross-device sync.
+// The Cloud Function is the source of truth for whether a push fires; this
+// listener exists so the in-app toast handler and the chat-header chip stay
+// consistent with whatever the user toggled elsewhere.
+async function loadMutedRoomsFromFirebase(){
+  if(!currentUser || !firebaseDb) return;
+  try {
+    const path = `users/${currentUser.uid}/mutedRooms`;
+    const snap = await firebaseDb.ref(path).once('value');
+    const v = snap.val() || {};
+    mutedRooms = new Set(Object.keys(v).filter(k => v[k] === true));
+    if(!mutedRoomsListenerActive){
+      mutedRoomsListenerActive = true;
+      activeListenerPaths.add(path);
+      const ref = firebaseDb.ref(path);
+      const onChange = (s, val) => {
+        if(val === true) mutedRooms.add(s.key);
+        else mutedRooms.delete(s.key);
+        renderSidebar();
+        refreshHeaderMuteChip();
+        if(typeof _refreshActionGrid === 'function' && editingId){
+          const ec = contacts.find(x => x.id === editingId);
+          if(ec) _refreshActionGrid(ec);
+        }
+      };
+      ref.on('child_added',   s => onChange(s, s.val()));
+      ref.on('child_changed', s => onChange(s, s.val()));
+      ref.on('child_removed', s => onChange(s, null));
+    }
+  } catch(e){
+    console.warn('[mutedRooms] load failed:', e);
+    if(window.Sentry) Sentry.captureException(e);
+  }
+}
+
+function isRoomMuted(roomId){
+  return !!(roomId && mutedRooms.has(roomId));
+}
+
+async function setRoomMuted(roomId, muted){
+  if(!roomId || !currentUser || !firebaseDb) return;
+  const ref = firebaseDb.ref(`users/${currentUser.uid}/mutedRooms/${roomId}`);
+  if(muted){ mutedRooms.add(roomId); await ref.set(true); }
+  else { mutedRooms.delete(roomId); await ref.remove(); }
+  renderSidebar();
+  refreshHeaderMuteChip();
 }
 
 let pendingFriendRequests = [];
@@ -5458,8 +5520,13 @@ function _attachPushOnMessage(messaging){
   if(_pushOnMessageAttached) return;
   _pushOnMessageAttached = true;
   messaging.onMessage((payload) => {
-    const title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || 'New message';
-    const body  = (payload.notification && payload.notification.body)  || (payload.data && payload.data.body)  || '';
+    // Belt-and-suspenders: the Cloud Function should already skip pushes for
+    // muted rooms server-side, but if the function hasn't been redeployed yet
+    // (or in older clients), drop the in-app toast here too.
+    const data = payload.data || {};
+    if(isRoomMuted(data.roomId)) return;
+    const title = (payload.notification && payload.notification.title) || data.title || 'New message';
+    const body  = (payload.notification && payload.notification.body)  || data.body  || '';
     try { _showToast(`${title}: ${body}`.slice(0, 140)); } catch(_){}
   });
 }
@@ -5726,12 +5793,14 @@ fbAuth.onAuthStateChanged(async (user)=>{
     // Reset the listener flags so they will be set up again on next login
     friendRequestListenerActive = false;
     contactListenerActive = false;
+    mutedRoomsListenerActive = false;
     inviteListenerActive = false;
     pendingFriendRequests = [];
     initiallyLoadedRequestIds.clear();
     activeDMRoomListeners.clear();
     processedInvites.clear();
     contacts = [];
+    mutedRooms = new Set();
     // Remove all Firebase listeners to prevent memory leaks
     cleanupFirebaseListeners();
     return;
@@ -7202,11 +7271,14 @@ function renderSidebar(list){
       ? `<span style="background:var(--blue);color:#fff;border-radius:999px;font-size:11px;font-weight:700;padding:2px 7px;min-width:20px;text-align:center;display:inline-block;">${c.unread}</span>`
       : '';
     const favStar = c.favourite ? `<span style="color:var(--gold);font-size:11px;margin-left:4px;">★</span>` : '';
+    const muteIcon = isRoomMuted(c.dmRoomId)
+      ? `<span class="cmute-ico" title="${isVI?'Đã tắt thông báo':'Muted'}" aria-label="${isVI?'Đã tắt thông báo':'Muted'}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg></span>`
+      : '';
     const isContactsTab = currentTab === 'contacts';
     return `<div class="crow${c.id===activeId?' active':''}" onclick="activeId=${c.id};switchTab('messages');openChat(${c.id})">
       <div class="cav" style="background:${r.bg};color:${r.fg||'#334155'};">${esc(initialsFor(c))}</div>
       <div class="cinf">
-        <div class="cname" style="${c.unread>0?'font-weight:700;color:var(--ink);':''}">${esc(dispName(c))}${favStar}</div>
+        <div class="cname" style="${c.unread>0?'font-weight:700;color:var(--ink);':''}">${esc(dispName(c))}${favStar}${muteIcon}</div>
         ${!isContactsTab ? `<div class="cprev" style="${c.unread>0?'font-weight:600;color:var(--ink);':''}">${youPrefix}${esc(prevText)}</div>` : ''}
       </div>
       <div class="cmeta">
@@ -7500,8 +7572,48 @@ function _refreshActionGrid(c){
   rr.classList.toggle('active', readReceiptsOn);
   rr.querySelector('.cact-ico').textContent = readReceiptsOn ? '✓✓' : '✓';
   rr.querySelector('.cact-lbl').textContent = isVI ? 'Xác nhận đã đọc' : 'Read Receipts';
+  // Mute toggle
+  const mu = document.getElementById('actMute');
+  if(mu){
+    const muted = isRoomMuted(c.dmRoomId);
+    mu.classList.toggle('active', muted);
+    mu.querySelector('.cact-ico').textContent = muted ? '🔕' : '🔔';
+    mu.querySelector('.cact-lbl').textContent = muted
+      ? (isVI ? 'Bật thông báo' : 'Unmute')
+      : (isVI ? 'Tắt thông báo' : 'Mute');
+  }
   const rep = document.getElementById('actReport');
   if(rep) rep.querySelector('.cact-lbl').textContent = isVI ? 'Báo cáo' : 'Report';
+}
+
+async function toggleChatMute(){
+  if(!editingId) return;
+  const c = contacts.find(x => x.id === editingId);
+  if(!c) return;
+  const isVI = appDir === 'vi-en';
+  if(!c.dmRoomId){
+    alert(isVI ? 'Chưa có phòng trò chuyện để tắt thông báo.' : 'No chat room to mute yet.');
+    return;
+  }
+  const willMute = !isRoomMuted(c.dmRoomId);
+  // Optimistic UI: flip the local Set first so the action grid updates instantly,
+  // then write through. setRoomMuted would do the same, but we want the grid
+  // to reflect immediately even if the network round-trip is slow.
+  if(willMute) mutedRooms.add(c.dmRoomId); else mutedRooms.delete(c.dmRoomId);
+  _refreshActionGrid(c);
+  renderSidebar();
+  refreshHeaderMuteChip();
+  try {
+    await setRoomMuted(c.dmRoomId, willMute);
+  } catch(e){
+    // Roll back on failure.
+    if(willMute) mutedRooms.delete(c.dmRoomId); else mutedRooms.add(c.dmRoomId);
+    _refreshActionGrid(c);
+    renderSidebar();
+    refreshHeaderMuteChip();
+    if(window.Sentry) Sentry.captureException(e);
+    alert(isVI ? 'Lỗi mạng, vui lòng thử lại.' : 'Network error, please try again.');
+  }
 }
 
 async function toggleContactFlag(flag){
@@ -8900,11 +9012,12 @@ function refreshHeader(){
     const lastText = [...relChip.childNodes].reverse().find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
     if(lastText) lastText.textContent = isVI ? ' Sửa' : ' Edit';
   }
-  const encChip = document.querySelector('.enc-info-chip');
+  const encChip = document.querySelector('.enc-info-chip:not(.hdr-mute-chip)');
   if(encChip){
     encChip.title = isVI ? 'Đã mã hoá' : 'Encrypted';
     encChip.setAttribute('aria-label', isVI ? 'Thông tin mã hoá' : 'Encryption info');
   }
+  refreshHeaderMuteChip();
 
   // Show/hide the "Connect" button depending on whether contact has an email
   const myEmail = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
@@ -8916,6 +9029,39 @@ function refreshHeader(){
     } else {
       btn.style.display='none';
     }
+  }
+}
+
+function refreshHeaderMuteChip(){
+  const chip = document.getElementById('hdrMuteChip');
+  if(!chip) return;
+  const c = activeCont();
+  const isVI = appDir === 'vi-en';
+  const muted = c && isRoomMuted(c.dmRoomId);
+  chip.style.display = muted ? 'inline-flex' : 'none';
+  chip.title = isVI ? 'Đã tắt thông báo' : 'Muted';
+  chip.setAttribute('aria-label', isVI ? 'Đã tắt thông báo, nhấn để bật lại' : 'Muted, tap to unmute');
+}
+
+async function toggleActiveRoomMute(){
+  const c = activeCont();
+  if(!c || !c.dmRoomId) return;
+  const isVI = appDir === 'vi-en';
+  const willMute = !isRoomMuted(c.dmRoomId);
+  if(willMute) mutedRooms.add(c.dmRoomId); else mutedRooms.delete(c.dmRoomId);
+  refreshHeaderMuteChip();
+  renderSidebar();
+  try {
+    await setRoomMuted(c.dmRoomId, willMute);
+    _showToast(willMute
+      ? (isVI ? 'Đã tắt thông báo' : 'Muted')
+      : (isVI ? 'Đã bật thông báo' : 'Unmuted'));
+  } catch(e){
+    if(willMute) mutedRooms.delete(c.dmRoomId); else mutedRooms.add(c.dmRoomId);
+    refreshHeaderMuteChip();
+    renderSidebar();
+    if(window.Sentry) Sentry.captureException(e);
+    alert(isVI ? 'Lỗi mạng, vui lòng thử lại.' : 'Network error, please try again.');
   }
 }
 
