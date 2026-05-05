@@ -6,7 +6,12 @@
         ".write": "auth != null && auth.uid === $uid",
         "contacts": {
           "$contactId": {
-            ".validate": "newData.hasChildren(['id', 'name', 'email'])"
+            ".validate": "newData.hasChildren(['id', 'name', 'email']) && newData.child('id').isString() && newData.child('id').val().length <= 256 && newData.child('name').isString() && newData.child('name').val().length <= 200 && newData.child('email').isString() && newData.child('email').val().length <= 320"
+          }
+        },
+        "fcmTokens": {
+          "$tokenKey": {
+            ".validate": "newData.hasChildren(['token']) && newData.child('token').isString() && newData.child('token').val().length <= 4096"
           }
         }
       }
@@ -14,11 +19,9 @@
     "friendRequests": {
       "$emailHash": {
         ".read": "auth != null",
-        ".write": "auth != null",
         "$requestId": {
-          ".read": "auth != null",
-          ".write": "auth != null && (!data.exists() || data.child('to').val() === auth.token.email || data.child('from').val() === auth.token.email)",
-          ".validate": "newData.hasChildren(['type', 'from', 'to', 'ts']) && (newData.child('from').val() === auth.token.email || newData.child('to').val() === auth.token.email)"
+          ".write": "auth != null && (!data.exists() || data.child('to').val() === auth.token.email || data.child('from').val() === auth.token.email) && (!newData.exists() || newData.child('from').val() === auth.token.email || newData.child('to').val() === auth.token.email)",
+          ".validate": "newData.hasChildren(['type', 'from', 'to', 'ts']) && newData.child('type').isString() && newData.child('type').val().length <= 64 && newData.child('from').isString() && newData.child('from').val().length <= 320 && newData.child('to').isString() && newData.child('to').val().length <= 320 && newData.child('ts').isNumber() && (newData.child('from').val() === auth.token.email || newData.child('to').val() === auth.token.email)"
         }
       }
     },
@@ -28,7 +31,7 @@
           ".read":  "auth != null && root.child('rooms').child($roomCode).child('participants').child(auth.uid).val() === true",
           ".write": "auth != null && root.child('rooms').child($roomCode).child('participants').child(auth.uid).val() === true",
           "$msgId": {
-            ".validate": "newData.hasChildren(['ts'])"
+            ".validate": "newData.hasChild('ts') && newData.child('ts').isNumber() && newData.hasChild('senderId') && newData.child('senderId').isString() && (data.exists() ? newData.child('senderId').val() === data.child('senderId').val() : newData.child('senderId').val() === auth.uid) && (!newData.hasChild('text') || newData.child('text').hasChildren(['v','c'])) && (!newData.child('text').hasChild('c') || (newData.child('text').child('c').isString() && newData.child('text').child('c').val().length <= 32768)) && (!newData.hasChild('original') || newData.child('original').hasChildren(['v','c'])) && (!newData.child('original').hasChild('c') || (newData.child('original').child('c').isString() && newData.child('original').child('c').val().length <= 32768)) && (!newData.child('translated').isString() || newData.child('translated').val().length <= 8000) && (!newData.hasChild('gifUrl') || newData.child('gifUrl').hasChildren(['v','c'])) && (!newData.child('gifUrl').hasChild('c') || (newData.child('gifUrl').child('c').isString() && newData.child('gifUrl').child('c').val().length <= 32768))"
           }
         },
         "typing": {
@@ -53,7 +56,7 @@
           ".read":  "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
           ".write": "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true && root.child('dms').child($roomId).child('blockedSenders').child(auth.uid).val() !== true",
           "$msgId": {
-            ".validate": "newData.hasChildren(['ts'])"
+            ".validate": "newData.hasChild('ts') && newData.child('ts').isNumber() && newData.hasChild('senderId') && newData.child('senderId').isString() && (data.exists() ? newData.child('senderId').val() === data.child('senderId').val() : newData.child('senderId').val() === auth.uid) && (!newData.hasChild('text') || newData.child('text').hasChildren(['v','c'])) && (!newData.child('text').hasChild('c') || (newData.child('text').child('c').isString() && newData.child('text').child('c').val().length <= 32768)) && (!newData.hasChild('original') || newData.child('original').hasChildren(['v','c'])) && (!newData.child('original').hasChild('c') || (newData.child('original').child('c').isString() && newData.child('original').child('c').val().length <= 32768)) && (!newData.child('translated').isString() || newData.child('translated').val().length <= 8000) && (!newData.hasChild('gifUrl') || newData.child('gifUrl').hasChildren(['v','c'])) && (!newData.child('gifUrl').hasChild('c') || (newData.child('gifUrl').child('c').isString() && newData.child('gifUrl').child('c').val().length <= 32768))"
           }
         },
         "participants": {
@@ -71,8 +74,9 @@
           }
         },
         "metadata": {
-          ".read":  "auth != null",
-          ".write": "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true"
+          ".read":  "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
+          ".write": "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
+          ".validate": "newData.hasChild('emails') && newData.child('emails').child('0').isString() && newData.child('emails').child('0').val().length <= 320 && newData.child('emails').child('1').isString() && newData.child('emails').child('1').val().length <= 320 && !newData.child('emails').hasChild('2')"
         },
         "typing": {
           ".read":  "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
@@ -82,25 +86,31 @@
           }
         },
         "emails": {
-          ".read":  "auth != null",
+          ".read":  "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
           ".write": "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true"
         }
       }
     },
     "invites": {
-      "$email": {
+      "$emailHash": {
         ".read": "auth != null",
-        ".write": "auth != null",
         "$roomId": {
+          ".write": "auth != null && (!newData.exists() || root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true)",
           ".validate": "newData.val() === true"
         }
+      }
+    },
+    "notifyThrottle": {
+      "$senderUid": {
+        ".read": false,
+        ".write": false
       }
     },
     "reports": {
       ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
       "$reportId": {
         ".write": "auth != null && (!data.exists() || root.child('admins').child(auth.uid).val() === true)",
-        ".validate": "newData.hasChildren(['reporterUid', 'reportedUid', 'reason', 'ts']) && newData.child('reporterUid').val() === auth.uid"
+        ".validate": "newData.hasChildren(['reporterUid', 'reportedUid', 'reason', 'ts']) && newData.child('reporterUid').val() === auth.uid && newData.child('reason').isString() && newData.child('reason').val().length <= 4000"
       }
     },
     "admins": {

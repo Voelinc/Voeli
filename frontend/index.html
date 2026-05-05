@@ -30,12 +30,13 @@
 <!-- CSP: defense-in-depth. The app uses inline scripts/styles (single-file SPA) so
      'unsafe-inline' is unavoidable, but connect-src is narrowed to the known
      endpoints so an XSS payload can't exfiltrate data to an attacker domain. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://accounts.google.com https://browser.sentry-cdn.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: data:; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://*.google.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://voeli-prod.firebaseapp.com https://www.gstatic.com https://browser.sentry-cdn.com https://voeli-translate-worker.voeli.workers.dev http://localhost:8787 https://*.ingest.us.sentry.io https://*.ingest.sentry.io https://challenges.cloudflare.com; frame-src https://voeli-prod.firebaseapp.com https://accounts.google.com https://apis.google.com https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://accounts.google.com https://www.google.com https://www.recaptcha.net https://browser.sentry-cdn.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: data:; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://*.google.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://voeli-prod.firebaseapp.com https://www.gstatic.com https://browser.sentry-cdn.com https://voeli-translate-worker.voeli.workers.dev http://localhost:8787 https://*.ingest.us.sentry.io https://*.ingest.sentry.io https://challenges.cloudflare.com; frame-src https://voeli-prod.firebaseapp.com https://accounts.google.com https://apis.google.com https://www.google.com https://www.recaptcha.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self';">
 <title>Translation Demo</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
 <!-- Sentry — error tracking. Loads early so it can catch errors during init.
      DSN is public-by-design (it's an ingest endpoint, not a secret). -->
 <script src="https://browser.sentry-cdn.com/8.40.0/bundle.min.js" crossorigin="anonymous"></script>
@@ -1168,7 +1169,11 @@ body.is-offline::before{
         <h2 class="ob-h2-v2" id="obSignupTitle">Create your account</h2>
         <p class="ob-sub-v2" id="obSignupSub">It only takes a minute.</p>
 
-        <button class="ob-btn-v2 ob-btn-google-v2" id="obSignupGoogleBtn" style="margin-top:24px;">
+        <!-- Google sign-in temporarily hidden: blocked by Chrome's third-party cookie
+             phase-out (the auth handler at voeli-prod.firebaseapp.com can't relay
+             results back to www.voeli.app). Re-enable once a custom auth domain is
+             wired up. Logic in handleGoogle() and getRedirectResult() is intact. -->
+        <button class="ob-btn-v2 ob-btn-google-v2" id="obSignupGoogleBtn" style="margin-top:24px;display:none;">
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/>
@@ -1178,7 +1183,7 @@ body.is-offline::before{
           <span id="obSignupGoogleLabel">Continue with Google</span>
         </button>
 
-        <div class="ob-divider-v2"><span id="obSignupOr">or</span></div>
+        <div class="ob-divider-v2" style="display:none;"><span id="obSignupOr">or</span></div>
 
         <label class="ob-label-v2" id="obEmailLabel" for="authEmail">Email</label>
         <input type="email" id="authEmail" class="ob-input-v2" placeholder="you@example.com" autocomplete="email" spellcheck="false">
@@ -1228,7 +1233,8 @@ body.is-offline::before{
         <h2 class="ob-h2-v2" id="obSigninTitle">Welcome back</h2>
         <p class="ob-sub-v2" id="obSigninSub">Sign in to continue.</p>
 
-        <button class="ob-btn-v2 ob-btn-google-v2" id="obSigninGoogleBtn" style="margin-top:24px;">
+        <!-- Google sign-in temporarily hidden — see comment on the signup-screen button above. -->
+        <button class="ob-btn-v2 ob-btn-google-v2" id="obSigninGoogleBtn" style="margin-top:24px;display:none;">
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/>
@@ -1238,7 +1244,7 @@ body.is-offline::before{
           <span id="obSigninGoogleLabel">Continue with Google</span>
         </button>
 
-        <div class="ob-divider-v2"><span id="obSigninOr">or</span></div>
+        <div class="ob-divider-v2" style="display:none;"><span id="obSigninOr">or</span></div>
 
         <label class="ob-label-v2" id="obSigninEmailLabel" for="authEmailSI">Email</label>
         <input type="email" id="authEmailSI" class="ob-input-v2" placeholder="you@example.com" autocomplete="email" spellcheck="false">
@@ -4883,9 +4889,55 @@ const WORKER_URL = 'https://voeli-translate-worker.voeli.workers.dev';
 // disabled until this is set.
 const FCM_VAPID_KEY = 'BJNpvegNjuTMZC2IbsL4q3Fbu5RguwsutXj4w_7MtlrGHfa-sZvvO-jt18oXweTt-xPblhA5mXjDISU-wMzLOWE';
 
+// Firebase App Check site key (reCAPTCHA Enterprise). Public-by-design,
+// like the Firebase API key. Tied to this domain so it can't be used
+// elsewhere. Rotate by creating a new key in Google Cloud Console (Security
+// → reCAPTCHA Enterprise), pasting it into Firebase Console (Build → App
+// Check), then updating this constant.
+//
+// TEMPORARILY DISABLED: the prod registration is returning 400 from
+// content-firebaseappcheck.googleapis.com on token exchange, which was
+// hanging the Firebase Auth flow (the SDK retries with exponential backoff
+// while sign-in waits). Re-enable by pasting the key back here once the
+// registration is verified working. The committed value lives below so
+// it's easy to flip back: '6Le4INosAAAAAIekhqNtwanHjkjJbUf--0qVqCAa'.
+const APP_CHECK_SITE_KEY = '';
+
 // Initialise once on script load.
 if(!firebase.apps.length){
   firebase.initializeApp(FIREBASE_CONFIG);
+}
+
+// App Check init. We do this BEFORE any other Firebase service so the
+// attestation token is attached to subsequent fetches automatically. If
+// the site key is missing we silently skip — the Worker accepts the
+// request in log-and-allow mode during rollout.
+let _appCheckReady = false;
+try {
+  if(APP_CHECK_SITE_KEY && firebase.appCheck){
+    firebase.appCheck().activate(APP_CHECK_SITE_KEY, /* isTokenAutoRefreshEnabled */ true);
+    _appCheckReady = true;
+  } else if(location.hostname && !/^(localhost|127\.|0\.0\.0\.0|\[?::1\]?$)/.test(location.hostname)) {
+    // Non-local origin without a site key means production is shipping with
+    // App Check off. Sentry-flag so it can't be forgotten on the way to prod.
+    console.warn('AppCheck: site key empty on non-local origin', location.hostname);
+    if(window.Sentry) Sentry.captureMessage('AppCheck site key empty on non-local origin', 'warning');
+  }
+} catch(e){
+  console.warn('AppCheck init failed:', e);
+  if(window.Sentry) Sentry.captureException(e);
+}
+
+// Returns { 'X-Firebase-AppCheck': '<token>' } when App Check is wired up,
+// or {} otherwise. Caller spreads into existing headers.
+async function _appCheckHeader(){
+  if(!_appCheckReady) return {};
+  try {
+    const r = await firebase.appCheck().getToken(/* forceRefresh */ false);
+    return r && r.token ? { 'X-Firebase-AppCheck': r.token } : {};
+  } catch(_){
+    return {};
+  }
 }
 const fbAuth = firebase.auth();
 // Force LOCAL persistence so a closed-tab return still keeps the session,
@@ -5186,14 +5238,19 @@ function initApp(){
   if(obNameInput) obNameInput.addEventListener('keydown', e=>{ if(e.key==='Enter') obNameContinue && obNameContinue.click(); });
 
   // Google sign-in (both screens) — Google users skip the Name step (display name comes from Google)
+  // Use signInWithRedirect rather than signInWithPopup. Chrome's
+  // Cross-Origin-Opener-Policy blocks Firebase from polling popup.closed,
+  // which silently hangs the popup flow on many setups. Redirect navigates
+  // the whole page to accounts.google.com and bounces back; the auth-state
+  // listener picks up the result on return. About 1s slower than a popup,
+  // but it actually works.
   const handleGoogle = async (errFn) => {
     setAuthLoading(true); errFn('');
+    const provider = new firebase.auth.GoogleAuthProvider();
     try{
-      const provider = new firebase.auth.GoogleAuthProvider();
-      await fbAuth.signInWithPopup(provider);
+      await fbAuth.signInWithRedirect(provider);
     }catch(err){
-      if(err.code !== 'auth/popup-closed-by-user') errFn(friendlyAuthError(err));
-    }finally{
+      errFn(friendlyAuthError(err));
       setAuthLoading(false);
     }
   };
@@ -5296,9 +5353,10 @@ async function encryptMessageData(msgData){
     return msgData;
   }
   try {
+    const appCheckHdr = await _appCheckHeader();
     const res = await fetch(WORKER_URL + '/api/encrypt', {
       method:'POST',
-      headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token, ...appCheckHdr },
       body: JSON.stringify({ texts: items.map(i => i.value) })
     });
     if(!res.ok) throw new Error('encrypt http ' + res.status);
@@ -5349,11 +5407,12 @@ async function decryptMessageDataBatch(rawMsgs){
   }
   const decrypted = new Array(blobs.length);
   try {
+    const appCheckHdr = await _appCheckHeader();
     for(let i = 0; i < blobs.length; i += 200){
       const chunk = blobs.slice(i, i + 200);
       const res = await fetch(WORKER_URL + '/api/decrypt', {
         method:'POST',
-        headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+        headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token, ...appCheckHdr },
         body: JSON.stringify({ blobs: chunk })
       });
       if(!res.ok) throw new Error('decrypt http ' + res.status);
@@ -5594,6 +5653,27 @@ function friendlyAuthError(err){
 // AUTH STATE — single source of truth for "is the user signed in"
 // Either an email/password/google sign-in OR demo mode flips this.
 // ═══════════════════════════════════════════════════════
+
+// Process any pending signInWithRedirect result on first page load. Without
+// this call, the Firebase SDK shelves the redirect outcome and never fires
+// onAuthStateChanged for the new user — Continue with Google appears to
+// "complete on Google's side then drop you back as Guest." Errors here are
+// also where misconfigured OAuth clients surface (auth/unauthorized-domain,
+// etc.), so capture them to Sentry.
+console.log('[auth] page load on', location.origin, 'getRedirectResult pending...');
+fbAuth.getRedirectResult()
+  .then((result)=>{
+    if(result && result.user){
+      console.log('[auth] redirect sign-in completed for', result.user.email);
+    } else {
+      console.log('[auth] getRedirectResult returned null — no pending redirect on this origin', location.origin);
+    }
+  })
+  .catch((err)=>{
+    console.error('[auth] redirect sign-in failed:', err && err.code, err && err.message);
+    if(window.Sentry) Sentry.captureException(err);
+  });
+
 fbAuth.onAuthStateChanged(async (user)=>{
   currentUser = user || null;
   // Tag Sentry with the current user so any future error includes who hit it.
@@ -9781,8 +9861,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // ═══════════════════════════════════════════════════════
 // MEDIA PICKER — iMessage-style + button (Emoji · Stickers · GIF)
 // ═══════════════════════════════════════════════════════
-const TENOR_KEY = 'AIzaSyA8DX_qDKMMMDN7uE9h0s_6JvO6znpqzFc';
-const TENOR_BASE = 'https://tenor.googleapis.com/v2';
+// GIF search and featured calls go through the Worker proxy at
+// /api/tenor/search and /api/tenor/featured. The Tenor API key lives in the
+// Worker's secret store so it can't be lifted out of the page bundle and
+// burnt against your quota by anyone with view-source.
 let _gifSearchTimer = null;
 
 const EMOJI_CATEGORIES = [
@@ -9948,8 +10030,8 @@ async function loadStickers(query){
   }
 
   try{
-    const url = `${TENOR_BASE}/search?q=${encodeURIComponent(query)}&key=${TENOR_KEY}&limit=20&media_filter=gif&searchfilter=sticker`;
-    const res = await fetch(url);
+    const path = `/api/tenor/search?q=${encodeURIComponent(query)}&limit=20&media_filter=gif&searchfilter=sticker`;
+    const res = await workerGet(path);
     const data = await res.json();
     const results = data.results || [];
     if(!results.length){ wrap.innerHTML = `<div class="sticker-loading">${appDir==='vi-en'?'Không tìm thấy sticker nào':'No stickers found'}</div>`; return; }
@@ -9974,10 +10056,10 @@ async function fetchGifs(query){
   if(!grid) return;
   grid.innerHTML = `<div class="gif-loading">${appDir==='vi-en'?'Đang tải…':'Loading…'}</div>`;
   try{
-    const endpoint = query.trim()
-      ? `${TENOR_BASE}/search?q=${encodeURIComponent(query)}&key=${TENOR_KEY}&limit=20&media_filter=gif`
-      : `${TENOR_BASE}/featured?key=${TENOR_KEY}&limit=20&media_filter=gif`;
-    const res = await fetch(endpoint);
+    const path = query.trim()
+      ? `/api/tenor/search?q=${encodeURIComponent(query)}&limit=20&media_filter=gif`
+      : `/api/tenor/featured?limit=20&media_filter=gif`;
+    const res = await workerGet(path);
     const data = await res.json();
     const results = data.results || [];
     if(!results.length){ grid.innerHTML = `<div class="gif-loading">${appDir==='vi-en'?'Không tìm thấy GIF nào':'No GIFs found'}</div>`; return; }
@@ -11911,11 +11993,13 @@ class QuotaExceededError extends Error {
 async function workerRequest(path, body){
   if(!currentUser) throw new AuthRequiredError();
   const token = await currentUser.getIdToken();
+  const appCheckHdr = await _appCheckHeader();
   const res = await fetch(WORKER_URL + path, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + token
+      'Authorization': 'Bearer ' + token,
+      ...appCheckHdr
     },
     body: JSON.stringify(body)
   });
@@ -11924,12 +12008,34 @@ async function workerRequest(path, body){
     try { errPayload = await res.clone().json(); } catch(_){}
     const errMsg = errPayload.error || ('HTTP '+res.status);
     if(res.status === 429){
+      // The Worker now distinguishes per-minute rate limits (with scope) from
+      // daily quota; both come back as 429. retryAfterSeconds is set by both.
       throw new QuotaExceededError(errPayload.used, errPayload.limit, errPayload.retryAfterSeconds, errMsg);
     }
     if(res.status === 401){
       throw new AuthRequiredError();
     }
     throw new Error(errMsg);
+  }
+  return res;
+}
+
+// GET counterpart used by the Tenor proxy. Kept simple — no quota error
+// shape since the proxy doesn't consume the daily bucket.
+async function workerGet(path){
+  if(!currentUser) throw new AuthRequiredError();
+  const token = await currentUser.getIdToken();
+  const appCheckHdr = await _appCheckHeader();
+  const res = await fetch(WORKER_URL + path, {
+    method: 'GET',
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      ...appCheckHdr
+    }
+  });
+  if(!res.ok){
+    if(res.status === 401) throw new AuthRequiredError();
+    throw new Error('HTTP ' + res.status);
   }
   return res;
 }

@@ -7,9 +7,19 @@
 //   POST /api/translate-quick        single fast translation
 //   POST /api/translate-voice        voice → picker JSON
 //   POST /api/grammar                inline typo/grammar suggestion
+//   POST /api/encrypt                AES-256-GCM batch encrypt
+//   POST /api/decrypt                AES-256-GCM batch decrypt
+//   GET  /api/tenor/search           Tenor GIF search proxy (server-side key)
+//   GET  /api/tenor/featured         Tenor featured GIFs proxy
 //
-// Every /api/* route requires a valid Firebase ID token in the Authorization
-// header and consumes one unit from the user's daily quota bucket.
+// Request pipeline for /api/* routes:
+//   1. CORS preflight (if OPTIONS)
+//   2. Firebase ID token verification → AuthedUser
+//   3. App Check token verification (or log-and-allow per APP_CHECK_ENFORCE)
+//   4. Rate limit (per-UID + per-IP) — fast-fail on abuse
+//   5. Schema validation (Zod) + sanitization
+//   6. Quota consumption (translate/voice/grammar only)
+//   7. Handler
 
 import * as Sentry from '@sentry/cloudflare';
 import {
@@ -17,6 +27,19 @@ import {
   extractBearer,
   verifyFirebaseToken,
 } from './auth';
+import {
+  AppCheckError,
+  appCheckErrorResponse,
+  extractAppCheckToken,
+  isAppCheckEnforced,
+  verifyAppCheckToken,
+} from './app-check';
+import {
+  enforceRateLimit,
+  RateLimitError,
+  rateLimitErrorResponse,
+  sourceIp,
+} from './rate-limit';
 import {
   consumeQuota,
   QuotaError,
@@ -30,112 +53,158 @@ import {
   handleGrammar,
 } from './openai';
 import { encryptText, decryptText, type EncryptedBlob } from './crypto';
-import type {
-  Env,
-  AuthedUser,
-  TranslatePayload,
-  QuickTranslatePayload,
-  VoiceTranslatePayload,
-  GrammarPayload,
-} from './types';
+import {
+  parseBody,
+  parseSearchParams,
+  ValidationError,
+  validationErrorResponse,
+  TranslatePayloadSchema,
+  QuickTranslatePayloadSchema,
+  VoiceTranslatePayloadSchema,
+  GrammarPayloadSchema,
+  EncryptPayloadSchema,
+  DecryptPayloadSchema,
+  TenorSearchSchema,
+  TenorFeaturedSchema,
+} from './schemas';
+import type { Env, AuthedUser } from './types';
 
 const handler = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    const ip = sourceIp(request);
 
     // CORS preflight — handled before auth so browsers can probe.
     if (request.method === 'OPTIONS') {
       return preflightResponse(request, env);
     }
 
-    // Health probe — useful from the browser to confirm the Worker is up.
-    if (request.method === 'GET' && url.pathname === '/') {
-      return withCors(
-        Response.json({ ok: true, service: 'voeli-translate-worker' }),
-        request,
-        env
-      );
-    }
-
-    // Everything past here requires auth.
-    if (!url.pathname.startsWith('/api/')) {
-      return withCors(notFound(), request, env);
-    }
-
-    let user: AuthedUser;
     try {
-      const token = extractBearer(request);
-      user = await verifyFirebaseToken(token, env);
-    } catch (err) {
-      const e = err as AuthError;
-      return withCors(
-        Response.json({ error: e.message }, { status: e.status || 401 }),
-        request,
-        env
-      );
-    }
+      // Health probe — no auth, IP-only rate limit so it can't be hammered.
+      if (request.method === 'GET' && url.pathname === '/') {
+        await enforceRateLimit(env, 'health', null, ip);
+        return withCors(Response.json({ ok: true }), request, env);
+      }
 
-    try {
+      if (!url.pathname.startsWith('/api/')) {
+        return withCors(notFound(), request, env);
+      }
+
+      // Auth — every /api/* route requires a valid Firebase ID token.
+      let user: AuthedUser;
+      try {
+        const token = extractBearer(request);
+        user = await verifyFirebaseToken(token, env);
+      } catch (err) {
+        const e = err as AuthError;
+        return withCors(
+          Response.json({ error: e.message }, { status: e.status || 401 }),
+          request,
+          env
+        );
+      }
+
+      // App Check — verify the device-attestation token. In log-and-allow
+      // mode (APP_CHECK_ENFORCE != "true") we still verify so we can see
+      // failure rates, but we don't reject.
+      const appCheckToken = extractAppCheckToken(request);
+      try {
+        if (appCheckToken) {
+          await verifyAppCheckToken(appCheckToken, env);
+        } else if (isAppCheckEnforced(env)) {
+          throw new AppCheckError('Missing App Check token');
+        } else {
+          console.warn('AppCheck: token missing (log-and-allow mode)', { uid: user.uid, path: url.pathname });
+        }
+      } catch (err) {
+        if (isAppCheckEnforced(env)) {
+          return withCors(appCheckErrorResponse(err as AppCheckError), request, env);
+        }
+        console.warn('AppCheck: verification failed (log-and-allow mode)', {
+          uid: user.uid,
+          path: url.pathname,
+          error: (err as Error).message,
+        });
+      }
+
       const route = url.pathname;
-      if (request.method === 'GET' && route === '/api/quota') {
+      const method = request.method;
+
+      // GET /api/quota
+      if (method === 'GET' && route === '/api/quota') {
+        await enforceRateLimit(env, 'quota', user.uid, ip);
         return withCors(await handleQuotaStatus(user, env), request, env);
       }
 
-      if (request.method !== 'POST') {
+      // GET /api/tenor/search and /api/tenor/featured
+      if (method === 'GET' && route === '/api/tenor/search') {
+        await enforceRateLimit(env, 'tenor', user.uid, ip);
+        return withCors(await handleTenorSearch(url, env), request, env);
+      }
+      if (method === 'GET' && route === '/api/tenor/featured') {
+        await enforceRateLimit(env, 'tenor', user.uid, ip);
+        return withCors(await handleTenorFeatured(url, env), request, env);
+      }
+
+      if (method !== 'POST') {
         return withCors(methodNotAllowed(), request, env);
       }
 
       if (route === '/api/translate') {
+        await enforceRateLimit(env, 'translate', user.uid, ip);
+        const body = await parseBody(TranslatePayloadSchema, request);
         return withCors(
-          await runWithQuota(user, env, 'translate', async () => {
-            const body = await readJson<TranslatePayload>(request);
-            return handleTranslate(body, env);
-          }),
+          await runWithQuota(user, env, 'translate', () => handleTranslate(body, env)),
           request,
           env
         );
       }
       if (route === '/api/translate-quick') {
+        await enforceRateLimit(env, 'translate-quick', user.uid, ip);
+        const body = await parseBody(QuickTranslatePayloadSchema, request);
         return withCors(
-          await runWithQuota(user, env, 'translate', async () => {
-            const body = await readJson<QuickTranslatePayload>(request);
-            return handleQuick(body, env);
-          }),
+          await runWithQuota(user, env, 'translate', () => handleQuick(body, env)),
           request,
           env
         );
       }
       if (route === '/api/translate-voice') {
+        await enforceRateLimit(env, 'translate-voice', user.uid, ip);
+        const body = await parseBody(VoiceTranslatePayloadSchema, request);
         return withCors(
-          await runWithQuota(user, env, 'voice', async () => {
-            const body = await readJson<VoiceTranslatePayload>(request);
-            return handleVoice(body, env);
-          }),
+          await runWithQuota(user, env, 'voice', () => handleVoice(body, env)),
           request,
           env
         );
       }
       if (route === '/api/grammar') {
+        await enforceRateLimit(env, 'grammar', user.uid, ip);
+        const body = await parseBody(GrammarPayloadSchema, request);
         return withCors(
-          await runWithQuota(user, env, 'grammar', async () => {
-            const body = await readJson<GrammarPayload>(request);
-            return handleGrammar(body, env);
-          }),
+          await runWithQuota(user, env, 'grammar', () => handleGrammar(body, env)),
           request,
           env
         );
       }
       if (route === '/api/encrypt') {
-        const body = await readJson<{ texts: string[] }>(request);
+        await enforceRateLimit(env, 'encrypt', user.uid, ip);
+        const body = await parseBody(EncryptPayloadSchema, request);
         return withCors(await handleEncrypt(body, env), request, env);
       }
       if (route === '/api/decrypt') {
-        const body = await readJson<{ blobs: EncryptedBlob[] }>(request);
+        await enforceRateLimit(env, 'decrypt', user.uid, ip);
+        const body = await parseBody(DecryptPayloadSchema, request);
         return withCors(await handleDecrypt(body, env), request, env);
       }
 
       return withCors(notFound(), request, env);
     } catch (err) {
+      if (err instanceof RateLimitError) {
+        return withCors(rateLimitErrorResponse(err), request, env);
+      }
+      if (err instanceof ValidationError) {
+        return withCors(validationErrorResponse(err), request, env);
+      }
       if (err instanceof QuotaError) {
         return withCors(
           Response.json(
@@ -154,14 +223,11 @@ const handler = {
           env
         );
       }
-      // Any other thrown error is a bug — surface a generic 500 to the client
-      // and let `wrangler tail` show the stack to operators.
+      // Any other thrown error is a bug — generic 500 to the client (no
+      // internals leaked) and let `wrangler tail` / Sentry show the stack.
       console.error('Unhandled error:', err);
       return withCors(
-        Response.json(
-          { error: (err as Error).message || 'Internal error' },
-          { status: 500 }
-        ),
+        Response.json({ error: 'internal_error' }, { status: 500 }),
         request,
         env
       );
@@ -170,8 +236,9 @@ const handler = {
 } satisfies ExportedHandler<Env>;
 
 // Wrap the handler with Sentry so any thrown error inside fetch() is captured
-// and shipped to the worker DSN. AuthError and QuotaError are user-facing
-// states — we filter those out in beforeSend so they don't pollute the dashboard.
+// and shipped to the worker DSN. AuthError, QuotaError, RateLimitError,
+// ValidationError, and AppCheckError are user-facing states — we filter those
+// out in beforeSend so they don't pollute the dashboard.
 export default Sentry.withSentry(
   (env: Env) => ({
     dsn: env.SENTRY_DSN,
@@ -182,7 +249,7 @@ export default Sentry.withSentry(
     beforeSend(event, hint) {
       const err = hint && (hint.originalException as Error | undefined);
       const msg = (err && err.message) || event.message || '';
-      if (/Missing Authorization|Invalid token|Daily quota|Token has no subject/i.test(msg)) {
+      if (/Missing Authorization|Invalid token|Daily quota|Token has no subject|rate_limited|invalid_request|app_check_failed|Missing App Check token|Invalid App Check token/i.test(msg)) {
         return null;
       }
       return event;
@@ -192,14 +259,6 @@ export default Sentry.withSentry(
 );
 
 // --- helpers ---------------------------------------------------------------
-
-async function readJson<T>(request: Request): Promise<T> {
-  try {
-    return (await request.json()) as T;
-  } catch {
-    throw new Error('Request body must be valid JSON');
-  }
-}
 
 async function runWithQuota(
   user: AuthedUser,
@@ -230,31 +289,16 @@ async function handleQuotaStatus(
 
 // --- encryption handlers ---------------------------------------------------
 //
-// These bypass the quota system: they're local CPU work, not OpenAI calls,
-// and the client may need to call /api/decrypt many times when loading
-// message history. Auth alone is enough to prevent abuse.
-
-const MAX_BATCH = 200;
-const MAX_TEXT_BYTES = 16 * 1024;
+// These bypass the quota system: they're local CPU work, not OpenAI calls.
+// Rate limiting still applies — see /api/encrypt and /api/decrypt routes
+// above. Schema validation guarantees batch size + per-item byte caps.
 
 async function handleEncrypt(
   body: { texts: string[] },
   env: Env
 ): Promise<Response> {
-  if (!body || !Array.isArray(body.texts)) {
-    return Response.json({ error: 'texts[] required' }, { status: 400 });
-  }
-  if (body.texts.length > MAX_BATCH) {
-    return Response.json({ error: `texts[] exceeds ${MAX_BATCH}` }, { status: 400 });
-  }
   const out: EncryptedBlob[] = [];
   for (const t of body.texts) {
-    if (typeof t !== 'string') {
-      return Response.json({ error: 'texts[] must be strings' }, { status: 400 });
-    }
-    if (t.length > MAX_TEXT_BYTES) {
-      return Response.json({ error: 'text too large' }, { status: 400 });
-    }
     out.push(await encryptText(t, env));
   }
   return Response.json({ encrypted: out });
@@ -264,12 +308,6 @@ async function handleDecrypt(
   body: { blobs: EncryptedBlob[] },
   env: Env
 ): Promise<Response> {
-  if (!body || !Array.isArray(body.blobs)) {
-    return Response.json({ error: 'blobs[] required' }, { status: 400 });
-  }
-  if (body.blobs.length > MAX_BATCH) {
-    return Response.json({ error: `blobs[] exceeds ${MAX_BATCH}` }, { status: 400 });
-  }
   const out: { ok: boolean; text: string }[] = [];
   for (const b of body.blobs) {
     try {
@@ -281,6 +319,49 @@ async function handleDecrypt(
     }
   }
   return Response.json({ decrypted: out });
+}
+
+// --- Tenor proxy -----------------------------------------------------------
+//
+// Frontend used to embed the Tenor API key directly. We proxy the search +
+// featured endpoints here so the key stays on the Worker. Validates the
+// query-string params with Zod, forwards a clean URL upstream, and passes
+// the response through.
+
+const TENOR_BASE = 'https://tenor.googleapis.com/v2';
+
+async function handleTenorSearch(url: URL, env: Env): Promise<Response> {
+  const params = parseSearchParams(TenorSearchSchema, url);
+  const upstream = new URL(`${TENOR_BASE}/search`);
+  upstream.searchParams.set('q', params.q);
+  upstream.searchParams.set('key', env.TENOR_API_KEY);
+  upstream.searchParams.set('limit', String(params.limit ?? 20));
+  upstream.searchParams.set('media_filter', params.media_filter ?? 'gif');
+  if (params.searchfilter) upstream.searchParams.set('searchfilter', params.searchfilter);
+  if (params.pos) upstream.searchParams.set('pos', params.pos);
+  return forwardTenor(upstream);
+}
+
+async function handleTenorFeatured(url: URL, env: Env): Promise<Response> {
+  const params = parseSearchParams(TenorFeaturedSchema, url);
+  const upstream = new URL(`${TENOR_BASE}/featured`);
+  upstream.searchParams.set('key', env.TENOR_API_KEY);
+  upstream.searchParams.set('limit', String(params.limit ?? 20));
+  upstream.searchParams.set('media_filter', params.media_filter ?? 'gif');
+  if (params.pos) upstream.searchParams.set('pos', params.pos);
+  return forwardTenor(upstream);
+}
+
+async function forwardTenor(upstream: URL): Promise<Response> {
+  const res = await fetch(upstream.toString());
+  if (!res.ok) {
+    return Response.json(
+      { error: 'tenor_upstream_error', status: res.status },
+      { status: res.status >= 500 ? 502 : res.status }
+    );
+  }
+  const data = await res.json();
+  return Response.json(data);
 }
 
 function notFound(): Response {
@@ -313,7 +394,7 @@ function withCors(res: Response, request: Request, env: Env): Response {
   const headers = new Headers(res.headers);
   headers.set('Access-Control-Allow-Origin', origin);
   headers.set('Vary', 'Origin');
-  headers.set('Access-Control-Expose-Headers', 'X-Quota-Used,X-Quota-Limit,X-Quota-Kind');
+  headers.set('Access-Control-Expose-Headers', 'X-Quota-Used,X-Quota-Limit,X-Quota-Kind,Retry-After');
   return new Response(res.body, {
     status: res.status,
     statusText: res.statusText,
@@ -333,7 +414,7 @@ function preflightResponse(request: Request, env: Env): Response {
     );
     headers.set(
       'Access-Control-Allow-Headers',
-      'Authorization, Content-Type'
+      'Authorization, Content-Type, X-Firebase-AppCheck'
     );
     headers.set('Access-Control-Max-Age', '86400');
   }

@@ -4,6 +4,9 @@ export interface Env {
   QUOTA_KV: KVNamespace;
   OPENAI_API_KEY: string;
   FIREBASE_PROJECT_ID: string;
+  // Numeric Firebase project number (distinct from project ID) — used as the
+  // App Check audience claim. Find it in Firebase Console → Project Settings.
+  FIREBASE_PROJECT_NUMBER: string;
   ALLOWED_ORIGINS: string;
   DAILY_TRANSLATE_QUOTA: string;
   DAILY_VOICE_QUOTA: string;
@@ -13,6 +16,37 @@ export interface Env {
   // content before it lands in Firebase, so an operator browsing the database
   // sees only ciphertext.
   MESSAGE_ENCRYPTION_KEY: string;
+  // Tenor GIF API key. Worker proxies tenor.googleapis.com so the key never
+  // ships to the browser; see /api/tenor/search and /api/tenor/featured.
+  TENOR_API_KEY: string;
+  // App Check enforcement: "true" rejects requests without a valid App Check
+  // token, anything else logs and allows. Set to "false" during the rollout
+  // window so backend can ship before frontend integration is everywhere.
+  APP_CHECK_ENFORCE: string;
+  // Comma-separated list of debug tokens that bypass App Check verification —
+  // for `wrangler dev` and developer browsers where reCAPTCHA Enterprise
+  // can't run. Get these from Firebase Console → App Check → Apps → ⋮ → Manage debug tokens.
+  APP_CHECK_DEBUG_TOKENS: string;
+  // Per-endpoint rate limits (requests per minute). Each endpoint has a
+  // _PER_USER and _PER_IP variant; both are checked. Defaults live in
+  // rate-limit.ts and kick in if the env var is missing.
+  RL_TRANSLATE_PER_USER?: string;
+  RL_TRANSLATE_PER_IP?: string;
+  RL_TRANSLATE_QUICK_PER_USER?: string;
+  RL_TRANSLATE_QUICK_PER_IP?: string;
+  RL_TRANSLATE_VOICE_PER_USER?: string;
+  RL_TRANSLATE_VOICE_PER_IP?: string;
+  RL_GRAMMAR_PER_USER?: string;
+  RL_GRAMMAR_PER_IP?: string;
+  RL_ENCRYPT_PER_USER?: string;
+  RL_ENCRYPT_PER_IP?: string;
+  RL_DECRYPT_PER_USER?: string;
+  RL_DECRYPT_PER_IP?: string;
+  RL_QUOTA_PER_USER?: string;
+  RL_QUOTA_PER_IP?: string;
+  RL_TENOR_PER_USER?: string;
+  RL_TENOR_PER_IP?: string;
+  RL_HEALTH_PER_IP?: string;
 }
 
 // What a verified Firebase user looks like once auth.ts has done its job.

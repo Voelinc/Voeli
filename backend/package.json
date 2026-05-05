@@ -10,7 +10,8 @@
   "dependencies": {
     "@sentry/cloudflare": "^10.51.0",
     "jose": "^6.2.3",
-    "serve": "^14.2.0"
+    "serve": "^14.2.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260504.1",

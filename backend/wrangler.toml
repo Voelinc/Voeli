@@ -8,9 +8,13 @@
 # Then set secrets (one-off, never committed):
 #   wrangler secret put OPENAI_API_KEY
 #   wrangler secret put FIREBASE_PROJECT_ID
-# (FIREBASE_PROJECT_ID can also be a plain var if you don't mind it being
-#  visible in the dashboard — it's not actually a secret. Keeping it as a
-#  secret is just a habit so config is one consistent thing.)
+#   wrangler secret put FIREBASE_PROJECT_NUMBER     # numeric, for App Check
+#   wrangler secret put MESSAGE_ENCRYPTION_KEY      # 32-byte base64 AES-256
+#   wrangler secret put TENOR_API_KEY               # used by /api/tenor proxy
+#   wrangler secret put APP_CHECK_DEBUG_TOKENS      # comma-separated, optional
+# (FIREBASE_PROJECT_ID and FIREBASE_PROJECT_NUMBER can also be plain vars if
+#  you don't mind them being visible in the dashboard — they aren't sensitive.
+#  Keeping as secrets is just a habit so all config is one consistent thing.)
 
 name = "voeli-translate-worker"
 main = "src/index.ts"
@@ -37,3 +41,30 @@ DAILY_VOICE_QUOTA = "30"
 DAILY_GRAMMAR_QUOTA = "300"
 # Sentry DSN for the Worker — public ingest endpoint, NOT a secret.
 SENTRY_DSN = "https://d8e4fec90119dae1b7db1180356d4fec@o4511283666026496.ingest.us.sentry.io/4511283820101632"
+
+# App Check enforcement. Set to "false" during the rollout window so the
+# backend can ship before the frontend integration is everywhere; flip to
+# "true" once App Check tokens are arriving on >99% of /api/* requests.
+APP_CHECK_ENFORCE = "false"
+
+# Per-endpoint rate limits (requests per minute). Each endpoint has a
+# _PER_USER and _PER_IP variant; both are checked. Defaults live in
+# rate-limit.ts and kick in if the env var is missing — values here are
+# the same defaults, exposed so you can tune without redeploying code.
+RL_TRANSLATE_PER_USER = "15"
+RL_TRANSLATE_PER_IP = "30"
+RL_TRANSLATE_QUICK_PER_USER = "15"
+RL_TRANSLATE_QUICK_PER_IP = "30"
+RL_TRANSLATE_VOICE_PER_USER = "4"
+RL_TRANSLATE_VOICE_PER_IP = "10"
+RL_GRAMMAR_PER_USER = "40"
+RL_GRAMMAR_PER_IP = "80"
+RL_ENCRYPT_PER_USER = "30"
+RL_ENCRYPT_PER_IP = "60"
+RL_DECRYPT_PER_USER = "30"
+RL_DECRYPT_PER_IP = "60"
+RL_QUOTA_PER_USER = "30"
+RL_QUOTA_PER_IP = "60"
+RL_TENOR_PER_USER = "30"
+RL_TENOR_PER_IP = "60"
+RL_HEALTH_PER_IP = "60"

@@ -12,13 +12,43 @@
 // - Uses the firebase-functions v2 API (v1 is being deprecated).
 // - Skips if the message is marked deleted, queued, or has no senderId.
 // - Prunes tokens that FCM reports as invalid so they don't pile up.
-// - Uses the message's `original` text for the body when available, falling
-//   back to `text`/`translated`. Truncated to 140 chars.
+// - Uses the message's `translated` text for the body when available; falls
+//   back to a generic body when only encrypted envelopes are present (this
+//   function runs without the message-encryption key by design). Truncated
+//   to 140 chars.
 
 const { onValueCreated } = require('firebase-functions/v2/database');
 const admin = require('firebase-admin');
 
 admin.initializeApp();
+
+// FCM amplification throttle. Without this, a single user spamming a
+// 50-person room can drive Firebase Cloud Messaging costs up linearly with
+// participant count. We keep a small per-(sender, room) counter under
+// /notifyThrottle and skip the push (NOT the message itself) once the
+// sender exceeds NOTIFY_LIMIT pushes inside NOTIFY_WINDOW_MS.
+//
+// Rules deny direct read/write at /notifyThrottle so only the function
+// (running with admin credentials) can touch it.
+const NOTIFY_WINDOW_MS = 10_000;
+const NOTIFY_LIMIT = 5;
+
+async function shouldThrottleNotification(db, senderId, roomId) {
+  const ref = db.ref(`/notifyThrottle/${senderId}/${roomId}`);
+  const now = Date.now();
+  let throttled = false;
+  await ref.transaction((cur) => {
+    if (!cur || (now - cur.windowStartMs) > NOTIFY_WINDOW_MS) {
+      return { count: 1, windowStartMs: now };
+    }
+    if (cur.count >= NOTIFY_LIMIT) {
+      throttled = true;
+      return cur;
+    }
+    return { count: cur.count + 1, windowStartMs: cur.windowStartMs };
+  });
+  return throttled;
+}
 
 exports.notifyOnDmMessage = onValueCreated(
   {
@@ -31,6 +61,12 @@ exports.notifyOnDmMessage = onValueCreated(
     if (!msg.senderId || msg.deleted) return null;
 
     const db = admin.database();
+
+    if (await shouldThrottleNotification(db, msg.senderId, roomId)) {
+      console.log(`[notify] throttled sender=${msg.senderId} room=${roomId} (>${NOTIFY_LIMIT} in ${NOTIFY_WINDOW_MS}ms)`);
+      return null;
+    }
+
     const partsSnap = await db.ref(`/dms/${roomId}/participants`).once('value');
     const parts = partsSnap.val() || {};
     const recipients = Object.keys(parts).filter((uid) => uid !== msg.senderId && parts[uid] === true);
@@ -52,10 +88,18 @@ exports.notifyOnDmMessage = onValueCreated(
     try {
       const sSnap = await db.ref(`/users/${msg.senderId}/email`).once('value');
       const email = sSnap.val();
-      if (email) senderName = String(email).split('@')[0];
-    } catch (_) {}
+      if (typeof email === 'string' && email.includes('@')) {
+        senderName = email.split('@')[0];
+      } else if (email != null) {
+        console.warn(`[notify] unexpected email type for sender=${msg.senderId}: ${typeof email}`);
+      }
+    } catch (e) {
+      console.warn(`[notify] failed to read sender email for sender=${msg.senderId}:`, e.message);
+    }
 
-    const body = String(msg.original || msg.text || msg.translated || '').slice(0, 140);
+    const body = (typeof msg.translated === 'string' && msg.translated.length)
+      ? msg.translated.slice(0, 140)
+      : 'Sent you a message';
     const tokens = tokenEntries.map((e) => e.token);
 
     const res = await admin.messaging().sendEachForMulticast({
