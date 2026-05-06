@@ -11188,17 +11188,16 @@ async function onSendText(ev){
     pending = { result, original: text, mode: 'text', direction };
     finalizeStreamedSheet(result, text);
   }catch(err){
-    // Fall back to demo results so the picker still works even if API is down
-    try{
-      const fallback = buildDemoResult(text, direction);
-      pending = { result: fallback, original: text, mode: 'text' };
-      showSkeletonSheet(text);
-      finalizeStreamedSheet(fallback, text);
-    }catch(_){
-      closeSheet();
-      txtInput.value = text; txtInput.style.height = 'auto'; updBtns();
-      showRetryToast(text, direction, 'picker', _);
-    }
+    // Real API failure. Surface a retry toast and restore the draft so the
+    // user can fix or resend. The demo-result fallback that used to live here
+    // (canned phrases like "Bạn có muốn thử không?") was misleading — when
+    // the worker errored the picker would silently render hardcoded content
+    // unrelated to the input, making it look like a translation-quality bug
+    // when the real issue was a 4xx/5xx upstream. Demo content now only
+    // appears when the user is explicitly in demoMode (handled in callOpenAI).
+    closeSheet();
+    txtInput.value = text; txtInput.style.height = 'auto'; updBtns();
+    showRetryToast(text, direction, 'picker', err);
   }finally{
     txtInput.disabled=false; sendBtn.disabled=false;
   }
