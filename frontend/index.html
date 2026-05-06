@@ -85,6 +85,11 @@
     });
   }
 </script>
+<!-- Design tokens (colors, type, spacing, motion). Loaded before the inline
+     style block so inline rules can still override on conflicts; the file's
+     unique additions (--font-sans, --bridge-*, type scale, semantic classes)
+     become available to everything below. -->
+<link rel="stylesheet" href="colors_and_type.css">
 <style>
 /* === WhatsApp × Zalo hybrid styles (applied from interface-mockup.html) === */
 :root{
@@ -156,7 +161,7 @@ html{background:var(--panel);}
    like #setupScreen and the messenger panels don't always extend behind the
    home indicator on iOS PWA, so the body color is what shows through there. */
 html,body{height:100%;height:100dvh;overflow:hidden;background:var(--panel);color:var(--ink);
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-family:var(--font-sans);
   -webkit-font-smoothing:antialiased;font-size:14px;
   /* iOS: kill the 300ms double-tap-zoom delay site-wide for snappier taps */
   touch-action:manipulation;
@@ -451,17 +456,17 @@ body.is-offline::before{
   margin:12px 0 8px;box-shadow:var(--shadow-sm);}
 
 /* ── Cultural Bridge Card ── */
-.bridge-card{margin:16px 14px 10px;background:linear-gradient(135deg,#fffbeb 0%,#fff8f0 100%);
-  border:1px solid rgba(245,158,11,.28);border-radius:16px;padding:14px 14px 12px;
+.bridge-card{margin:16px 14px 10px;background:linear-gradient(135deg,var(--bridge-bg-1) 0%,var(--bridge-bg-2) 100%);
+  border:1px solid var(--bridge-line);border-radius:16px;padding:14px 14px 12px;
   animation:bridgeFadeIn .5s cubic-bezier(.4,0,.2,1);}
 @keyframes bridgeFadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 .bridge-header{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:10px;}
 .bridge-icon{font-size:15px;line-height:1;}
 .bridge-title{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
-  color:var(--gold);}
+  color:var(--bridge-title);}
 .bridge-pair{display:flex;align-items:stretch;gap:8px;}
-.bridge-side{flex:1;background:#fff;border-radius:10px;padding:9px 11px;
-  border:1px solid rgba(245,158,11,.15);}
+.bridge-side{flex:1;background:var(--bridge-side-bg);border-radius:10px;padding:9px 11px;
+  border:1px solid var(--bridge-line-3);}
 .bridge-lang{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
   color:var(--muted-2);margin-bottom:3px;}
 .bridge-phrase{font-size:13px;font-weight:600;color:var(--ink);line-height:1.35;}
@@ -476,17 +481,17 @@ body.is-offline::before{
   border:1px solid var(--line);border-radius:16px;position:relative;}
 .bridge-lib-empty-body{font-size:13px;color:var(--muted);line-height:1.55;margin:0;
   max-width:280px;margin-left:auto;margin-right:auto;}
-.bridge-lib-empty-preview{position:relative;background:linear-gradient(135deg,#fffbeb 0%,#fff8f0 100%);
-  border:1px solid rgba(245,158,11,.22);border-radius:14px;padding:12px 12px 11px;
+.bridge-lib-empty-preview{position:relative;background:linear-gradient(135deg,var(--bridge-bg-1) 0%,var(--bridge-bg-2) 100%);
+  border:1px solid var(--bridge-line-2);border-radius:14px;padding:12px 12px 11px;
   text-align:left;opacity:.92;}
-.bridge-lib-empty-preview .bridge-side{background:#fff;}
+.bridge-lib-empty-preview .bridge-side{background:var(--bridge-side-bg);}
 .bridge-lib-empty-tag{display:inline-block;margin-top:10px;font-size:10px;font-weight:700;
   letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);
   background:var(--panel);padding:3px 9px;border-radius:999px;border:1px solid var(--line);}
-.bridge-lib-item{background:linear-gradient(135deg,#fffbeb 0%,#fff8f0 100%);
-  border:1px solid rgba(245,158,11,.22);border-radius:14px;padding:12px 13px;
+.bridge-lib-item{background:linear-gradient(135deg,var(--bridge-bg-1) 0%,var(--bridge-bg-2) 100%);
+  border:1px solid var(--bridge-line-2);border-radius:14px;padding:12px 13px;
   margin-bottom:10px;cursor:pointer;transition:transform .15s,box-shadow .15s;}
-.bridge-lib-item:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(245,158,11,.12);}
+.bridge-lib-item:hover{transform:translateY(-1px);box-shadow:0 4px 12px var(--bridge-line-hover);}
 .bridge-lib-pair{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
 .bridge-lib-phrase{font-size:13px;font-weight:600;color:var(--ink);flex:1;line-height:1.3;}
 .bridge-lib-tilde{color:var(--muted-2);font-size:13px;flex-shrink:0;}
@@ -1244,6 +1249,49 @@ body.is-offline::before{
 .cact-danger.active .cact-ico{filter:none;}
 .cact-ico{font-size:20px;line-height:1;}
 .cact-lbl{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.02em;}
+
+/* ─────────────────────────────────────────────────────────────
+   PICKER TUTORIAL — first-run coachmark sequence
+   Shown once when the picker first opens. Replay from Settings.
+   ───────────────────────────────────────────────────────────── */
+.ptut-overlay{position:fixed;inset:0;z-index:9999;pointer-events:auto;}
+.ptut-spotlight{position:absolute;border-radius:18px;pointer-events:none;
+  box-shadow:0 0 0 4px rgba(0,104,255,.35),0 0 0 9999px rgba(8,14,28,.66);
+  transition:top .32s cubic-bezier(.4,0,.2,1),left .32s cubic-bezier(.4,0,.2,1),
+    width .32s cubic-bezier(.4,0,.2,1),height .32s cubic-bezier(.4,0,.2,1);}
+.ptut-spotlight::after{content:'';position:absolute;inset:-3px;border-radius:20px;
+  border:2px solid var(--blue);pointer-events:none;animation:ptutPulse 1.6s ease-in-out infinite;}
+@keyframes ptutPulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.55;transform:scale(1.012);}}
+.ptut-skip{position:absolute;top:max(env(safe-area-inset-top,0px),18px);right:18px;
+  background:rgba(255,255,255,.16);backdrop-filter:blur(8px);
+  color:#fff;border:1px solid rgba(255,255,255,.24);border-radius:999px;
+  padding:7px 16px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;
+  font-family:var(--font-sans);}
+.ptut-skip:hover{background:rgba(255,255,255,.24);}
+.ptut-tooltip{position:absolute;background:var(--panel);border-radius:14px;
+  padding:14px 16px 12px;width:280px;max-width:calc(100vw - 28px);
+  box-shadow:0 12px 36px rgba(0,0,0,.34);font-family:var(--font-sans);
+  animation:ptutTipIn .26s cubic-bezier(.34,1.56,.64,1);}
+@keyframes ptutTipIn{from{opacity:0;transform:translateY(8px) scale(.96);}to{opacity:1;transform:translateY(0) scale(1);}}
+.ptut-tip-arrow{position:absolute;width:14px;height:14px;background:var(--panel);
+  transform:rotate(45deg);left:50%;margin-left:-7px;}
+.ptut-tip-arrow.up{top:-6px;}
+.ptut-tip-arrow.down{bottom:-6px;}
+.ptut-eyebrow{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--blue);margin-bottom:5px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.ptut-eyebrow .ptut-step-counter{color:var(--muted);font-weight:600;}
+.ptut-title{font-size:16px;font-weight:700;color:var(--ink);line-height:1.3;margin-bottom:5px;letter-spacing:-.005em;}
+.ptut-body{font-size:13px;line-height:1.5;color:var(--muted);margin-bottom:12px;}
+.ptut-body strong{color:var(--ink);font-weight:600;}
+.ptut-actions{display:flex;align-items:center;gap:8px;justify-content:space-between;}
+.ptut-dots{display:flex;gap:5px;}
+.ptut-dot{width:6px;height:6px;border-radius:999px;background:var(--line);transition:background .18s,width .18s;}
+.ptut-dot.active{background:var(--blue);width:18px;}
+.ptut-btnrow{display:flex;gap:4px;}
+.ptut-btn{background:var(--blue);color:#fff;border:none;border-radius:999px;
+  padding:8px 16px;font:inherit;font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;}
+.ptut-btn.ghost{background:transparent;color:var(--muted);padding:8px 6px;}
+.ptut-btn:hover{filter:brightness(1.05);}
 </style>
 </head>
 <body>
@@ -1503,6 +1551,10 @@ body.is-offline::before{
     <aside class="sidebar" style="display:none;">
     <div class="sb-top">
       <div class="sb-top-row">
+        <svg class="sb-brand-mark" width="26" height="26" viewBox="0 0 120 120" fill="none" aria-label="Voeli" role="img">
+          <path d="M22 38 Q22 26 34 26 H72 Q84 26 84 38 V60 Q84 72 72 72 H50 L36 84 V72 H34 Q22 72 22 60 Z" fill="#38BDF8"/>
+          <path d="M40 56 Q40 44 52 44 H92 Q104 44 104 56 V78 Q104 90 92 90 H68 L82 102 V90 H92 Q104 90 104 78 Z" fill="#0068FF"/>
+        </svg>
         <h2 id="sbTitle" style="display:none;">Chats</h2>
         <div style="display:flex;align-items:center;gap:8px;">
           <button class="req-bell" id="reqBellBtn" onclick="showPendingRequests()" aria-label="Notifications" title="Notifications">
@@ -1940,10 +1992,6 @@ const SLANG_EN = [
   { pattern:/\blowkey\b/i,                     phrase:"lowkey",             a:"quietly, subtly — I kind of feel this way",                  b:"literal low key — makes no sense",           aVi:"cũng hơi (tôi có cảm giác thế)",                                                                                                              bVi:"phím nhạc thấp (vô nghĩa)",                                                                                                                    reason:"Internet slang for 'understated, quietly, secretly.' Opposite of high-key. Means nothing literally.",                                       vietnameseEquiv:"Cũng hơi",       dismissScope:"global" },
   // Removed: 'sure', 'whatever', 'stop it' — too common as literal words; left to AI judgment
 
-  // ── DEVELOPER PHRASE: Always triggers picker 100% (no generation gate) ──
-  { pattern:/\bdonnywillisvoeli\b/i,               phrase:"donnywillisvoeli",  a:"developer test phrase",                                       b:"always triggers picker",                      reason:"Custom developer phrase — ensures picker always appears for testing, bypasses all generation/language checks.",                    vietnameseEquiv:"developer",       dismissScope:"global" },
-  { pattern:/\bdonnywillisvoeli2\b/i,              phrase:"donnywillisvoeli2", a:"Vietnamese developer test phrase",                           b:"always triggers picker with Vietnamese explanations",  reason:"Vietnamese developer test phrase — ensures picker always appears with Vietnamese explanations for testing.",  vietnameseEquiv:"donnywillisvoeli2",  dismissScope:"global" },
-
   // New entries — English counterparts of Vietnamese-only slang phrases
   { pattern:/\boh my god\b/i,                                    phrase:"oh my god",              a:"positive amazement or excitement",                           b:"distress, frustration, or genuine shock",     aVi:"ngạc nhiên tích cực hoặc phấn khích",                                                                                                         bVi:"khó khăn, bực bội hoặc sốc thực sự",                                                                                                          reason:"Pure intonation-dependent — the same three words cover awe, panic, and frustration with no other signal. Exact English mirror of 'Trời ơi'.", vietnameseEquiv:"Trời ơi",          dismissScope:"global"  },
   { pattern:/\bwelp[.!?~\s]*$/i,                                 phrase:"welp",                   a:"joking 'well, that happened' — minor mishap",                b:"genuine 'we're in trouble' — real problem",   aVi:"nói đùa 'thôi xong' (chuyện nhỏ)",                                                                                                            bVi:"thật sự chúng ta gặp rắc rối",                                                                                                               reason:"Same tone ambiguity as 'Thôi xong' — can be a shrug or a genuine alarm depending entirely on what caused it.",                             vietnameseEquiv:"Thôi xong",        dismissScope:"global" },
@@ -2086,8 +2134,6 @@ const SLANG_EN = [
 ];
 
 const SLANG_VI = [
-  // Developer test phrase
-  { pattern:/\bdonnywillisvoeli2\b/i, phrase:"donnywillisvoeli2", a:"Vietnamese developer test phrase", b:"always triggers picker with Vietnamese explanations", reason:{en:"Vietnamese developer test phrase — ensures picker always appears with Vietnamese explanations for testing.",vi:"Cụm từ thử nghiệm dành cho dev tiếng Việt. Đảm bảo picker luôn hiện ra với giải thích tiếng Việt khi kiểm thử."}, vietnameseEquiv:"donnywillisvoeli2", dismissScope:"global" },
   // Multi-word phrases — specific enough to be safe without trailing anchors
   { pattern:/chết con rồi/i,         phrase:"Chết con rồi",       a:"laughing so hard, having a great time",                      b:"oh no, something actually went wrong",       aEn:"I'm dying, that's hilarious",       bEn:"oh no, I'm in trouble",       reason:{en:"Literally 'I'm dead (child form)' — Vietnamese hyperbole mirrors English 'I'm dying.' Death = extreme reaction, not literal.",vi:"Nghĩa đen là 'tôi chết rồi (dạng trẻ con)'. Đây là cách nói quá kiểu Việt, giống 'I'm dying' trong tiếng Anh. 'Chết' là phản ứng cực độ, không phải nghĩa đen."},         englishEquiv:"I'm dead",              dismissScope:"global" },
   { pattern:/ghét cái mặt/i,         phrase:"Ghét cái mặt",       a:"playful affectionate teasing between close friends",          b:"genuinely disliking someone's face",         aEn:"you're the worst (affectionate)",       bEn:"I really can't stand you",       reason:{en:"Literally 'hate your face' — between close friends it's like 'I can't stand how great you are.' Outsiders read it as an insult.",vi:"Nghĩa đen là 'ghét cái mặt'. Giữa bạn bè thân thì như kiểu 'tôi không chịu nổi vì bạn quá hay'. Người ngoài có thể hiểu nhầm thành lời xúc phạm."},         englishEquiv:"I hate you",            dismissScope:"global"  },
@@ -2237,9 +2283,6 @@ const _GEN_MAP = {
   // ═══════════════════════════════════════════════════════════
   // ENGLISH
   // ═══════════════════════════════════════════════════════════
-
-  // Developer test phrase - always shows picker
-  "donnywillisvoeli":"gen-uni",
 
   // ── Gen Z (TikTok era, post-2020 internet, originated Gen Z) ──
   "I'm dead":["gen-z","gen-mill"],"I can't":"gen-z","I'm screaming":"gen-z","that slaps":"gen-z",
@@ -2786,8 +2829,6 @@ function logUnknownSlangCandidate(result, text, direction){
                              result: entry.result, learnedAt: Date.now(), count: entry.count };
         learned[key] = graduated;
         localStorage.setItem('learned_dictionary', JSON.stringify(learned));
-        // Report to community server — fire and forget
-        reportPhraseToServer(graduated);
         // Remove from candidate log — it's graduated
         const idx = log.findIndex(e => e.key === key);
         if(idx >= 0) log.splice(idx, 1);
@@ -2878,83 +2919,6 @@ function getLearnedDictionary(){
     console.error('Error loading learned dictionary:', e);
     return {};
   }
-}
-
-// ═══════════════════════════════════════════════════════
-// COMMUNITY SLANG NETWORK LAYER
-// ═══════════════════════════════════════════════════════
-// When a phrase graduates locally (seen LEARN_THRESHOLD times),
-// it also gets reported to the community server so it can be
-// pooled with reports from other users.
-//
-// On app load, new community-approved phrases are pulled down
-// and merged into the local dictionary — so every user benefits
-// from what everyone else has seen.
-//
-// Set SLANG_SERVER_URL to your deployed server address.
-// Leave empty ('') to run fully offline (local learning only).
-// ═══════════════════════════════════════════════════════
-const SLANG_SERVER_URL = ''; // e.g. 'https://slang.yourapp.com'
-
-// Report a graduated phrase to the community server.
-// Fire-and-forget — never blocks the UI.
-function reportPhraseToServer(entry) {
-  if (!SLANG_SERVER_URL || !entry) return;
-  try {
-    fetch(`${SLANG_SERVER_URL}/api/slang/report`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        phrase:     entry.text,
-        direction:  entry.direction,
-        meaning:    entry.result?.likelyMeaning?.en || null,
-        ai_result:  entry.result || null,
-        first_seen: entry.learnedAt || Date.now(),
-      }),
-    }).catch(() => {}); // silently ignore network failures
-  } catch(_) {}
-}
-
-// Pull community-approved phrases from the server on app load.
-// Merges them into localStorage under 'community_dictionary'.
-// Only fetches entries newer than the last successful pull.
-async function fetchDictionaryUpdates() {
-  if (!SLANG_SERVER_URL) return;
-  try {
-    const lastFetch = parseInt(localStorage.getItem('community_dict_fetched') || '0', 10);
-    const res = await fetch(`${SLANG_SERVER_URL}/api/slang/updates?since=${lastFetch}`);
-    if (!res.ok) return;
-    const { entries } = await res.json();
-    if (!entries || !entries.length) return;
-
-    const dict = JSON.parse(localStorage.getItem('community_dictionary') || '{}');
-    for (const e of entries) {
-      const key = e.phrase.trim().toLowerCase().slice(0, 80) + '::' + e.direction;
-      dict[key] = {
-        phrase:    e.phrase,
-        direction: e.direction,
-        meaning:   e.meaning,
-        ai_result: e.ai_result,
-        gen:       e.gen,       // 'gen-z' | 'gen-mill' | 'gen-x'
-        gen_label: e.gen_label, // server computes this fresh each pull — aging is automatic
-        addedAt:   e.approved_at,
-      };
-    }
-    localStorage.setItem('community_dictionary', JSON.stringify(dict));
-    localStorage.setItem('community_dict_fetched', String(Date.now()));
-    console.log(`[slang] pulled ${entries.length} community entries`);
-  } catch(_) {}
-}
-
-// Check the community dictionary for a phrase.
-// Called alongside checkLearnedDictionary — same return shape.
-function checkCommunityDictionary(text, direction) {
-  if (!text) return null;
-  const key = text.trim().toLowerCase().slice(0, 80) + '::' + direction;
-  try {
-    const dict = JSON.parse(localStorage.getItem('community_dictionary') || '{}');
-    return dict[key] || null;
-  } catch(_) { return null; }
 }
 
 // ─── Preference learning ────────────────────────────────
@@ -4631,8 +4595,6 @@ async function launchApp(){
   await loadFriendRequests();
   // Listen for incoming DM rooms (when another user adds your email as contact)
   initDMRoomListener();
-  // Pull new community-approved slang entries in the background
-  fetchDictionaryUpdates();
   // Sync profile toggles
   syncProfileToggles();
   // Periodically clean old phrase memories (every 10 minutes)
@@ -5119,15 +5081,10 @@ const FCM_VAPID_KEY = 'BJNpvegNjuTMZC2IbsL4q3Fbu5RguwsutXj4w_7MtlrGHfa-sZvvO-jt1
 // like the Firebase API key. Tied to this domain so it can't be used
 // elsewhere. Rotate by creating a new key in Google Cloud Console (Security
 // → reCAPTCHA Enterprise), pasting it into Firebase Console (Build → App
-// Check), then updating this constant.
-//
-// TEMPORARILY DISABLED: the prod registration is returning 400 from
-// content-firebaseappcheck.googleapis.com on token exchange, which was
-// hanging the Firebase Auth flow (the SDK retries with exponential backoff
-// while sign-in waits). Re-enable by pasting the key back here once the
-// registration is verified working. The committed value lives below so
-// it's easy to flip back: '6Le4INosAAAAAIekhqNtwanHjkjJbUf--0qVqCAa'.
-const APP_CHECK_SITE_KEY = '';
+// Check), then updating this constant. Backend stays in log-and-allow until
+// wrangler tail confirms tokens are arriving on >99% of /api/* requests
+// (APP_CHECK_ENFORCE in backend/wrangler.toml).
+const APP_CHECK_SITE_KEY = '6Le4INosAAAAAIekhqNtwanHjkjJbUf--0qVqCAa';
 
 // Initialise once on script load.
 if(!firebase.apps.length){
@@ -6060,6 +6017,9 @@ fbAuth.onAuthStateChanged(async (user)=>{
     if(!firebaseDb) firebaseDb = firebase.database();
     try {
       await firebaseDb.ref(`users/${user.uid}/email`).set(user.email);
+      // Persist the email hash so the friendRequests/invites read rules can
+      // verify this user owns the $emailHash path they're listening on.
+      await firebaseDb.ref(`users/${user.uid}/emailHash`).set(await hashEmailForPath(user.email));
       // Migrate any old unencoded email paths to new hashed paths
       await migrateOldEmailPaths(user.email);
     } catch(e){
@@ -8013,25 +7973,19 @@ async function createOrJoinDMRoom(contactEmail){
     const hashedContactEmail = await hashEmailForPath(normalizedContactEmail);
     console.log(`[createOrJoinDMRoom] roomId=${roomId}`);
 
-    // Add ourselves as a participant. Firebase auto-creates the room and the
-    // /participants object if they don't exist, and the leaf-level rule
-    // (".write": "auth.uid === $uid") makes this safe without a wider parent
-    // grant. This replaces a transaction at the dms/$roomId level which
-    // required the dangerous ".write": "auth != null" cascade and was the
-    // root cause of the cross-room write vulnerability.
+    // Metadata is written first because the tightened participants-write rule
+    // requires the room's metadata.emails to already list this user's email.
+    // Without this ordering, the participant write below is denied on initial
+    // room creation.
+    await firebaseDb.ref(`dms/${roomId}/metadata`).set({
+      emails: [myEmail, normalizedContactEmail]
+    });
     await firebaseDb.ref(`dms/${roomId}/participants/${currentUser.uid}`).set(true);
 
     // Drop a breadcrumb so the contact's app can discover this room.
     // /invites/$hashedEmail is intentionally readable so the listener can
     // pick it up before they're a participant.
     await firebaseDb.ref(`invites/${hashedContactEmail}/${roomId}`).set(true);
-
-    // Store the email pair as room metadata so the auto-create flow on the
-    // other side knows who's in the room. We're now a participant, so the
-    // metadata.write rule (participant-only) accepts this write.
-    await firebaseDb.ref(`dms/${roomId}/metadata`).set({
-      emails: [myEmail, normalizedContactEmail]
-    }).catch(e => console.warn('[createOrJoinDMRoom] Warning: Could not store metadata:', e));
 
     console.log(`[createOrJoinDMRoom] Room ready: ${roomId}`);
     return roomId;
@@ -8258,38 +8212,17 @@ async function deleteContact(id){
       }
 
       // If this was a pending request we sent, also cancel the friend request
-      if(isPending && contact.email){
-        console.log('Cancelling friend request to', contact.email);
-        // Find and delete any pending friend requests we sent to this person
-        const hashedEmail = await hashEmailForPath(contact.email);
-        const meEmail = (sessionStorage.getItem('mta_user_email')||'').toLowerCase();
-
+      if(isPending && contact.email && contact.friendRequestId){
+        // Cancel by direct path lookup. The tightened rules disallow listing
+        // friendRequests under another user's hash, so we rely on the
+        // friendRequestId we stamped on the contact when we sent the request.
+        // Contacts created before that stamp existed will silently no-op
+        // here; the orphaned request will resolve when the recipient acts.
         try {
-          const snap = await firebaseDb.ref(`friendRequests/${hashedEmail}`).once('value');
-          if(snap.exists()){
-            const requests = snap.val();
-            for(const reqId in requests){
-              const req = requests[reqId];
-              if(req && req.from === meEmail){
-                try {
-                  // Verify request still exists before deleting (race condition protection)
-                  const verifySnap = await firebaseDb.ref(`friendRequests/${hashedEmail}/${reqId}`).once('value');
-                  if(verifySnap.exists()){
-                    // Request still exists, safe to delete
-                    await firebaseDb.ref(`friendRequests/${hashedEmail}/${reqId}`).remove();
-                    console.log(`Deleted friend request ${reqId}`);
-                  } else {
-                    // Request already gone (accepted/deleted by other party) - that's fine
-                    console.log(`Friend request ${reqId} already deleted (accepted or cancelled by recipient)`);
-                  }
-                } catch(deleteErr){
-                  console.error(`Error deleting friend request ${reqId}:`, deleteErr);
-                }
-              }
-            }
-          }
+          const hashedEmail = await hashEmailForPath(contact.email);
+          await firebaseDb.ref(`friendRequests/${hashedEmail}/${contact.friendRequestId}`).remove();
         } catch(e){
-          console.error('Error cancelling friend requests:', e);
+          console.error('Error cancelling friend request:', e);
         }
       }
     } catch(e){
@@ -9026,21 +8959,25 @@ async function sendFriendRequest(toEmail){
       // Confirm to user that request was sent
       _showToast(appDir==='vi-en' ? `Đã gửi yêu cầu kết bạn đến ${normalizedEmail}` : `Friend request sent to ${normalizedEmail}`);
 
-      // If we already had a contact for this person in 'deleted' state
-      // (the recipient previously removed us), flip it to 'pending_acceptance'
-      // now that we've sent a fresh request — otherwise the "Contact removed
-      // you" banner would linger after we click Send Friend Request.
+      // Stamp the request id on the contact so deleteContact can cancel it
+      // by direct path lookup instead of listing the recipient's hash (the
+      // tightened rules deny that listing). Also flip a 'deleted' contact
+      // back to 'pending_acceptance' when we re-send, so the "Contact
+      // removed you" banner doesn't linger after Send Friend Request.
       const existing = contacts.find(c => c.email === normalizedEmail);
-      if(existing && existing.status === 'deleted'){
-        existing.status = 'pending_acceptance';
-        renderSidebar();
-        if(activeId === existing.id){
-          renderMsgs();
-          if(typeof updBtns === 'function') updBtns();
+      if(existing){
+        existing.friendRequestId = req.id;
+        if(existing.status === 'deleted'){
+          existing.status = 'pending_acceptance';
+          renderSidebar();
+          if(activeId === existing.id){
+            renderMsgs();
+            if(typeof updBtns === 'function') updBtns();
+          }
         }
         if(currentUser){
           try { await saveContactToFirebase(existing); }
-          catch(saveErr){ console.error('[sendFriendRequest] Failed to persist deleted→pending flip:', saveErr); }
+          catch(saveErr){ console.error('[sendFriendRequest] Failed to persist contact update:', saveErr); }
         }
       }
     } catch(e){
@@ -9751,16 +9688,7 @@ function renderMsgs(){
     h+=`<div class="mrow ${side}">${reactHtml}<div class="bubble ${side}${tailCls}${translatingCls}"${editAttr}>${replyRefHtml}${esc(m.translated||m.text)}${origRow}${altsPanel}${metaRow}</div>${changeChip}</div>`;
     // Learn chip — receiver only, fires when the other person's original text contains slang
     // Phase 3 fix: only show if there's a generation/language mismatch (avoid condescending chips)
-    // Developer exception: ALWAYS show for "donnywillisvoeli" test phrase - hard-coded direct trigger
-    const msgText = (m.original || m.text || '').toLowerCase();
-    console.log('[renderMsgs] Checking message:', { id: m.id, original: m.original, text: m.text, msgText, matches: msgText.includes('donnywillisvoeli') });
-    if(msgText.includes('donnywillisvoeli') && !m.isMe){
-      // Developer phrase learn chip: only show when received from other person (following native speaker protection pattern)
-      console.log('[renderMsgs] FOUND donnywillisvoeli phrase, building learn chip');
-      const devPhrase = { phrase: 'donnywillisvoeli', a: 'developer test phrase', b: 'always triggers picker', reason: 'Custom developer phrase — always triggers for testing' };
-      h += buildLearnChip(devPhrase, 'en');
-      console.log('[renderMsgs] Learn chip HTML added');
-    } else if((!m.isMe && !m.deleted && !m.translating)){
+    if(!m.isMe && !m.deleted && !m.translating){
       // Check for abbreviations first
       const srcText = m.original || m.text || '';
       const srcDir  = m.direction || (appDir === 'en-vi' ? 'vi-en' : 'en-vi');
@@ -11099,9 +11027,7 @@ async function onSendText(ev){
   const text=(txtInput.value||'').trim();
   if(!text||!activeCont()) return;
   hideGrammarChip(); clearTimeout(_grammarTimer); _grammarDismissedFor = null;
-  const isDeveloperPhrase = text.toLowerCase().includes('donnywillisvoeli');
-  let forcePicker = ev && ev.shiftKey || isDeveloperPhrase;
-  if(isDeveloperPhrase) console.log('[onSendText] Developer phrase detected, forcing picker');
+  let forcePicker = !!(ev && ev.shiftKey);
 
   // Emoji-only messages → send as-is, translation hallucinates semantic content
   // (e.g., "❤️" → "Yêu em ❤️"). Bypass picker AND API call entirely.
@@ -11900,8 +11826,6 @@ function getPhraseDismissalCount(phraseKey, contactId){
   return d[key] || 0;
 }
 function shouldHideLearnChipDueToReceiverDismissals(phraseKey, contactId){
-  // Developer phrase always shows, bypasses dismissal logic completely
-  if(phraseKey === 'donnywillisvoeli') return false;
   return getPhraseDismissalCount(phraseKey, contactId) >= 3;
 }
 
@@ -13665,7 +13589,12 @@ function openSettings(){
     else if (text === 'Help & Learning') label.textContent = isVI ? 'Trợ giúp & Học tập' : 'Help & Learning';
     else if (text === 'Account') label.textContent = isVI ? 'Tài khoản' : 'Account';
     else if (text === 'Appearance') label.textContent = isVI ? 'Giao diện' : 'Appearance';
+    else if (text === 'Help' || text === 'Trợ giúp') label.textContent = isVI ? 'Trợ giúp' : 'Help';
   });
+
+  // "Show picker tour" replay entry — localize the button label
+  var _replayLbl = document.getElementById('settReplayTutorialLbl');
+  if (_replayLbl) _replayLbl.textContent = isVI ? 'Xem lại hướng dẫn bộ chọn' : 'Show picker tour';
   const darkLbl = document.getElementById('settDarkModeLabel');
   if(darkLbl) darkLbl.textContent = isVI ? 'Chế độ tối' : 'Dark mode';
   const darkTgl = document.getElementById('darkToggleSettings');
@@ -14020,6 +13949,14 @@ try {
       <button id="settingsClose" onclick="closeSettings()">✕</button>
     </div>
     <div id="settingsBody">
+      <div class="sett-section-label" id="settHelpLabel">Help</div>
+      <button id="settReplayTutorialBtn" type="button" onclick="closeSettings();window.replayPickerTutorial&&window.replayPickerTutorial();" style="width:100%;padding:14px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;-webkit-appearance:none;touch-action:manipulation;text-align:left;display:flex;align-items:center;gap:10px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--blue);flex-shrink:0;">
+          <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span id="settReplayTutorialLbl">Show picker tour</span>
+      </button>
+      <div class="sett-divider"></div>
       <div class="sett-section-label">Privacy</div>
       <details class="sett-privacy-toggle">
         <summary>
@@ -14087,6 +14024,229 @@ try {
     <button id="encInfoClose" onclick="closeEncInfo()" style="width:100%;padding:12px;border-radius:10px;border:none;background:var(--blue);color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;-webkit-appearance:none;">Close</button>
   </div>
 </div>
+
+<!-- ─────────────────────────────────────────────────────────────
+     PICKER TUTORIAL — first-run coachmark sequence.
+     Self-contained IIFE. Watches #optOverlay's style attribute for
+     visibility changes, runs a 4-step tour the first time, persists
+     dismissal in localStorage. Replay via window.replayPickerTutorial
+     from the Settings → Help → "Show picker tour" entry.
+     ───────────────────────────────────────────────────────────── -->
+<script>
+(function(){
+  'use strict';
+  var DONE_KEY = 'voeli.pickerTutorial.done.v1';
+  var FIRING = false;
+  var ACTIVE = false;
+
+  function isVI(){ return (typeof appDir !== 'undefined') && appDir === 'vi-en'; }
+
+  // 4-step tour. targetSel chooses the spotlight; if missing, the step is skipped.
+  function STEPS(){
+    var vi = isVI();
+    return [
+      {
+        targetSel: '#optOverlay .optsheet',
+        eyebrow:   vi ? 'Bộ chọn' : 'Meet the picker',
+        title:     vi ? 'Nhiều cách để diễn đạt cùng một ý' : "Different ways to say what you mean",
+        body:      vi
+          ? 'Khi một câu có thể được hiểu theo nhiều cách, Voeli đưa ra 3–4 lựa chọn thay vì đoán.'
+          : "When a phrase could land in different ways, Voeli offers 3–4 options instead of guessing.",
+      },
+      {
+        // First "best" / recommended card if present — fall back to first option
+        targetSel: '#optList .ocard.rec, #optList .ocard:first-child',
+        eyebrow:   vi ? 'Đề xuất' : 'Recommended',
+        title:     vi ? 'Chúng tôi sẽ gợi ý một lựa chọn' : "We'll suggest one",
+        body:      vi
+          ? 'Lựa chọn đánh dấu ★ là gợi ý tốt nhất dựa trên người bạn đang nhắn. Chạm để gửi, hoặc chọn câu khác.'
+          : "The ★ pick is our best guess based on who you're talking to. Tap it to send, or pick a different vibe.",
+      },
+      {
+        // Tone chip on any option card
+        targetSel: '#optList .chip',
+        eyebrow:   vi ? 'Nhãn sắc thái' : 'Tone tags',
+        title:     vi ? 'Mỗi lựa chọn có sắc thái riêng' : "Each option carries its own tone",
+        body:      vi
+          ? 'Các nhãn nhỏ (formal, casual, slang…) giải thích sắc thái văn hóa trước khi bạn gửi.'
+          : "Small labels explain the cultural texture — formal, casual, slang — before you send.",
+      },
+      {
+        targetSel: '#optOverlay .shcancel',
+        eyebrow:   vi ? 'Bạn quyết định' : "You're in control",
+        title:     vi ? 'Hủy bất cứ lúc nào' : "Cancel anytime",
+        body:      vi
+          ? 'Nhấn Cancel để quay lại và sửa. Bạn có thể xem lại hướng dẫn này trong Cài đặt.'
+          : "Hit Cancel to keep typing. Replay this tour anytime from Settings.",
+        ctaFinal: true,
+      },
+    ];
+  }
+
+  function startTour(force){
+    if (ACTIVE) return;
+    if (!force && localStorage.getItem(DONE_KEY)) return;
+    var ov = document.getElementById('optOverlay');
+    if (!ov || ov.style.display === 'none' || !ov.offsetParent) return;
+    ACTIVE = true;
+
+    // Build overlay scaffold
+    var root = document.createElement('div');
+    root.className = 'ptut-overlay';
+    root.id = 'ptutOverlay';
+    root.innerHTML = ''
+      + '<div class="ptut-spotlight" id="ptutSpot"></div>'
+      + '<button class="ptut-skip" id="ptutSkip">' + (isVI() ? 'Bỏ qua' : 'Skip') + '</button>'
+      + '<div class="ptut-tooltip" id="ptutTip">'
+      +   '<div class="ptut-tip-arrow down" id="ptutArrow"></div>'
+      +   '<div class="ptut-eyebrow"><span id="ptutEyebrow"></span><span class="ptut-step-counter" id="ptutCounter"></span></div>'
+      +   '<div class="ptut-title" id="ptutTitle"></div>'
+      +   '<div class="ptut-body" id="ptutBody"></div>'
+      +   '<div class="ptut-actions">'
+      +     '<div class="ptut-dots" id="ptutDots"></div>'
+      +     '<div class="ptut-btnrow">'
+      +       '<button class="ptut-btn ghost" id="ptutBack">' + (isVI() ? 'Quay lại' : 'Back') + '</button>'
+      +       '<button class="ptut-btn" id="ptutNext"></button>'
+      +     '</div>'
+      +   '</div>'
+      + '</div>';
+    document.body.appendChild(root);
+
+    var step = 0;
+    var steps = STEPS();
+    function vi(){ return isVI(); }
+
+    function placeStep(){
+      var s = steps[step];
+      var target = document.querySelector(s.targetSel);
+      // If the step's target doesn't exist (e.g. cancel hidden, no chips yet), advance
+      if (!target) {
+        if (step < steps.length - 1) { step++; return placeStep(); }
+        else return done();
+      }
+      var spot = document.getElementById('ptutSpot');
+      var tip = document.getElementById('ptutTip');
+      var arrow = document.getElementById('ptutArrow');
+      var r = target.getBoundingClientRect();
+      var pad = 6;
+      var sx = r.left - pad, sy = r.top - pad, sw = r.width + pad*2, sh = r.height + pad*2;
+      spot.style.left = sx + 'px';
+      spot.style.top = sy + 'px';
+      spot.style.width = sw + 'px';
+      spot.style.height = sh + 'px';
+
+      // Fill copy
+      document.getElementById('ptutEyebrow').textContent = s.eyebrow;
+      document.getElementById('ptutCounter').textContent = (step + 1) + ' / ' + steps.length;
+      document.getElementById('ptutTitle').textContent = s.title;
+      document.getElementById('ptutBody').textContent = s.body;
+      document.getElementById('ptutBack').style.visibility = step === 0 ? 'hidden' : 'visible';
+      var nextBtn = document.getElementById('ptutNext');
+      var isLast = step === steps.length - 1;
+      nextBtn.textContent = isLast
+        ? (vi() ? 'Đã hiểu' : 'Got it')
+        : (vi() ? 'Tiếp' : 'Next');
+
+      // Dots
+      var dots = document.getElementById('ptutDots');
+      dots.innerHTML = '';
+      for (var i=0; i<steps.length; i++){
+        var d = document.createElement('span');
+        d.className = 'ptut-dot' + (i === step ? ' active' : '');
+        dots.appendChild(d);
+      }
+
+      // Place tooltip — prefer above the target; if no room, place below
+      var tipW = 280;
+      // Force layout so tipH is correct
+      tip.style.visibility = 'hidden';
+      tip.style.left = '0px'; tip.style.top = '0px';
+      var tipH = tip.offsetHeight || 150;
+      var vw = window.innerWidth, vh = window.innerHeight;
+      var preferAbove = sy > tipH + 28;
+      var ty = preferAbove ? (sy - tipH - 14) : (sy + sh + 14);
+      var tx = sx + sw/2 - tipW/2;
+      tx = Math.max(12, Math.min(vw - tipW - 12, tx));
+      ty = Math.max(12, Math.min(vh - tipH - 12, ty));
+      tip.style.left = tx + 'px';
+      tip.style.top = ty + 'px';
+      tip.style.visibility = 'visible';
+
+      // Point arrow toward the target
+      arrow.className = 'ptut-tip-arrow ' + (preferAbove ? 'down' : 'up');
+      var anchorX = sx + sw/2 - tx;
+      anchorX = Math.max(16, Math.min(tipW - 16, anchorX));
+      arrow.style.left = anchorX + 'px';
+      arrow.style.marginLeft = '-7px';
+    }
+
+    function done(){
+      ACTIVE = false;
+      try { localStorage.setItem(DONE_KEY, '1'); } catch(e) {}
+      var el = document.getElementById('ptutOverlay');
+      if (el) el.remove();
+      window.removeEventListener('resize', placeStep);
+    }
+
+    document.getElementById('ptutSkip').addEventListener('click', done);
+    document.getElementById('ptutBack').addEventListener('click', function(){
+      if (step > 0){ step--; placeStep(); }
+    });
+    document.getElementById('ptutNext').addEventListener('click', function(){
+      if (step < steps.length - 1){ step++; placeStep(); }
+      else done();
+    });
+    window.addEventListener('resize', placeStep);
+
+    // Two RAFs to let sheet animation settle
+    requestAnimationFrame(function(){ requestAnimationFrame(placeStep); });
+  }
+
+  // Watch for the picker overlay opening. Use a MutationObserver on
+  // #optOverlay's style attribute — that's how the existing code shows it.
+  function attach(){
+    var ov = document.getElementById('optOverlay');
+    if (!ov) { return setTimeout(attach, 200); }
+    var obs = new MutationObserver(function(){
+      var visible = ov.style.display && ov.style.display !== 'none';
+      if (visible && !FIRING && !localStorage.getItem(DONE_KEY)){
+        FIRING = true;
+        // Wait a beat for the sheet to slide in before highlighting
+        setTimeout(function(){ startTour(false); FIRING = false; }, 380);
+      }
+      if (!visible && ACTIVE){
+        // Picker closed mid-tour — bail out without persisting (let it retry next time)
+        var el = document.getElementById('ptutOverlay');
+        if (el) el.remove();
+        ACTIVE = false;
+      }
+    });
+    obs.observe(ov, { attributes: true, attributeFilter: ['style'] });
+  }
+
+  // Public API for replay (Settings)
+  window.replayPickerTutorial = function(){
+    try { localStorage.removeItem(DONE_KEY); } catch(e) {}
+    var ov = document.getElementById('optOverlay');
+    if (ov && ov.style.display && ov.style.display !== 'none'){
+      // Picker is currently open — start immediately
+      startTour(true);
+    } else {
+      // Otherwise, prime it: next time the picker opens, the tour will run.
+      // Also surface a toast so the user knows what to expect.
+      if (typeof _showToast === 'function'){
+        _showToast(isVI() ? 'Hướng dẫn sẽ chạy lại lần kế tiếp khi bộ chọn mở' : 'Tour will run next time the picker opens');
+      }
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attach);
+  } else {
+    attach();
+  }
+})();
+</script>
 
 </body>
 </html>

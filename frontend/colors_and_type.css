@@ -1,0 +1,250 @@
+/* ────────────────────────────────────────────────────────────
+   Voeli Design System — Colors & Type
+   Tone-aware English ↔ Vietnamese chat translator.
+   Aesthetic: WhatsApp × Zalo hybrid — clean, blue, native-app
+   feel. iMessage-shaped bubbles + Zalo's calmer chrome.
+   ──────────────────────────────────────────────────────────── */
+
+:root {
+  /* ─── Surfaces ────────────────────────────────────────── */
+  --bg:        #ECECEC;  /* app background — cool warm-grey, sits behind panels */
+  --panel:     #FFFFFF;  /* primary surface — sidebar, chat panel, modals, cards */
+  --panel-2:   #F7F8FA;  /* recessed surface — search field, input wrap, tab strip rest */
+  --chip:      #F1F3F5;  /* chip / quiet pill background */
+
+  /* ─── Foreground (ink) ────────────────────────────────── */
+  --ink:       #111827;  /* primary text — body copy, names, headings */
+  --muted:     #6B7280;  /* secondary text — preview, sublabels, time */
+  --muted-2:   #9CA3AF;  /* tertiary — placeholder, dismissive icons */
+
+  /* ─── Hairlines ───────────────────────────────────────── */
+  --line:      #E5E7EB;  /* default border — cards, inputs, list rows */
+  --line-2:    #F1F3F5;  /* lighter divider — between list rows */
+
+  /* ─── Brand blue ──────────────────────────────────────── */
+  --blue:        #0068FF; /* primary action — Zalo-derived; messenger-blue, NOT iOS-blue */
+  --blue-dk:     #0052CC; /* hover / pressed */
+  --blue-50:     #EAF3FF; /* selected state on muted backgrounds */
+  --blue-bubble: #0068FF; /* outgoing message bubble */
+  --sky:         #38BDF8; /* logo accent — second bubble in the two-voices mark */
+  --accent-soft: #F0F6FF; /* hover wash on rows, selected nav */
+  --read-tick:   #53BDEB; /* read receipt — WhatsApp blue tick */
+
+  /* ─── Status / semantic ───────────────────────────────── */
+  --gold:    #F59E0B;     /* recommended option, learning highlight */
+  --gold-bg: #FFFBEB;     /* recommended option card background */
+  --gold-ink:#92400E;     /* recommended option label */
+  --red:     #DC2626;     /* destructive, sign-out, errors */
+  --green:   #22C55E;     /* online dot, success */
+
+  /* ─── Cultural-bridge palette (the gold bridge cards in chat) ─── */
+  /* These match the live shipped colors in frontend/index.html:323-358.
+     Two-stop gradient on the card body, amber line accents.            */
+  --bridge-bg-1:    #fffbeb;  /* gradient start (top-left) */
+  --bridge-bg-2:    #fff8f0;  /* gradient end (bottom-right) */
+  --bridge-line:    rgba(245,158,11,.28);   /* outer card border */
+  --bridge-line-2:  rgba(245,158,11,.22);   /* library item border */
+  --bridge-line-3:  rgba(245,158,11,.15);   /* inner side border */
+  --bridge-line-hover: rgba(245,158,11,.12); /* hover shadow tint */
+  --bridge-title:   var(--gold);            /* "BRIDGE" eyebrow */
+  --bridge-side-bg: #fff;                   /* inner phrase tile */
+
+  /* ─── Tone-tag palette (cultural-warning badges) ───────── */
+  --tone-kinship:     #9333EA;  /* purple — kinship terms / register */
+  --tone-face:        #DC2626;  /* red — face-threat */
+  --tone-idiom:       #0891B2;  /* cyan — idiom */
+  --tone-slang:       #0D9488;  /* teal — slang */
+
+  /* ─── Wordplay note (cross-cultural heads-up) ──────────── */
+  --wp-bg:   #EAF3FF;
+  --wp-line: #BFDBFE;
+  --wp-ink:  #1E3A8A;
+
+  /* ─── Shadows / elevation ─────────────────────────────── */
+  --shadow-sm: 0 1px 2px rgba(16,24,40,.05);
+  --shadow-md: 0 4px 12px rgba(16,24,40,.07);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,.18);
+  --shadow-modal: 0 8px 40px rgba(0,0,0,.20);
+  --shadow-blue: 0 2px 8px rgba(0,104,255,.28);
+
+  /* ─── Radii ───────────────────────────────────────────── */
+  --r-1: 6px;    /* inner edges, bubble tail-side */
+  --r-2: 8px;    /* small chips, buttons inside cells */
+  --r-3: 10px;   /* inputs, tab pills */
+  --r-4: 12px;   /* relationship cards, sett rows */
+  --r-5: 14px;   /* option cards, popovers */
+  --r-6: 16px;   /* modals, hero cards */
+  --r-7: 18px;   /* message bubbles */
+  --r-8: 20px;   /* bottom-sheet */
+  --r-pill: 999px;
+
+  /* ─── Spacing scale ───────────────────────────────────── */
+  --s-1: 4px;
+  --s-2: 6px;
+  --s-3: 8px;
+  --s-4: 10px;
+  --s-5: 12px;
+  --s-6: 14px;
+  --s-7: 16px;
+  --s-8: 18px;
+  --s-9: 20px;
+  --s-10: 24px;
+  --s-12: 28px;
+  --s-14: 32px;
+  --s-16: 40px;
+
+  /* ─── Type system ─────────────────────────────────────── */
+  /* Voeli uses the OS system stack — feels native on iOS, Android, web.
+     No webfonts ship; never use Inter/Roboto; let the device choose. */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Sizes — the app is dense; nothing is huge. Default body is 14px. */
+  --fs-xxs: 10px;     /* tick badges, micro-labels */
+  --fs-xs:  11px;     /* uppercase eyebrow / "RECOMMENDED" */
+  --fs-xs-2:11.5px;   /* tab text, freq sub */
+  --fs-sm:  12px;     /* meta, contact time, cw rows */
+  --fs-sm-2:12.5px;   /* policy body, settings label */
+  --fs-base:13px;     /* dense body — chat preview, sublabels */
+  --fs-md:  14px;     /* default body — section labels, sidebar input */
+  --fs-md-2:14.5px;   /* bubble text */
+  --fs-lg:  15px;     /* form input value, sett row */
+  --fs-xl:  16px;     /* chat header name, button */
+  --fs-2xl: 18px;     /* modal h3, page h2 */
+  --fs-3xl: 22px;     /* sidebar h2, setup h1 */
+  --fs-4xl: 28px;     /* policy/marketing h1 */
+
+  /* Weights */
+  --fw-regular:  400;
+  --fw-medium:   500;  /* lang-toggle inactive */
+  --fw-semibold: 600;  /* most "bold" text in product */
+  --fw-bold:     700;  /* section heads, sidebar h2 */
+  --fw-heavy:    800;  /* onboarding title, cstm */
+
+  /* Line heights */
+  --lh-tight: 1.25;
+  --lh-snug:  1.4;     /* bubble */
+  --lh-normal:1.55;    /* setup paragraph */
+  --lh-loose: 1.6;     /* policy, terms */
+
+  /* Letter spacing */
+  --ls-tight:   -.02em;  /* onboarding title */
+  --ls-snug:    -.01em;  /* h1, h2 */
+  --ls-eyebrow:  .05em;  /* uppercase labels */
+  --ls-tab:      .04em;
+
+  /* ─── Motion ──────────────────────────────────────────── */
+  --t-fast: .12s;       /* hover wash */
+  --t-base: .15s;       /* tab switch, toggle track */
+  --t-slow: .22s;       /* card stream-in fade */
+  --t-slide:.28s cubic-bezier(.4,0,.2,1);          /* mobile panel slide */
+  --t-pop:  .3s  cubic-bezier(.34,1.56,.64,1);     /* onboarding bounce */
+}
+
+/* ────────────────────────────────────────────────────────────
+   Semantic typography — apply directly to elements
+   ──────────────────────────────────────────────────────────── */
+
+.t-display {
+  font-size: var(--fs-4xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-snug);
+  color: var(--ink);
+}
+
+.t-h1 {
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-snug);
+  color: var(--ink);
+}
+
+.t-h2 {
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  color: var(--ink);
+}
+
+.t-h3 {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  color: var(--ink);
+}
+
+.t-body {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-normal);
+  color: var(--ink);
+}
+
+.t-body-lg {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-loose);
+  color: var(--ink);
+}
+
+.t-bubble {
+  /* The single most-used text style in Voeli. */
+  font-size: var(--fs-md-2);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-snug);
+}
+
+.t-meta {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+  color: var(--muted);
+}
+
+.t-preview {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-regular);
+  color: var(--muted);
+}
+
+.t-eyebrow {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-eyebrow);
+  color: var(--blue);
+}
+
+.t-eyebrow-warm {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-eyebrow);
+  color: var(--gold-ink);
+}
+
+.t-flabel {
+  /* Form field label: e.g. "EMAIL", "BIRTHDAY" */
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-eyebrow);
+  color: var(--muted);
+}
+
+.t-mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+}
+
+/* Globals: anything inheriting from body picks up the system stack. */
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
