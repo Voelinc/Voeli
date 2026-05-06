@@ -42,9 +42,14 @@ DAILY_GRAMMAR_QUOTA = "300"
 # Sentry DSN for the Worker — public ingest endpoint, NOT a secret.
 SENTRY_DSN = "https://d8e4fec90119dae1b7db1180356d4fec@o4511283666026496.ingest.us.sentry.io/4511283820101632"
 
-# App Check enforcement. Set to "false" during the rollout window so the
-# backend can ship before the frontend integration is everywhere; flip to
-# "true" once App Check tokens are arriving on >99% of /api/* requests.
+# App Check enforcement. Stays in log-and-allow until getToken() actually
+# works in prod — flipping this to "true" with the current frontend caused
+# all /api/* calls to 401 because the App Check token exchange hits the same
+# 400 from content-firebaseappcheck.googleapis.com that we see on localhost.
+# Diagnose via devtools network tab on voeli.app, look for the request to
+# firebaseappcheck.googleapis.com and inspect its response. Likely cause is
+# the reCAPTCHA Enterprise key's "Incomplete" status; needs Firebase Console
+# / Google Cloud Console attention before the flip can stick.
 APP_CHECK_ENFORCE = "false"
 
 # Per-endpoint rate limits (requests per minute). Each endpoint has a

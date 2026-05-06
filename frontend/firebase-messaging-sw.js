@@ -27,8 +27,8 @@ messaging.onBackgroundMessage((payload) => {
   const body  = (payload.notification && payload.notification.body)  || data.body  || '';
   self.registration.showNotification(title, {
     body,
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
     tag: data.roomId || 'voeli-msg',
     data: { url: data.url || '/', roomId: data.roomId || null }
   });

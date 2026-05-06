@@ -78,10 +78,9 @@ export async function readQuota(
 }
 
 // Increment the user's bucket and throw QuotaError if they're over the limit.
-// Call this at the START of a request — before the OpenAI call — so the user
-// is charged whether or not the call succeeds. If you'd prefer "only count
-// successful calls" you'd need a refund path on the error route, but that
-// also means a user can hammer the upstream when it's down.
+// Call this at the START of a request, before the OpenAI call. The caller is
+// expected to invoke refundQuota() if the upstream call fails so the user
+// isn't charged for outages or rate-limit retries.
 export async function consumeQuota(
   env: Env,
   uid: string,
@@ -97,4 +96,19 @@ export async function consumeQuota(
   // 48h TTL so the key naturally cleans itself up after the day rolls over.
   await env.QUOTA_KV.put(key, String(next), { expirationTtl: 60 * 60 * 48 });
   return { used: next, limit };
+}
+
+// Decrement the user's bucket. Call this when the OpenAI call returns a
+// non-2xx status or throws (network error, timeout) so the user isn't billed
+// for failures they couldn't anticipate. Floors at zero so a refund without
+// a matching consume can't go negative.
+export async function refundQuota(
+  env: Env,
+  uid: string,
+  kind: QuotaKind
+): Promise<void> {
+  const key = kvKey(uid, kind);
+  const current = parseInt((await env.QUOTA_KV.get(key)) || '0', 10);
+  if (current <= 0) return;
+  await env.QUOTA_KV.put(key, String(current - 1), { expirationTtl: 60 * 60 * 48 });
 }

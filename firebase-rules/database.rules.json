@@ -18,13 +18,17 @@
           "$roomId": {
             ".validate": "newData.isBoolean()"
           }
+        },
+        "emailHash": {
+          ".validate": "newData.isString() && newData.val().matches(/^[0-9a-f]{64}$/)"
         }
       }
     },
     "friendRequests": {
       "$emailHash": {
-        ".read": "auth != null",
+        ".read": "auth != null && root.child('users').child(auth.uid).child('emailHash').val() === $emailHash",
         "$requestId": {
+          ".read": "auth != null && data.exists() && (data.child('from').val() === auth.token.email || data.child('to').val() === auth.token.email)",
           ".write": "auth != null && (!data.exists() || data.child('to').val() === auth.token.email || data.child('from').val() === auth.token.email) && (!newData.exists() || newData.child('from').val() === auth.token.email || newData.child('to').val() === auth.token.email)",
           ".validate": "newData.hasChildren(['type', 'from', 'to', 'ts']) && newData.child('type').isString() && newData.child('type').val().length <= 64 && newData.child('from').isString() && newData.child('from').val().length <= 320 && newData.child('to').isString() && newData.child('to').val().length <= 320 && newData.child('ts').isNumber() && (newData.child('from').val() === auth.token.email || newData.child('to').val() === auth.token.email)"
         }
@@ -67,7 +71,7 @@
         "participants": {
           ".read":  "auth != null && data.child(auth.uid).val() === true",
           "$uid": {
-            ".write":    "auth != null && auth.uid === $uid",
+            ".write":    "auth != null && auth.uid === $uid && (data.exists() || root.child('dms').child($roomId).child('metadata').child('emails').child('0').val() === auth.token.email || root.child('dms').child($roomId).child('metadata').child('emails').child('1').val() === auth.token.email)",
             ".validate": "newData.val() === true"
           }
         },
@@ -80,7 +84,7 @@
         },
         "metadata": {
           ".read":  "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
-          ".write": "auth != null && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true",
+          ".write": "auth != null && ((!data.exists() && (newData.child('emails').child('0').val() === auth.token.email || newData.child('emails').child('1').val() === auth.token.email)) || (data.exists() && root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true && newData.child('emails').child('0').val() === data.child('emails').child('0').val() && newData.child('emails').child('1').val() === data.child('emails').child('1').val()))",
           ".validate": "newData.hasChild('emails') && newData.child('emails').child('0').isString() && newData.child('emails').child('0').val().length <= 320 && newData.child('emails').child('1').isString() && newData.child('emails').child('1').val().length <= 320 && !newData.child('emails').hasChild('2')"
         },
         "typing": {
@@ -98,7 +102,7 @@
     },
     "invites": {
       "$emailHash": {
-        ".read": "auth != null",
+        ".read": "auth != null && root.child('users').child(auth.uid).child('emailHash').val() === $emailHash",
         "$roomId": {
           ".write": "auth != null && (!newData.exists() || root.child('dms').child($roomId).child('participants').child(auth.uid).val() === true)",
           ".validate": "newData.val() === true"

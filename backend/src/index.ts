@@ -42,6 +42,7 @@ import {
 } from './rate-limit';
 import {
   consumeQuota,
+  refundQuota,
   QuotaError,
   readQuota,
   type QuotaKind,
@@ -267,9 +268,25 @@ async function runWithQuota(
   fn: () => Promise<Response>
 ): Promise<Response> {
   const { used, limit } = await consumeQuota(env, user.uid, kind);
-  const res = await fn();
+  let res: Response;
+  try {
+    res = await fn();
+  } catch (e) {
+    // Internal worker error before we got a response from OpenAI. Refund so
+    // the user isn't billed for our crash, then rethrow for the outer
+    // handler to format.
+    await refundQuota(env, user.uid, kind);
+    throw e;
+  }
+  // OpenAI returned non-2xx (rate limit, server error, our timeout). Refund
+  // so the client can retry without burning quota each round.
+  let displayUsed = used;
+  if (res.status >= 400) {
+    await refundQuota(env, user.uid, kind);
+    displayUsed = Math.max(0, used - 1);
+  }
   // Mirror quota state in response headers so the client can show "X of Y".
-  res.headers.set('X-Quota-Used', String(used));
+  res.headers.set('X-Quota-Used', String(displayUsed));
   res.headers.set('X-Quota-Limit', String(limit));
   res.headers.set('X-Quota-Kind', kind);
   return res;

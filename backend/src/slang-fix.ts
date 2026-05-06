@@ -10,8 +10,5 @@ export function rewriteSlang(text: string): { rewritten: string; wasChanged: boo
 
   const wasChanged = rewritten !== text;
 
-  if (wasChanged) {
-  }
-
   return { rewritten, wasChanged };
 }

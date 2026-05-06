@@ -360,19 +360,39 @@ interface OpenAIBody {
   modalities?: string[];
 }
 
+// 30s is comfortably longer than a typical OpenAI completion (a few seconds
+// to ~10s) but well under Cloudflare's wall-clock cap, so a hung upstream
+// can't tie up a Worker invocation indefinitely. On timeout we synthesize a
+// 504 response that forwardError() will turn into a useful client message.
+const OPENAI_TIMEOUT_MS = 30_000;
+
 async function callOpenAI(
   body: OpenAIBody,
   apiKey: string
 ): Promise<Response> {
-  const res = await fetch(OPENAI_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(body),
-  });
-  return res;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS);
+  try {
+    return await fetch(OPENAI_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') {
+      return new Response(
+        JSON.stringify({ error: { message: `OpenAI request timed out after ${OPENAI_TIMEOUT_MS / 1000}s` } }),
+        { status: 504, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 // Check Vietnamese source for patterns that need prepositions in English translations

@@ -10,7 +10,7 @@
 //
 // Notes:
 // - Uses the firebase-functions v2 API (v1 is being deprecated).
-// - Skips if the message is marked deleted, queued, or has no senderId.
+// - Skips if the message is marked deleted or has no senderId.
 // - Prunes tokens that FCM reports as invalid so they don't pile up.
 // - Uses the message's `translated` text for the body when available; falls
 //   back to a generic body when only encrypted envelopes are present (this
@@ -125,17 +125,26 @@ exports.notifyOnDmMessage = onValueCreated(
     const body = 'Sent you a message';
     const tokens = tokenEntries.map((e) => e.token);
 
-    const res = await admin.messaging().sendEachForMulticast({
-      notification: { title: senderName, body },
-      data: {
-        roomId,
-        msgId,
-        title: senderName,
-        body,
-        url: '/'
-      },
-      tokens
-    });
+    let res;
+    try {
+      res = await admin.messaging().sendEachForMulticast({
+        notification: { title: senderName, body },
+        data: {
+          roomId,
+          msgId,
+          title: senderName,
+          body,
+          url: '/'
+        },
+        tokens
+      });
+    } catch (e) {
+      // Network blip, auth failure, or malformed payload. Don't crash the
+      // function (which would skip token cleanup AND show up as an error
+      // in Firebase's monitoring with no useful breadcrumb).
+      console.error(`[notify] sendEachForMulticast failed for room=${roomId}:`, e.message);
+      return null;
+    }
 
     const cleanups = [];
     res.responses.forEach((r, idx) => {
