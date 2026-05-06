@@ -11165,16 +11165,6 @@ async function onSendText(ev){
     }
   }
 
-  // Developer phrase: generate random demo result immediately
-  if(isDeveloperPhrase){
-    showSkeletonSheet(text);
-    const randomResult = buildDemoResult(text, direction);
-    pending = { result: randomResult, original: text, mode: 'text', direction };
-    finalizeStreamedSheet(randomResult, text);
-    txtInput.disabled=false; sendBtn.disabled=false;
-    return;
-  }
-
   showSkeletonSheet(text);
   let renderedCount = 0;
   try{
