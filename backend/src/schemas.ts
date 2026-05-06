@@ -71,6 +71,7 @@ const contactPronounMemory = z
     capturedAt: z.number().int().min(0).optional(),
   })
   .strict()
+  .nullable()
   .optional();
 
 // ---- Endpoint schemas -----------------------------------------------------
