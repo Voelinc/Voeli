@@ -1294,7 +1294,13 @@ body.is-offline::before{
 .ptut-btn:hover{filter:brightness(1.05);}
 </style>
 </head>
-<body class="signed-out">
+<body class="signed-out auth-resolving">
+
+<!-- Splash shown only during the auth-rehydration window so PWA cold-start
+     doesn't flash the welcome screen at users who are already signed in. -->
+<div id="authSplash">
+  <img src="/icons/icon-192.png" alt="Voeli">
+</div>
 
 <!-- SETUP — onboarding flow (welcome → sign up / sign in → name → app) -->
 <div id="setupScreen">
@@ -1454,6 +1460,19 @@ body.is-offline::before{
      taps on the Sign-in button at the bottom of the screen — laptops were
      fine, mobile saw "click does nothing". */
   body.signed-out #app { display: none !important; }
+  /* Cold-start auth restoration: Firebase Auth needs ~1–2s to rehydrate the
+     signed-in state from IDB. Without this gate the welcome / sign-in screen
+     paints first and then snaps to the messages list, which reads as a bug
+     ("why am I being asked to sign in if I'm already signed in?"). Hide both
+     candidate screens until onAuthStateChanged fires once, and show a tiny
+     logo splash in the meantime so the transition stays calm. */
+  body.auth-resolving #setupScreen,
+  body.auth-resolving #liveSetupScreen,
+  body.auth-resolving #app { display: none !important; }
+  body.auth-resolving #authSplash { display: flex !important; }
+  #authSplash { display: none; position: fixed; inset: 0; background: var(--panel);
+    z-index: 1000; align-items: center; justify-content: center; }
+  #authSplash img { width: 96px; height: 96px; object-fit: contain; }
   /* Bottom nav: simple 50px strip pinned to viewport bottom. Adjustments for
      iOS PWA non-cover mode are applied at runtime by the script at the end
      of the body — see snapBottomNav. CSS alone can't distinguish "no safe
@@ -6116,6 +6135,10 @@ fbAuth.getRedirectResult()
   });
 
 fbAuth.onAuthStateChanged(async (user)=>{
+  // First fire signals that Firebase finished rehydrating the persisted auth
+  // state — only now can we know whether to show the welcome screen or jump
+  // straight into the app. Drop the splash gate either way.
+  document.body.classList.remove('auth-resolving');
   currentUser = user || null;
   // Tag Sentry with the current user so any future error includes who hit it.
   if(window.Sentry){
