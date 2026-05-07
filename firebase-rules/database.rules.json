@@ -6,7 +6,7 @@
         ".write": "auth != null && auth.uid === $uid",
         "contacts": {
           "$contactId": {
-            ".validate": "newData.hasChildren(['id', 'name', 'email']) && newData.child('id').isString() && newData.child('id').val().length <= 256 && newData.child('name').isString() && newData.child('name').val().length <= 200 && newData.child('email').isString() && newData.child('email').val().length <= 320"
+            ".validate": "newData.hasChildren(['id', 'name', 'email']) && (newData.child('id').isString() ? newData.child('id').val().length <= 256 : newData.child('id').isNumber()) && newData.child('name').isString() && newData.child('name').val().length <= 200 && newData.child('email').isString() && newData.child('email').val().length <= 320"
           }
         },
         "fcmTokens": {
