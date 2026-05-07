@@ -5846,12 +5846,19 @@ function _attachPushOnMessage(messaging){
 // SW's stored count so they don't re-appear stale on the next reload.
 // navigator.setAppBadge / clearAppBadge are iOS 16.4+ and recent Chrome/Edge
 // on Android; older browsers silently no-op.
-function _clearAppBadge(){
-  try { if(navigator.clearAppBadge) navigator.clearAppBadge().catch(()=>{}); } catch(_){}
+async function _clearAppBadge(){
+  try { if(navigator.clearAppBadge) await navigator.clearAppBadge(); } catch(_){}
+  // Reach the FCM SW directly via its registration. Earlier we only posted to
+  // navigator.serviceWorker.controller, but `controller` is null on the very
+  // first paint after launch (the SW hasn't claimed the page yet) — so the
+  // SW's stored unread count silently outlived every "clear" we triggered.
+  // The next push then bumped from a stale base, producing badges like "5"
+  // when only one new message had arrived.
   try {
-    if('serviceWorker' in navigator && navigator.serviceWorker.controller){
-      navigator.serviceWorker.controller.postMessage({ type: 'clear-badge' });
-    }
+    if(!('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
+    const sw = reg && (reg.active || reg.waiting || reg.installing);
+    if(sw) sw.postMessage({ type: 'clear-badge' });
   } catch(_){}
 }
 document.addEventListener('visibilitychange', () => {
@@ -8715,11 +8722,18 @@ function setupDMListener(dmRoomId, anchorKey){
     // the newest loaded key, so this is normally a no-op. Guards against
     // clock skew and the unanchored fallback path.
     c.msgs.sort((a, b) => a.ts - b.ts);
-    // Bump the in-app unread count if the user isn't actively reading this
-    // thread — that's what drives the badge in the Messages list and the
-    // bold preview in the sidebar.
-    if(activeId !== c.id) c.unread = (c.unread || 0) + 1;
-    if(activeId === c.id) renderMsgs();
+    // Bump the in-app unread count if the user isn't *actively reading* this
+    // thread. Just matching activeId isn't enough — activeId stays set to the
+    // last-opened chat after the user navigates back to the list, so without
+    // the view+tab+visibility gate, a fresh message from that contact would
+    // suppress the unread badge while the user sat on the Messages list (or
+    // had the page in the background).
+    const isActivelyViewing = activeId === c.id
+      && currentMessagesView === 'chat'
+      && currentTab === 'messages'
+      && !document.hidden;
+    if(!isActivelyViewing) c.unread = (c.unread || 0) + 1;
+    if(activeId === c.id && currentMessagesView === 'chat') renderMsgs();
     renderSidebar();
     // Without this, the Messages tab list shows a stale "(no messages)"
     // preview and never reorders to surface new arrivals — the user has to
@@ -8927,6 +8941,10 @@ function mobileBack(){
   // If in messages tab showing individual chat, return to chat list
   if(currentMessagesView === 'chat'){
     currentMessagesView = 'list';
+    // Drop the active-chat pointer too — leaving it set means new messages
+    // from the just-closed thread silently skip the unread bump even though
+    // the user is now staring at the list (the unread gate keys on activeId).
+    activeId = null;
     renderChatList();
     updateChatViewClass();
     return;

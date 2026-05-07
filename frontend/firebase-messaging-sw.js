@@ -57,8 +57,38 @@ async function _clearBadge(){
   try { if(self.navigator.clearAppBadge) await self.navigator.clearAppBadge(); } catch(_){}
 }
 
+// Per-message dedupe. The Cloud Function fans the push out to every FCM
+// token registered for the recipient, and PWA reinstalls accumulate stale
+// tokens that often route back to the same SW — so a single send was
+// bumping the badge 3-5 times on one device. Track the last-seen msgIds in
+// the Cache so a second delivery of the same logical message is a no-op.
+const SEEN_KEY = '/__voeli_seen_msgs__';
+const SEEN_TTL_MS = 10 * 60 * 1000;
+async function _alreadySeen(msgId){
+  if(!msgId) return false;
+  try {
+    const cache = await caches.open(STATE_CACHE);
+    const res = await cache.match(SEEN_KEY);
+    const seen = res ? JSON.parse(await res.text()) : {};
+    const now = Date.now();
+    // Drop expired entries while we're here so the map can't grow unbounded.
+    let pruned = false;
+    for(const k of Object.keys(seen)){
+      if((now - seen[k]) > SEEN_TTL_MS){ delete seen[k]; pruned = true; }
+    }
+    if(seen[msgId]){
+      if(pruned) await cache.put(SEEN_KEY, new Response(JSON.stringify(seen)));
+      return true;
+    }
+    seen[msgId] = now;
+    await cache.put(SEEN_KEY, new Response(JSON.stringify(seen)));
+    return false;
+  } catch(_){ return false; }
+}
+
 messaging.onBackgroundMessage(async (payload) => {
   const data = payload.data || {};
+  if(await _alreadySeen(data.msgId)) return;
   const title = (payload.notification && payload.notification.title) || data.title || 'New message';
   const body  = (payload.notification && payload.notification.body)  || data.body  || '';
   await _bumpBadge();
