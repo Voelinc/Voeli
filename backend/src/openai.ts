@@ -10,6 +10,7 @@ import type {
   GrammarPayload,
 } from './types';
 import { rewriteSlang } from './slang-fix';
+import { readUserProfile } from './firebase-admin';
 import { buildAmbiguityPromptEnhancement, filterOptionsByConfidence } from './vietnamese-ambiguity-detector';
 import { detectColloquialTerms } from './vietnamese-colloquial-terms';
 import {
@@ -125,16 +126,120 @@ export function wrapUserContext(extensions: string | undefined | null): string {
   return `\n\n<user_context_notes>\n${cleaned}\n</user_context_notes>`;
 }
 
-// Mirrors RELATIONSHIP_HINTS from the original HTML. Kept here on the server
-// so the prompt is consistent regardless of which client version connects.
+// Per-relationship guidance fed into the prompt. The shorthand "X/Y" used to
+// appear here ("anh/chị/cô/chú") and the model would sometimes echo it back
+// verbatim into translations — producing things like "anh/chị/cô/chú khỏe
+// không ạ". Always state the menu in plain language and tell the model to
+// PICK ONE; the global guard further down repeats the rule.
 const RELATIONSHIP_HINTS: Record<string, string> = {
-  formal: 'Stranger/formal: tôi for self, neutral anh/chị/cô/chú for other. Use ạ; rare warmth.',
-  elder: 'Elder (parent/grandparent): con for self, bác/cô/chú for other. Use dạ+ạ. Softeners: xin, được không. No tôi, no imperatives.',
-  senior: 'Older peer: em for self, anh/chị for other. Use ạ or nha/nhé. Frame requests with giúp.',
-  friend: "Same-age friend: tớ/cậu or tao/mày (very close). Use nha/nhé/đi for warmth, thôi to soften.",
-  partner: "Romantic: anh/em or mình. Particles nha/nhé. Pet-names with ơi.",
-  junior: 'Younger/junior: anh/chị for self, em for other. Use nha/nhé (warm) or be direct.',
+  formal:
+    'Stranger/formal: self = tôi. For the other, pick exactly one kinship term — anh (male, similar/older), chị (female, similar/older), cô (older woman / professional address), chú (older man). Default chị if female-leaning name, anh if male-leaning name, anh if no signal. Use ạ for politeness; rare warmth.',
+  elder:
+    'Elder (parent/grandparent): self = con. For the other, pick one of bác (very senior or unknown gender), cô (older woman), or chú (older man). Use dạ+ạ. Softeners: xin, được không. No tôi, no imperatives.',
+  senior:
+    'Older peer: self = em. For the other, pick one of anh (male) or chị (female); default chị if no signal. Use ạ or nha/nhé. Frame requests with giúp.',
+  friend:
+    'Same-age friend: pick one pair — tớ/cậu (default) or tao/mày (very close, only if source already signals roughness). Use nha/nhé/đi for warmth, thôi to soften.',
+  partner:
+    'Romantic: pick one pair — typically anh (male)/em (female), or mình/mình. Particles nha/nhé. Pet-names with ơi.',
+  junior:
+    'Younger/junior: for self pick one of anh (speaker is male) or chị (speaker is female); other = em. Use nha/nhé (warm) or be direct.',
 };
+
+// Hard rule we add to every Vietnamese-target prompt. The model is otherwise
+// happy to hedge with "anh/chị" when it doesn't know who's speaking — that
+// reads as an unfilled template, not a real message.
+const VN_NO_SLASH_GUARD =
+  'NEVER emit slash-separated pronoun alternatives (no "anh/chị", no "anh/chị/cô/chú", no "tớ/cậu" in the output). Pick exactly ONE pronoun per role using the relationship guidance, the recipient profile (when given), and the apparent name signal. If still ambiguous, use the relationship-default.';
+
+// Build a one-line "who is talking to whom" line from gender + birth year so
+// the prompt has a concrete signal even when the contacts haven't told each
+// other anything. The Worker resolves these server-side from /users/{uid};
+// they're never returned to either party. Birth year is converted to an age
+// band (rather than exact age) to be defensible if it ever does leak.
+export interface PartyProfile {
+  gender?: string | null;
+  birthYear?: number | null;
+  displayName?: string | null;
+}
+function ageBand(birthYear?: number | null): string | null {
+  if (!birthYear || !Number.isFinite(birthYear)) return null;
+  const age = new Date().getUTCFullYear() - birthYear;
+  if (age < 0 || age > 120) return null;
+  if (age < 18) return 'teen';
+  if (age < 30) return '20s';
+  if (age < 40) return '30s';
+  if (age < 50) return '40s';
+  if (age < 60) return '50s';
+  if (age < 70) return '60s';
+  return '70+';
+}
+function describeParty(p: PartyProfile | null | undefined, role: string): string | null {
+  if (!p) return null;
+  const bits: string[] = [];
+  if (p.displayName) bits.push(`name "${String(p.displayName).slice(0, 40)}"`);
+  if (p.gender === 'male' || p.gender === 'female') bits.push(p.gender);
+  const band = ageBand(p.birthYear);
+  if (band) bits.push(`age ${band}`);
+  if (!bits.length) return null;
+  return `${role}: ${bits.join(', ')}`;
+}
+export function buildPartiesLine(
+  speaker: PartyProfile | null | undefined,
+  listener: PartyProfile | null | undefined,
+): string | null {
+  const lines = [describeParty(speaker, 'Speaker'), describeParty(listener, 'Listener')].filter(
+    (l): l is string => Boolean(l),
+  );
+  if (!lines.length) return null;
+  return `Parties: ${lines.join(' | ')}. Use this to commit to ONE pronoun per role.`;
+}
+
+// Build the speaker / listener profiles for the prompt. Names come from the
+// payload (the sender already sees them — no privacy delta). Gender + birth
+// year for the *recipient* come from a service-account lookup so the sender
+// never learns them. The sender's own profile is also looked up so EN→VI for
+// their own message uses their declared gender (which they implicitly own).
+//
+// Returns { speaker, listener } both potentially null. Failures are silent —
+// the prompt's smart defaults take over.
+export async function resolveParties(
+  env: Env,
+  senderUid: string | null | undefined,
+  payload: { direction: 'en-vi' | 'vi-en'; sender?: { name?: string | null } | null; recipient?: { uid?: string | null; name?: string | null } | null },
+): Promise<{ speaker: PartyProfile | null; listener: PartyProfile | null }> {
+  const senderName = payload.sender?.name ?? null;
+  const recipientName = payload.recipient?.name ?? null;
+  const recipientUid = payload.recipient?.uid ?? null;
+
+  const senderLookup = senderUid ? readUserProfile(env, senderUid) : Promise.resolve(null);
+  const recipientLookup = recipientUid ? readUserProfile(env, recipientUid) : Promise.resolve(null);
+  const [senderProfile, recipientProfile] = await Promise.all([senderLookup, recipientLookup]);
+
+  const senderParty: PartyProfile | null = senderName || senderProfile
+    ? {
+        displayName: senderName ?? senderProfile?.displayName ?? null,
+        gender: senderProfile?.gender ?? null,
+        birthYear: senderProfile?.birthYear ?? null,
+      }
+    : null;
+  const recipientParty: PartyProfile | null = recipientName || recipientProfile
+    ? {
+        displayName: recipientName ?? recipientProfile?.displayName ?? null,
+        gender: recipientProfile?.gender ?? null,
+        birthYear: recipientProfile?.birthYear ?? null,
+      }
+    : null;
+
+  // The speaker is whoever wrote the source text:
+  //   en-vi: the sender typed English (sender = speaker)
+  //   vi-en: the contact typed Vietnamese (recipient = speaker)
+  // The listener is the other party in each case.
+  if (payload.direction === 'vi-en') {
+    return { speaker: recipientParty, listener: senderParty };
+  }
+  return { speaker: senderParty, listener: recipientParty };
+}
 
 function relHint(relKey: string): string {
   return RELATIONSHIP_HINTS[relKey] || RELATIONSHIP_HINTS.formal;
@@ -151,13 +256,15 @@ function langPair(direction: 'en-vi' | 'vi-en'): [string, string] {
 function buildPickerSystemPrompt(
   payload: TranslatePayload,
   isText: boolean,
-  uiLang: 'en' | 'vi'
+  uiLang: 'en' | 'vi',
+  parties?: { speaker?: PartyProfile | null; listener?: PartyProfile | null }
 ): string {
   const [src, tgt] = langPair(payload.direction);
   const tgtIsVietnamese = tgt === 'Vietnamese';
   const srcIsVietnamese = src === 'Vietnamese';
   const reasoningLang = uiLang === 'vi' ? 'Vietnamese' : 'English';
   const r = payload.relationship;
+  const partiesLine = buildPartiesLine(parties?.speaker ?? null, parties?.listener ?? null);
 
   const lines: string[] = [
     `You translate ${src} → ${tgt} for a live two-person chat. Your job is to preserve EMOTION and SOCIAL REGISTER, not produce word-for-word accuracy. The same sentence reads differently by tone; capture intent.`,
@@ -166,6 +273,8 @@ function buildPickerSystemPrompt(
       ? `INPUT: TYPED text in ${src} (the text IS the transcript — preserve punctuation, caps, emoji exactly).`
       : `INPUT: voice message in ${src}.`,
     `Relationship: "${r}". Guidance: ${relHint(r)}`,
+    ...(partiesLine ? [partiesLine] : []),
+    ...(tgtIsVietnamese ? [VN_NO_SLASH_GUARD] : []),
     '',
     '# VIETNAMESE GRAMMAR (when VN is involved) — three slots encode feeling:',
     '1) PRONOUN PAIR (I/you): tôi=formal, con/bác-cô-chú=child→elder, em/anh-chị=junior→older peer, anh/em=male→younger female (romantic), chị/em=female→younger, mình=warm us, tớ/cậu=soft friends, tao/mày=very close OR anger.',
@@ -318,13 +427,20 @@ function buildPickerSystemPrompt(
   return prompt;
 }
 
-function buildQuickSystemPrompt(payload: QuickTranslatePayload): string {
+function buildQuickSystemPrompt(
+  payload: QuickTranslatePayload,
+  parties?: { speaker?: PartyProfile | null; listener?: PartyProfile | null }
+): string {
   const [src, tgt] = langPair(payload.direction);
+  const tgtIsVietnamese = tgt === 'Vietnamese';
   const r = payload.relationship;
+  const partiesLine = buildPartiesLine(parties?.speaker ?? null, parties?.listener ?? null);
   const base = [
     `You are a fast cross-language translator, ${src} → ${tgt}.`,
     `The message below is being sent in a live chat, so translate QUICKLY and naturally — like a real person texting, not a dictionary.`,
     `Relationship between sender and receiver: "${r}". Guidance: ${relHint(r)}`,
+    ...(partiesLine ? [partiesLine] : []),
+    ...(tgtIsVietnamese ? [VN_NO_SLASH_GUARD] : []),
     '',
     `Preserve the sender's register and any emoji they used. Do NOT add punctuation or emoji the sender did not use — if the source had no emoji, the translation must have no emoji.`,
     `If ${tgt} is Vietnamese, choose the correct pronoun pair, softeners, and any appropriate sentence-final particle based on the relationship. No explanations, no options.`,
@@ -971,9 +1087,11 @@ function filterOptionsForMeaningfulDifferences(result: Record<string, unknown>):
 // PICKER PATH — full 4-option translation with optional streaming.
 export async function handleTranslate(
   payload: TranslatePayload,
-  env: Env
+  env: Env,
+  senderUid?: string | null,
 ): Promise<Response> {
   const uiLang = payload.uiLang || 'en';
+  const parties = await resolveParties(env, senderUid, payload);
   // Fix Vietnamese slang before sending to OpenAI
   if (payload.direction === 'vi-en') {
     const { rewritten, wasChanged } = rewriteSlang(payload.text);
@@ -1006,7 +1124,7 @@ export async function handleTranslate(
   }
 
   // Detect ambiguous Vietnamese verbs and add context to system prompt
-  let systemPrompt = buildPickerSystemPrompt(payload, true, uiLang);
+  let systemPrompt = buildPickerSystemPrompt(payload, true, uiLang, parties);
   if (payload.direction === 'vi-en') {
     const ambiguityEnhancement = buildAmbiguityPromptEnhancement(payload.text);
     if (ambiguityEnhancement) {
@@ -1251,7 +1369,8 @@ export async function handleTranslate(
 // (on VI→EN, for frontend pronoun-memory persistence).
 export async function handleQuick(
   payload: QuickTranslatePayload,
-  env: Env
+  env: Env,
+  senderUid?: string | null,
 ): Promise<Response> {
   // Slang fix is direction-aware and modifies the source text in-place
   // before downstream detectors see it.
@@ -1259,6 +1378,7 @@ export async function handleQuick(
     const { rewritten, wasChanged } = rewriteSlang(payload.text);
     if (wasChanged) payload.text = rewritten;
   }
+  const parties = await resolveParties(env, senderUid, payload);
 
   // Pronoun signals (VI→EN). Silent override at confidence ≥ 0.8. When the
   // frontend supplied contactPronounMemory, the detector uses it as
@@ -1279,7 +1399,7 @@ export async function handleQuick(
     }
   }
 
-  let systemPrompt = buildQuickSystemPrompt(payload);
+  let systemPrompt = buildQuickSystemPrompt(payload, parties);
 
   // Ambiguity hints (VI→EN).
   if (payload.direction === 'vi-en') {
@@ -1448,9 +1568,11 @@ export async function handleQuick(
 // VOICE PATH — base64 WAV in, full picker JSON out.
 export async function handleVoice(
   payload: VoiceTranslatePayload,
-  env: Env
+  env: Env,
+  senderUid?: string | null,
 ): Promise<Response> {
   const uiLang = payload.uiLang || 'en';
+  const parties = await resolveParties(env, senderUid, payload);
 
   // Note: Voice transcription happens in OpenAI first, then we'd fix the transcript.
   // For now, we'll fix it after transcription (in post-processing below).
@@ -1464,7 +1586,8 @@ export async function handleVoice(
       promptExtensions: payload.promptExtensions,
     },
     false,
-    uiLang
+    uiLang,
+    parties,
   );
   const body: OpenAIBody = {
     model: 'gpt-4o-audio-preview',

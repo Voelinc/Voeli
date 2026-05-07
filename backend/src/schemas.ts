@@ -53,6 +53,33 @@ const senderPronounSignal = z
   .nullable()
   .optional();
 
+// Lightweight identity payload. The display names come from the frontend
+// (the sender already sees them — no privacy delta). The recipient UID is
+// what the Worker uses to do a service-account lookup for gender + birth
+// year; those are read server-side and used only to inform the prompt — they
+// never make the round trip back to the client.
+const senderIdentity = z
+  .object({
+    name: z.string().max(60).nullable().optional(),
+  })
+  .strict()
+  .nullable()
+  .optional();
+const recipientIdentity = z
+  .object({
+    uid: z
+      .string()
+      .min(1)
+      .max(128)
+      .regex(/^[A-Za-z0-9_-]+$/)
+      .nullable()
+      .optional(),
+    name: z.string().max(60).nullable().optional(),
+  })
+  .strict()
+  .nullable()
+  .optional();
+
 const contactPronounMemory = z
   .object({
     selfPronoun: z.string().max(64).nullable(),
@@ -87,6 +114,8 @@ export const TranslatePayloadSchema = z
     dishCounts: exposureCounts,
     contactPronounMemory,
     senderPronounSignal,
+    sender: senderIdentity,
+    recipient: recipientIdentity,
     stream: z.boolean().optional(),
   })
   .strict();
@@ -103,6 +132,8 @@ export const QuickTranslatePayloadSchema = z
     dishCounts: exposureCounts,
     contactPronounMemory,
     senderPronounSignal,
+    sender: senderIdentity,
+    recipient: recipientIdentity,
   })
   .strict();
 
@@ -116,6 +147,8 @@ export const VoiceTranslatePayloadSchema = z
     relationship,
     uiLang: uiLang.optional(),
     promptExtensions,
+    sender: senderIdentity,
+    recipient: recipientIdentity,
   })
   .strict();
 

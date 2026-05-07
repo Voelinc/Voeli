@@ -3388,6 +3388,42 @@ function buildSenderPronounSignal(contact, direction){
   };
 }
 
+// Resolve the recipient's Firebase UID once and cache it on the contact so
+// repeated translate calls don't refetch /dms/{room}/participants.
+async function _getRecipientUid(contact){
+  if(!contact || !contact.dmRoomId) return null;
+  if(contact._otherUid) return contact._otherUid;
+  try {
+    const uid = await getOtherParticipantUid(contact.dmRoomId);
+    if(uid) contact._otherUid = uid;
+    return uid || null;
+  } catch(_){ return null; }
+}
+
+// Build { sender, recipient } for the translate API. Names give the model a
+// gender hint when no profile exists; recipient.uid lets the Worker do a
+// service-account lookup of the recipient's gender + birth year (kept
+// server-side, never returned). Both fields are optional — when the Worker
+// can't resolve anything, the prompt falls back to relationship defaults.
+async function buildTranslateParties(contact){
+  let senderName = null;
+  try {
+    const uid = (currentUser && currentUser.uid) || null;
+    if(uid){
+      senderName = localStorage.getItem('user_displayName_' + uid) || null;
+    }
+  } catch(_){}
+  if(!senderName) senderName = (currentUser && currentUser.displayName) || null;
+
+  const recipientUid = await _getRecipientUid(contact);
+  const recipientName = (contact && contact.name) || null;
+
+  return {
+    sender: senderName ? { name: senderName } : null,
+    recipient: (recipientUid || recipientName) ? { uid: recipientUid, name: recipientName } : null,
+  };
+}
+
 // ─── Cultural-concept learning state ─────────────────────
 // Per-user exposure counts for culturally-loaded Vietnamese terms. After the
 // user has seen the cultural callout for a concept N times (default 3, but
@@ -12820,6 +12856,8 @@ async function callOpenAI(payload) {
 
   if(isText){
     console.log('[DEBUG] Sending to /api/translate:', { text: (payload.text || '').substring(0, 50), direction, uiLang, appDir });
+    const _activeContact = activeCont();
+    const _parties = await buildTranslateParties(_activeContact);
     const res = await workerRequest('/api/translate', {
       text: payload.text || '',
       direction,
@@ -12828,14 +12866,10 @@ async function callOpenAI(payload) {
       promptExtensions,
       culturalConceptCounts: getCulturalConceptCounts(),
       dishCounts: getDishCounts(),
-      contactPronounMemory: (() => {
-        const c = activeCont();
-        return c && c.id ? getContactPronounMemory(c.id) : null;
-      })(),
-      senderPronounSignal: (() => {
-        const c = activeCont();
-        return c ? buildSenderPronounSignal(c, payload.direction) : null;
-      })(),
+      contactPronounMemory: _activeContact && _activeContact.id ? getContactPronounMemory(_activeContact.id) : null,
+      senderPronounSignal: _activeContact ? buildSenderPronounSignal(_activeContact, payload.direction) : null,
+      sender: _parties.sender,
+      recipient: _parties.recipient,
       stream: streaming,
     });
 
@@ -12930,12 +12964,16 @@ async function callOpenAI(payload) {
   }
 
   // Voice path — base64 WAV in, picker JSON out.
+  const _voiceContact = activeCont();
+  const _voiceParties = await buildTranslateParties(_voiceContact);
   const res = await workerRequest('/api/translate-voice', {
     base64Wav: payload.base64Wav,
     direction,
     relationship: relKey,
     uiLang,
     promptExtensions,
+    sender: _voiceParties.sender,
+    recipient: _voiceParties.recipient,
   });
   const data = await res.json();
   const content = data && data.choices && data.choices[0] && data.choices[0].message
@@ -12992,6 +13030,8 @@ async function callOpenAIQuick({text, direction}) {
     promptExtensions += getPatternCorrectionNote(relKey, direction);
   }catch(_){}
 
+  const _quickContact = activeCont();
+  const _quickParties = await buildTranslateParties(_quickContact);
   const res = await workerRequest('/api/translate-quick', {
     text: String(text||''),
     direction,
@@ -13001,14 +13041,10 @@ async function callOpenAIQuick({text, direction}) {
     promptExtensions,
     culturalConceptCounts: getCulturalConceptCounts(),
     dishCounts: getDishCounts(),
-    contactPronounMemory: (() => {
-      const c = activeCont();
-      return c && c.id ? getContactPronounMemory(c.id) : null;
-    })(),
-    senderPronounSignal: (() => {
-      const c = activeCont();
-      return c ? buildSenderPronounSignal(c, direction) : null;
-    })(),
+    contactPronounMemory: _quickContact && _quickContact.id ? getContactPronounMemory(_quickContact.id) : null,
+    senderPronounSignal: _quickContact ? buildSenderPronounSignal(_quickContact, direction) : null,
+    sender: _quickParties.sender,
+    recipient: _quickParties.recipient,
   });
   const data = await res.json();
   const content = data && data.choices && data.choices[0] && data.choices[0].message

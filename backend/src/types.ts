@@ -47,6 +47,14 @@ export interface Env {
   RL_TENOR_PER_USER?: string;
   RL_TENOR_PER_IP?: string;
   RL_HEALTH_PER_IP?: string;
+  // Service-account JSON for the Firebase RTDB read used by the translation
+  // prompt to look up the recipient's gender + birth year. Optional — if
+  // unset, the prompt falls back to smart defaults from the relationship
+  // hints. See backend/src/firebase-admin.ts for setup.
+  FIREBASE_SERVICE_ACCOUNT_JSON?: string;
+  // Optional override for the RTDB instance URL, e.g. when the project lives
+  // in a non-us-central region. Defaults to {project_id}-default-rtdb.
+  FIREBASE_DATABASE_URL?: string;
 }
 
 // What a verified Firebase user looks like once auth.ts has done its job.
@@ -89,6 +97,12 @@ export interface TranslatePayload {
   // contact is the speaker), so the backend can lock direction without
   // running heuristics. Bypasses memory + ambiguousPair detection.
   senderPronounSignal?: SenderPronounSignal | null;
+  // Display name + (recipient) UID. Names round-trip from the frontend (the
+  // sender already sees them). The recipient UID lets the Worker do a
+  // service-account lookup of gender + birth year for the prompt — those
+  // values are never returned to the client.
+  sender?: { name?: string | null } | null;
+  recipient?: { uid?: string | null; name?: string | null } | null;
   stream?: boolean;
 }
 
@@ -126,6 +140,8 @@ export interface QuickTranslatePayload {
   dishCounts?: Record<string, number>;
   contactPronounMemory?: ContactPronounMemory;
   senderPronounSignal?: SenderPronounSignal | null;
+  sender?: { name?: string | null } | null;
+  recipient?: { uid?: string | null; name?: string | null } | null;
 }
 
 export interface VoiceTranslatePayload {
@@ -134,6 +150,8 @@ export interface VoiceTranslatePayload {
   relationship: 'formal' | 'elder' | 'senior' | 'friend' | 'partner' | 'junior';
   uiLang?: 'en' | 'vi';
   promptExtensions?: string;
+  sender?: { name?: string | null } | null;
+  recipient?: { uid?: string | null; name?: string | null } | null;
 }
 
 export interface GrammarPayload {

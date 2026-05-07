@@ -155,7 +155,9 @@ const handler = {
         await enforceRateLimit(env, 'translate', user.uid, ip);
         const body = await parseBody(TranslatePayloadSchema, request);
         return withCors(
-          await runWithQuota(user, env, 'translate', () => handleTranslate(body, env)),
+          await runWithQuota(user, env, 'translate', () =>
+            handleTranslate(body, env, user.uid),
+          ),
           request,
           env
         );
@@ -164,7 +166,9 @@ const handler = {
         await enforceRateLimit(env, 'translate-quick', user.uid, ip);
         const body = await parseBody(QuickTranslatePayloadSchema, request);
         return withCors(
-          await runWithQuota(user, env, 'translate', () => handleQuick(body, env)),
+          await runWithQuota(user, env, 'translate', () =>
+            handleQuick(body, env, user.uid),
+          ),
           request,
           env
         );
@@ -173,7 +177,9 @@ const handler = {
         await enforceRateLimit(env, 'translate-voice', user.uid, ip);
         const body = await parseBody(VoiceTranslatePayloadSchema, request);
         return withCors(
-          await runWithQuota(user, env, 'voice', () => handleVoice(body, env)),
+          await runWithQuota(user, env, 'voice', () =>
+            handleVoice(body, env, user.uid),
+          ),
           request,
           env
         );
