@@ -6024,31 +6024,31 @@ fbAuth.onAuthStateChanged(async (user)=>{
     else     Sentry.setUser(null);
   }
   if(user && user.email){
-    // Initialize firebaseDb if needed, then save user email for contact lookup
+    // Initialize firebaseDb if needed, then save user email for contact lookup.
+    // These writes are fire-and-forget on purpose: iOS Safari + Firebase RTDB
+    // WebSocket can take many seconds to establish (long-poll fallback), and
+    // awaiting them was leaving the sign-in screen stuck on mobile while
+    // launchApp() waited its turn. Errors are non-fatal and just get logged.
     if(!firebaseDb) firebaseDb = firebase.database();
-    try {
-      await firebaseDb.ref(`users/${user.uid}/email`).set(user.email);
-      // Persist the email hash so the friendRequests/invites read rules can
-      // verify this user owns the $emailHash path they're listening on.
-      await firebaseDb.ref(`users/${user.uid}/emailHash`).set(await hashEmailForPath(user.email));
-      // Migrate any old unencoded email paths to new hashed paths
-      await migrateOldEmailPaths(user.email);
-    } catch(e){
-      console.error('Error saving user email:', e);
-    }
+    firebaseDb.ref(`users/${user.uid}/email`).set(user.email)
+      .catch(e => console.error('Error saving user email:', e));
+    hashEmailForPath(user.email)
+      .then(hash => firebaseDb.ref(`users/${user.uid}/emailHash`).set(hash))
+      .catch(e => console.error('Error saving emailHash:', e));
+    migrateOldEmailPaths(user.email).catch(e => console.error('Migration error:', e));
     // Pull gender from Firebase into localStorage on every sign-in so it
-    // survives device changes. Only sets when missing locally to avoid
-    // clobbering an in-flight update.
-    try {
-      const localG = localStorage.getItem('user_gender_'+user.uid);
-      if(!localG){
-        const snap = await firebaseDb.ref(`users/${user.uid}/gender`).once('value');
-        const remoteG = snap && snap.val ? snap.val() : null;
-        if(remoteG === 'male' || remoteG === 'female'){
-          localStorage.setItem('user_gender_'+user.uid, remoteG);
-        }
-      }
-    } catch(e){ /* non-fatal */ }
+    // survives device changes. Also fire-and-forget for the same reason.
+    const localG = localStorage.getItem('user_gender_'+user.uid);
+    if(!localG){
+      firebaseDb.ref(`users/${user.uid}/gender`).once('value')
+        .then(snap => {
+          const remoteG = snap && snap.val ? snap.val() : null;
+          if(remoteG === 'male' || remoteG === 'female'){
+            try { localStorage.setItem('user_gender_'+user.uid, remoteG); } catch(_){}
+          }
+        })
+        .catch(()=>{ /* non-fatal */ });
+    }
     // Register this device for push notifications. No-ops silently if the
     // VAPID key isn't configured yet, the browser doesn't support it, or
     // the user denies permission.
