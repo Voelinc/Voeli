@@ -4830,6 +4830,11 @@ let sentFriendRequests = new Map(); // Track requests we've sent: email -> Set o
 async function loadFriendRequests(){
   if(!currentUser || !firebaseDb || !currentUser.email) return;
   console.log('loadFriendRequests: Setting up for user', currentUser.email);
+  // The /friendRequests/$emailHash .read rule checks the current user's
+  // emailHash row in Firebase. If we read before that write lands the
+  // listener attaches dead and silently never fires for incoming requests.
+  // Wait for the write to finalize first.
+  try { await _emailHashPromise; } catch(_){}
   try {
     // First load existing requests (use hashed email for path)
     const hashedEmail = await hashEmailForPath(currentUser.email);
@@ -4939,6 +4944,10 @@ async function initDMRoomListener(){
     return;
   }
   console.log('initDMRoomListener: Starting for user', currentUser.email);
+  // Same emailHash dependency as loadFriendRequests — /invites/$emailHash
+  // is read-gated on root.users.auth.uid.emailHash === $emailHash. Wait
+  // for the write to land before reading.
+  try { await _emailHashPromise; } catch(_){}
   try {
     // Check for rooms we're invited to and auto-join them (use hashed email for path)
     const hashedEmail = await hashEmailForPath(currentUser.email);
@@ -5145,6 +5154,16 @@ try {
 } catch(_) {}
 // firebaseDb is created lazily once we know whether the user is in a Live session
 let currentUser = null;
+// Promise that resolves once the current user's emailHash has been written
+// (or its write attempt has finalized). loadFriendRequests and
+// initDMRoomListener await this before reading /friendRequests/$emailHash and
+// /invites/$emailHash — those paths' .read rules check
+// users/auth.uid/emailHash === $emailHash, so the listener silently fails with
+// PERMISSION_DENIED if it attaches before the write lands. iOS Safari's
+// RTDB WebSocket can take a few seconds to settle, which is why mobile
+// users were seeing nothing while laptop sign-in worked. Always-resolves
+// (the .catch swallows write errors) so awaiters can proceed regardless.
+let _emailHashPromise = Promise.resolve();
 let activeTab = 'all'; // Sidebar tab filter: 'all' | 'unread' | 'favorites'
 let activeDMRoomId = null; // Track currently-listened DM to avoid duplicate listeners
 let currentDMListenerRef = null; // Reference to the current active DM message listener
@@ -6044,21 +6063,15 @@ fbAuth.onAuthStateChanged(async (user)=>{
     }
     setupPushNotifications().catch(()=>{});
 
-    // emailHash IS critical: the friendRequests/invites read rules check
-    // root.users.<auth.uid>.emailHash === $emailHash, so loadFriendRequests
-    // (kicked off by launchApp below) silently fails if this hasn't landed.
-    // Await it, but cap at 4s so a stuck WebSocket can't hang sign-in
-    // indefinitely. If we time out, friend requests won't work this session
-    // but at least the user lands in the app and can retry on reload.
-    try {
-      const hash = await hashEmailForPath(user.email);
-      await Promise.race([
-        firebaseDb.ref(`users/${user.uid}/emailHash`).set(hash),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('emailHash write timeout')), 4000))
-      ]);
-    } catch(e){
-      console.error('emailHash write failed/timed out:', e);
-    }
+    // emailHash is critical: friendRequests/invites .read rules check
+    // root.users.<auth.uid>.emailHash === $emailHash. Don't await it on the
+    // sign-in path (mobile WebSocket setup can be slow enough to hang sign-in
+    // for many seconds), but expose the write as a shared promise so
+    // loadFriendRequests and initDMRoomListener can wait for it just before
+    // they need to read.
+    _emailHashPromise = hashEmailForPath(user.email)
+      .then(hash => firebaseDb.ref(`users/${user.uid}/emailHash`).set(hash))
+      .catch(e => console.error('emailHash write failed:', e));
   }
   if(!user){
     // Signed out — show sign-in screen, hide everything else.
