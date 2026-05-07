@@ -7217,19 +7217,31 @@ function renderChatList(){
     return bTs - aTs;
   });
 
-  chatListItems.innerHTML = conversations.map(conv => `
+  chatListItems.innerHTML = conversations.map(conv => {
+    const unreadBadge = conv.unread > 0
+      ? `<span style="background:var(--blue);color:#fff;border-radius:999px;font-size:11px;font-weight:700;padding:2px 7px;min-width:20px;text-align:center;display:inline-block;line-height:1.4;">${conv.unread > 99 ? '99+' : conv.unread}</span>`
+      : '';
+    const nameWeight = conv.unread > 0 ? '700' : '600';
+    const previewColor = conv.unread > 0 ? 'var(--ink)' : 'var(--muted)';
+    const previewWeight = conv.unread > 0 ? '600' : '400';
+    const timeColor = conv.unread > 0 ? 'var(--blue)' : 'var(--muted)';
+    const timeWeight = conv.unread > 0 ? '600' : '400';
+    return `
     <div data-contact-id="${conv.id}" style="padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer;display:flex;align-items:center;gap:12px;transition:background 0.2s;"
          onmouseover="this.style.background='var(--panel)'"
          onmouseout="this.style.background='transparent'"
          onclick="openChatFromList(${conv.id})">
       <div style="width:44px;height:44px;border-radius:50%;background:${conv.r.bg};color:${conv.r.fg||'#334155'};display:flex;align-items:center;justify-content:center;font-weight:600;font-size:16px;flex-shrink:0;">${esc(initialsFor(conv.contact))}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;margin-bottom:4px;">${esc(conv.name)}</div>
-        <div style="font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(conv.lastMessage.substring(0, 50))}</div>
+        <div style="font-weight:${nameWeight};margin-bottom:4px;">${esc(conv.name)}</div>
+        <div style="font-size:13px;color:${previewColor};font-weight:${previewWeight};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(conv.lastMessage.substring(0, 50))}</div>
       </div>
-      <div style="font-size:12px;color:var(--muted);flex-shrink:0;">${conv.timestamp}</div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+        <div style="font-size:12px;color:${timeColor};font-weight:${timeWeight};">${conv.timestamp}</div>
+        ${unreadBadge}
+      </div>
     </div>
-  `).join('');
+  `}).join('');
 }
 
 // Open a chat from the chat list
@@ -8625,8 +8637,18 @@ function setupDMListener(dmRoomId, anchorKey){
     // the newest loaded key, so this is normally a no-op. Guards against
     // clock skew and the unanchored fallback path.
     c.msgs.sort((a, b) => a.ts - b.ts);
+    // Bump the in-app unread count if the user isn't actively reading this
+    // thread — that's what drives the badge in the Messages list and the
+    // bold preview in the sidebar.
+    if(activeId !== c.id) c.unread = (c.unread || 0) + 1;
     if(activeId === c.id) renderMsgs();
     renderSidebar();
+    // Without this, the Messages tab list shows a stale "(no messages)"
+    // preview and never reorders to surface new arrivals — the user has to
+    // open the chat to see anything happened.
+    if(currentMessagesView === 'list' && currentTab === 'messages'){
+      try { renderChatList(); } catch(_){}
+    }
 
     // Tell the sender "I received your message". This is the missing signal
     // that turns the sender's tick from sent (✓) into delivered (✓✓ grey).
@@ -8655,6 +8677,9 @@ function setupDMListener(dmRoomId, anchorKey){
     c.msgs.splice(idx, 1);
     if(activeId === c.id) renderMsgs();
     renderSidebar();
+    if(currentMessagesView === 'list' && currentTab === 'messages'){
+      try { renderChatList(); } catch(_){}
+    }
   });
 
   // Listen for updates to existing messages (reactions, read receipts, deletions, etc.)
