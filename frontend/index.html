@@ -7992,13 +7992,27 @@ async function createOrJoinDMRoom(contactEmail){
     const hashedContactEmail = await hashEmailForPath(normalizedContactEmail);
     console.log(`[createOrJoinDMRoom] roomId=${roomId}`);
 
-    // Metadata is written first because the tightened participants-write rule
-    // requires the room's metadata.emails to already list this user's email.
-    // Without this ordering, the participant write below is denied on initial
-    // room creation.
-    await firebaseDb.ref(`dms/${roomId}/metadata`).set({
-      emails: [myEmail, normalizedContactEmail]
-    });
+    // Try to write metadata. This succeeds when we're the first to call
+    // createOrJoinDMRoom for this email pair. If the room already exists
+    // (the other party created it, OR we previously created it but our
+    // participant write didn't land, OR a stale row from earlier testing),
+    // the tightened metadata rule rejects this write — and that's fine, we
+    // only need metadata in place, not necessarily written by us. Swallow
+    // the rejection and fall through to the participant write below, which
+    // the rule allows as long as metadata.emails contains our email
+    // (regardless of who wrote it).
+    try {
+      await firebaseDb.ref(`dms/${roomId}/metadata`).set({
+        emails: [myEmail, normalizedContactEmail]
+      });
+    } catch(metaErr){
+      console.log(`[createOrJoinDMRoom] metadata write rejected (room likely exists), joining instead`);
+    }
+
+    // Add ourselves as participant. Rule check: metadata.emails must contain
+    // our email, which it does — we just wrote it OR it was written by the
+    // other party who included us. Without this write, we can't read messages
+    // or the blockedSenders flag for this room.
     await firebaseDb.ref(`dms/${roomId}/participants/${currentUser.uid}`).set(true);
 
     // Drop a breadcrumb so the contact's app can discover this room.
