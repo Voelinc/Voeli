@@ -6024,20 +6024,13 @@ fbAuth.onAuthStateChanged(async (user)=>{
     else     Sentry.setUser(null);
   }
   if(user && user.email){
-    // Initialize firebaseDb if needed, then save user email for contact lookup.
-    // These writes are fire-and-forget on purpose: iOS Safari + Firebase RTDB
-    // WebSocket can take many seconds to establish (long-poll fallback), and
-    // awaiting them was leaving the sign-in screen stuck on mobile while
-    // launchApp() waited its turn. Errors are non-fatal and just get logged.
     if(!firebaseDb) firebaseDb = firebase.database();
+    // Cosmetic writes — fire-and-forget. Awaiting them all sequentially was
+    // hanging mobile sign-in (iOS Safari's RTDB WebSocket can take seconds to
+    // settle); errors here are non-fatal and just get logged.
     firebaseDb.ref(`users/${user.uid}/email`).set(user.email)
       .catch(e => console.error('Error saving user email:', e));
-    hashEmailForPath(user.email)
-      .then(hash => firebaseDb.ref(`users/${user.uid}/emailHash`).set(hash))
-      .catch(e => console.error('Error saving emailHash:', e));
     migrateOldEmailPaths(user.email).catch(e => console.error('Migration error:', e));
-    // Pull gender from Firebase into localStorage on every sign-in so it
-    // survives device changes. Also fire-and-forget for the same reason.
     const localG = localStorage.getItem('user_gender_'+user.uid);
     if(!localG){
       firebaseDb.ref(`users/${user.uid}/gender`).once('value')
@@ -6049,10 +6042,23 @@ fbAuth.onAuthStateChanged(async (user)=>{
         })
         .catch(()=>{ /* non-fatal */ });
     }
-    // Register this device for push notifications. No-ops silently if the
-    // VAPID key isn't configured yet, the browser doesn't support it, or
-    // the user denies permission.
     setupPushNotifications().catch(()=>{});
+
+    // emailHash IS critical: the friendRequests/invites read rules check
+    // root.users.<auth.uid>.emailHash === $emailHash, so loadFriendRequests
+    // (kicked off by launchApp below) silently fails if this hasn't landed.
+    // Await it, but cap at 4s so a stuck WebSocket can't hang sign-in
+    // indefinitely. If we time out, friend requests won't work this session
+    // but at least the user lands in the app and can retry on reload.
+    try {
+      const hash = await hashEmailForPath(user.email);
+      await Promise.race([
+        firebaseDb.ref(`users/${user.uid}/emailHash`).set(hash),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('emailHash write timeout')), 4000))
+      ]);
+    } catch(e){
+      console.error('emailHash write failed/timed out:', e);
+    }
   }
   if(!user){
     // Signed out — show sign-in screen, hide everything else.
@@ -8017,6 +8023,15 @@ async function saveContactToFirebase(contact){
     await firebaseDb.ref(`users/${currentUser.uid}/contacts/${contact.id}`).set(contact);
   } catch(e){
     console.error('Error saving contact to Firebase:', e);
+    // Surface the failure so the user knows their add/accept didn't persist —
+    // silent failure here is what made friend Accept and Add Contact look like
+    // they worked but vanish on reload.
+    const code = (e && (e.code || e.message)) || 'unknown';
+    try {
+      _showToast(appDir==='vi-en'
+        ? 'Không lưu được liên hệ: ' + code
+        : 'Could not save contact: ' + code);
+    } catch(_){}
     if(window.Sentry) Sentry.captureException(e);
   }
 }
