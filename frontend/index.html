@@ -1294,7 +1294,7 @@ body.is-offline::before{
 .ptut-btn:hover{filter:brightness(1.05);}
 </style>
 </head>
-<body>
+<body class="signed-out">
 
 <!-- SETUP — onboarding flow (welcome → sign up / sign in → name → app) -->
 <div id="setupScreen">
@@ -1447,6 +1447,13 @@ body.is-offline::before{
 <style>
   /* Bottom nav layout */
   #app { display: flex !important; flex-direction: column !important; width: 100% !important; height: 100% !important; }
+  /* Force-hide the messenger and its bottom nav while the onboarding/sign-in
+     screen is up. Without this, #app's display:flex !important above wins over
+     the inline display:none JS sets at sign-out, leaving the bottom-nav buttons
+     in the DOM under #setupScreen. On iOS Safari that turned out to swallow
+     taps on the Sign-in button at the bottom of the screen — laptops were
+     fine, mobile saw "click does nothing". */
+  body.signed-out #app { display: none !important; }
   /* Bottom nav: simple 50px strip pinned to viewport bottom. Adjustments for
      iOS PWA non-cover mode are applied at runtime by the script at the end
      of the body — see snapBottomNav. CSS alone can't distinguish "no safe
@@ -6050,6 +6057,7 @@ fbAuth.onAuthStateChanged(async (user)=>{
   if(!user){
     // Signed out — show sign-in screen, hide everything else.
     if(!demoMode){
+      document.body.classList.add('signed-out');
       document.getElementById('setupScreen').style.display='flex';
       document.getElementById('liveSetupScreen').style.display='none';
       document.getElementById('app').style.display='none';
@@ -6086,6 +6094,7 @@ fbAuth.onAuthStateChanged(async (user)=>{
     return;
   }
   // Otherwise (sign-in, Google, returning user) — straight into the messenger.
+  document.body.classList.remove('signed-out');
   document.getElementById('setupScreen').style.display='none';
   document.getElementById('liveSetupScreen').style.display='none';
   launchApp();
