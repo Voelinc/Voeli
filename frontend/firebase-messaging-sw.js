@@ -21,10 +21,47 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
+// PWA app-icon badge: track the unread count in a Cache entry (the only
+// storage shared between the SW and the page that doesn't require IDB
+// boilerplate), and reflect it on the home-screen icon via the Badging
+// API. iOS 16.4+ and recent Chrome/Edge on Android support
+// navigator.setAppBadge for installed PWAs; older platforms no-op silently.
+const STATE_CACHE = 'voeli-state';
+const UNREAD_KEY = '/__voeli_unread__';
+
+async function _readUnread(){
+  try {
+    const cache = await caches.open(STATE_CACHE);
+    const res = await cache.match(UNREAD_KEY);
+    if(!res) return 0;
+    const n = parseInt(await res.text(), 10);
+    return Number.isFinite(n) ? n : 0;
+  } catch(_){ return 0; }
+}
+
+async function _writeUnread(n){
+  try {
+    const cache = await caches.open(STATE_CACHE);
+    await cache.put(UNREAD_KEY, new Response(String(n)));
+  } catch(_){}
+}
+
+async function _bumpBadge(){
+  const n = (await _readUnread()) + 1;
+  await _writeUnread(n);
+  try { if(self.navigator.setAppBadge) await self.navigator.setAppBadge(n); } catch(_){}
+}
+
+async function _clearBadge(){
+  await _writeUnread(0);
+  try { if(self.navigator.clearAppBadge) await self.navigator.clearAppBadge(); } catch(_){}
+}
+
+messaging.onBackgroundMessage(async (payload) => {
   const data = payload.data || {};
   const title = (payload.notification && payload.notification.title) || data.title || 'New message';
   const body  = (payload.notification && payload.notification.body)  || data.body  || '';
+  await _bumpBadge();
   self.registration.showNotification(title, {
     body,
     icon: '/icons/icon-192.png',
@@ -37,12 +74,22 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const target = (event.notification.data && event.notification.data.url) || '/';
-  event.waitUntil(
+  event.waitUntil(Promise.all([
+    _clearBadge(),
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
       for (const w of wins) {
         if (w.url.includes(self.location.origin)) { w.focus(); return; }
       }
       if (clients.openWindow) return clients.openWindow(target);
     })
-  );
+  ]));
+});
+
+// The page tells us to clear when it gains visibility — we reset the
+// stored count and the OS badge so they stay in sync with what the user
+// has actually seen.
+self.addEventListener('message', (event) => {
+  if(event.data && event.data.type === 'clear-badge'){
+    event.waitUntil(_clearBadge());
+  }
 });

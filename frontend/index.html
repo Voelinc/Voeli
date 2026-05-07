@@ -5825,6 +5825,27 @@ function _attachPushOnMessage(messaging){
   });
 }
 
+// PWA app-icon badge clear. The SW bumps the badge on each background push;
+// once the user has the page visible, we reset both the OS badge and the
+// SW's stored count so they don't re-appear stale on the next reload.
+// navigator.setAppBadge / clearAppBadge are iOS 16.4+ and recent Chrome/Edge
+// on Android; older browsers silently no-op.
+function _clearAppBadge(){
+  try { if(navigator.clearAppBadge) navigator.clearAppBadge().catch(()=>{}); } catch(_){}
+  try {
+    if('serviceWorker' in navigator && navigator.serviceWorker.controller){
+      navigator.serviceWorker.controller.postMessage({ type: 'clear-badge' });
+    }
+  } catch(_){}
+}
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden) _clearAppBadge();
+});
+window.addEventListener('focus', _clearAppBadge);
+// First paint after launch: if the user is opening the app, they're seeing
+// it, so clear whatever badge the SW set while they were away.
+_clearAppBadge();
+
 async function refreshPushTokenIfPermitted(){
   if(!FCM_VAPID_KEY) return false;
   if(!('serviceWorker' in navigator) || !firebase.messaging) return false;
