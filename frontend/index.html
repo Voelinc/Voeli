@@ -4599,6 +4599,10 @@ async function launchApp(){
   if (!demoMode) {
     await loadContactsFromFirebase();
     loadMutedRoomsFromFirebase().catch(()=>{});
+    // Attach passive DM listeners for every existing contact so the Messages
+    // tab updates live and the sender's tick advances even when the receiver
+    // hasn't tapped into the chat thread yet.
+    setupAllPassiveDMListeners();
   }
   renderSidebar(); // Pre-populate sidebar for when Contacts tab is clicked
   switchTab('messages'); // Show Messages tab with chat list by default
@@ -4724,6 +4728,9 @@ async function loadContactsFromFirebase(){
           ensurePhraseMemory(contact);
           contacts.unshift(contact);
           renderSidebar();
+          // New contact synced in from another device — attach the passive
+          // listener so we hear about messages without needing to open it.
+          if(contact.dmRoomId) setupPassiveDMListenerForContact(contact).catch(()=>{});
         }
       });
 
@@ -5000,6 +5007,10 @@ async function initDMRoomListener(){
                       catch(e){ console.error('Error updating contact with dmRoomId:', e); }
                     }
                   }
+                  // Attach the passive DM listener so messages on this room
+                  // surface in the Messages tab without needing the user to
+                  // open the chat first.
+                  setupPassiveDMListenerForContact(c).catch(()=>{});
                 }
               }
             });
@@ -5062,6 +5073,9 @@ async function initDMRoomListener(){
                       catch(e){ console.error('Error updating contact with dmRoomId from new invite:', e); }
                     }
                   }
+                  // Same as the initial-load branch: attach the passive
+                  // listener so the new room is heard from immediately.
+                  setupPassiveDMListenerForContact(c).catch(()=>{});
                 }
               }
             });
@@ -5165,9 +5179,11 @@ let currentUser = null;
 // (the .catch swallows write errors) so awaiters can proceed regardless.
 let _emailHashPromise = Promise.resolve();
 let activeTab = 'all'; // Sidebar tab filter: 'all' | 'unread' | 'favorites'
-let activeDMRoomId = null; // Track currently-listened DM to avoid duplicate listeners
-let currentDMListenerRef = null; // Reference to the current active DM message listener
-let currentBlockListenerRef = null; // Reference to the active blockedSenders listener (one per open chat)
+// Per-room DM listener handles. Keyed by dmRoomId so we can listen to every
+// thread the user has at once — without this, the Messages tab never hears
+// about new messages for chats the user hasn't actively opened, and the
+// sender's tick stays at "sent" because no delivery receipt fires.
+const dmListeners = new Map(); // dmRoomId -> { childAddedQuery, msgRef, blockRef, typingRef }
 let isOnline = navigator.onLine; // Track online/offline state
 let offlineMessageQueue = []; // Queue for messages sent while offline
 let friendRequestTimestamps = {}; // Track when friend requests were sent: email -> timestamp
@@ -8533,35 +8549,97 @@ function setupPaginationScroll(){
   });
 }
 
+// Attach a "passive" listener for a contact the user hasn't actively opened.
+// Fetches just the last message (for the Messages-tab preview) and uses its
+// key to anchor a live listener for new arrivals — so when the other party
+// sends a message, the receiver's UI lights up and the delivery receipt fires
+// even if the chat thread isn't currently open. Without this, listeners would
+// only attach when the user opens the chat, leaving "(no messages)" + a stuck
+// "sent" tick on the sender side until the receiver tapped in.
+async function setupPassiveDMListenerForContact(contact){
+  if(!firebaseDb || !currentUser || !contact || !contact.dmRoomId) return;
+  if(dmListeners.has(contact.dmRoomId)) return;
+
+  let anchorKey = null;
+  try {
+    const snap = await firebaseDb.ref(`dms/${contact.dmRoomId}/messages`).limitToLast(1).once('value');
+    if(snap.exists()){
+      const entries = Object.entries(snap.val() || {});
+      if(entries.length){
+        const [key, raw] = entries[0];
+        anchorKey = key;
+        if(!contact.msgs) contact.msgs = [];
+        if(raw && !contact.msgs.some(m => m.id === key)){
+          const m = await decryptMessageDataBatch(raw);
+          if(m){
+            const d = new Date(m.ts);
+            const isMe = m.senderId === currentUser.uid;
+            // Mirror loadHistoricalMessages: derive deliveredAt/readAt from the
+            // OTHER participant so the sender-side tick reflects what the
+            // recipient has actually seen.
+            let deliveredAt, readAt;
+            if(isMe){
+              const dt = m.deliveredTo || {};
+              const otherD = Object.keys(dt).filter(uid => uid !== currentUser.uid);
+              if(otherD.length) deliveredAt = dt[otherD[0]];
+              const rb = m.readBy || {};
+              const otherR = Object.keys(rb).filter(uid => uid !== currentUser.uid);
+              if(otherR.length) readAt = rb[otherR[0]];
+            }
+            contact.msgs.push({
+              id: key,
+              text: m.text, translated: m.text, original: m.original||m.text,
+              emotion: m.emotion||'', isMe, mode:'text',
+              direction: m.direction||'en-vi', ts: m.ts,
+              delivered: true,
+              deliveredAt, readAt,
+              readBy: m.readBy || {},
+              deliveredTo: m.deliveredTo || {},
+              time: d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+              day: d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'})
+            });
+            contact.msgs.sort((a, b) => a.ts - b.ts);
+          }
+        }
+      }
+    }
+  } catch(err){
+    console.warn(`[setupPassiveDMListener] preview fetch failed for ${contact.dmRoomId}:`, err);
+  }
+
+  setupDMListener(contact.dmRoomId, anchorKey);
+  // Refresh the Messages-tab list once we've populated the preview, so the
+  // "(no messages)" placeholder is replaced with the actual last-message text.
+  if(currentMessagesView === 'list' && currentTab === 'messages'){
+    try { renderChatList(); } catch(_){}
+  }
+  renderSidebar();
+}
+
+function setupAllPassiveDMListeners(){
+  if(!firebaseDb || !currentUser || !Array.isArray(contacts)) return;
+  contacts.forEach(c => {
+    if(c.dmRoomId) setupPassiveDMListenerForContact(c).catch(()=>{});
+  });
+}
+
 function setupDMListener(dmRoomId, anchorKey){
   if(!firebaseDb || !currentUser || !dmRoomId) return;
-  // Skip if we're already listening to this room
-  if(activeDMRoomId === dmRoomId) return;
+  // Idempotent: if we're already listening to this room (from app startup or a
+  // previous openChat), don't double-attach. The anchorKey on a re-call is
+  // irrelevant — the existing listener is already catching new arrivals, and
+  // any historical fill-in is handled by loadHistoricalMessages independently.
+  if(dmListeners.has(dmRoomId)) return;
 
-  // Remove the previous listener if switching to a different room. We may
-  // have stored a query (orderByKey().startAt(anchor)) rather than the bare
-  // ref — call .off() on whatever was stored. Bare .off() detaches all event
-  // types (child_added + child_removed) at once.
-  if(currentDMListenerRef){
-    currentDMListenerRef.off();
-  }
-  if(currentBlockListenerRef){
-    currentBlockListenerRef.off('value');
-    currentBlockListenerRef = null;
-  }
-
-  activeDMRoomId = dmRoomId;
   const msgRef = firebaseDb.ref(`dms/${dmRoomId}/messages`);
-  // When we already have historical messages loaded, anchor the live listener
-  // at the newest loaded key so child_added doesn't replay every existing
-  // message in the room. Firebase's startAt is inclusive, so the anchor
-  // itself fires once — the in-handler ID dedup catches that. When there's
-  // no anchor (first-time empty room or load failure), fall back to the bare
-  // ref and the dedup carries the load.
+  // When the caller has already loaded history (openChat path), anchor the
+  // live listener at the newest loaded key so child_added doesn't replay every
+  // existing message. Firebase's startAt is inclusive, so the anchor itself
+  // fires once — the in-handler ID dedup catches that. Without an anchor
+  // (passive startup attach), the dedup carries the load.
   const childAddedQuery = anchorKey
     ? msgRef.orderByKey().startAt(anchorKey)
     : msgRef;
-  currentDMListenerRef = childAddedQuery;
   console.log(`[setupDMListener] Setting up listener for DM room: ${dmRoomId}${anchorKey ? ` (anchored at ${anchorKey})` : ''}`);
 
   // Watch whether the OTHER party has marked us as blocked-from-sending
@@ -8570,7 +8648,7 @@ function setupDMListener(dmRoomId, anchorKey){
   // banner appears and the send path can refuse the message instead of
   // silently writing into a one-way DM.
   const blockRef = firebaseDb.ref(`dms/${dmRoomId}/blockedSenders/${currentUser.uid}`);
-  currentBlockListenerRef = blockRef;
+  dmListeners.set(dmRoomId, { childAddedQuery, msgRef, blockRef });
   blockRef.on('value', snap => {
     const blocked = snap.val() === true;
     const c = contacts.find(contact => contact.dmRoomId === dmRoomId);
@@ -8710,12 +8788,18 @@ function setupDMListener(dmRoomId, anchorKey){
     }
   });
 
-  // Listen for typing indicators in DMs
+  // Listen for typing indicators in DMs. Now that multiple rooms can be
+  // listened to at once, gate the global `otherTyping` update on whether the
+  // firing room is the active chat — without this, someone typing in chat B
+  // would surface a typing bubble in the chat A view.
   const typingRef = firebaseDb.ref(`dms/${dmRoomId}/typing`);
+  const entry = dmListeners.get(dmRoomId);
+  if(entry) entry.typingRef = typingRef;
   typingRef.on('value', snap=>{
+    const c = contacts.find(contact => contact.dmRoomId === dmRoomId);
+    if(!c || activeId !== c.id) return;
     const data = snap.val()||{};
     const myUid = currentUser && currentUser.uid;
-    // Check if anyone OTHER than me is typing
     const someone = Object.entries(data).some(([id,v])=> id!==myUid && v===true);
     if(someone !== otherTyping){
       otherTyping = someone;
@@ -8751,6 +8835,10 @@ function openChat(id){
   const c=activeCont(); if(!c) return;
 
   c.unread=0; // clear unread when chat is opened
+  // Reset stale typing state from the previous chat. With multi-room listeners
+  // we no longer detach the prior room's typing handler, so the global flag
+  // could carry over a "true" from a different conversation.
+  otherTyping = false;
   currentMessagesView = 'chat'; // ensure we're in chat view, not list view
   updateChatViewClass();
   document.getElementById('chatEmpty').style.display='none';
