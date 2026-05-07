@@ -1099,6 +1099,29 @@ body.is-offline::before{
 .sett-policy-body .pol-callout{background:var(--panel-2);border:1px solid var(--line-2);
   border-radius:8px;padding:10px 12px;margin:8px 0 12px;font-size:12px;}
 
+/* ── Onboarding ── */
+#onboardingOverlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;
+  display:flex;align-items:center;justify-content:center;padding:24px;}
+#obCard{background:var(--panel);border-radius:24px;padding:36px 28px 28px;
+  width:100%;max-width:360px;text-align:center;position:relative;
+  animation:obPop .3s cubic-bezier(.34,1.56,.64,1);}
+@keyframes obPop{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+#obSkip{position:absolute;top:16px;right:18px;background:none;border:none;
+  font-size:13px;color:var(--sub);cursor:pointer;}
+#obIcon{font-size:52px;margin-bottom:18px;line-height:1;}
+#obTitle{font-size:22px;font-weight:800;color:var(--text);margin-bottom:12px;letter-spacing:-.02em;}
+#obBody{font-size:15px;color:var(--sub);line-height:1.6;margin-bottom:28px;}
+#obDots{display:flex;gap:7px;justify-content:center;margin-bottom:24px;}
+.ob-dot{width:7px;height:7px;border-radius:50%;background:var(--border);transition:background .2s,width .2s,border-radius .2s;}
+.ob-dot.active{background:var(--blue);width:20px;border-radius:4px;}
+#obNext{background:var(--blue);color:#fff;border:none;border-radius:14px;
+  padding:14px 32px;font-size:16px;font-weight:700;cursor:pointer;width:100%;}
+#obNext:hover{opacity:.9;}
+.ob-lang-btn{display:flex;align-items:center;gap:12px;width:100%;padding:14px 18px;
+  border:1.5px solid var(--border);border-radius:14px;background:var(--panel-2);
+  font-size:16px;font-weight:600;color:var(--text);cursor:pointer;transition:border-color .15s,background .15s;}
+.ob-lang-btn:hover{border-color:var(--blue);background:var(--blue-50);}
+
 /* Secondary cultural warnings (kinship etc) */
 .cwblock{margin:0 14px 10px;background:#FFF7ED;border:1px solid #FB923C;border-radius:14px;padding:12px 14px;}
 .cwtitle{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9A3412;margin-bottom:8px;}
@@ -5473,6 +5496,7 @@ function initApp(){
   if(savedAppDir && (savedAppDir === 'en-vi' || savedAppDir === 'vi-en')) {
     setAppDir(savedAppDir);
   }
+  showOnboarding();
   updateButtonStates();
   initSignOutBtn();
 
@@ -13779,9 +13803,89 @@ function renderStylePanel(){
   }
 }
 
-// Old onboarding overlay (language picker + 3 explainer slides) was removed —
-// the welcome screen behind it already covers language and entry-points, so
-// the modal was just blocking access to the real auth UI.
+// ─── Onboarding ──────────────────────────────────────────
+const ONBOARDING_SLIDES = [
+  {
+    icon: '💬',
+    en: { title: 'What is Voeli?', body: 'Current translation tools turn your message into something that sounds off. Voeli performs differently. It translates meaning, so what you say lands the way you intended.' },
+    vi: { title: 'Voeli là gì?', body: 'Voeli là một công cụ dịch được xây dựng dựa trên cách bạn thực sự nói chuyện. Nó dịch giữa tiếng Anh và tiếng Việt trong khi giữ nguyên ý nghĩa, cảm xúc và giọng điệu của những gì bạn nói.' }
+  },
+  {
+    icon: '🎭',
+    en: { title: 'Same words, different meanings', body: '"I\'m fine." "Sure." "Whatever." These can mean many different things depending on who\'s saying them and how. Voeli carries over the warmth, the worry, the joke, and the edge. Not just the literal version of them.' },
+    vi: { title: 'Cùng một câu, khác cảm xúc',     body: '"Không sao." "Ừ." "Sao cũng được." Bạn biết mà, mấy câu này có thể mang nhiều ý khác nhau tùy người nói và cách nói. Voeli đọc cảm xúc đằng sau câu chữ, không chỉ nghĩa từ điển.' }
+  },
+  {
+    icon: '🌐',
+    en: { title: 'How it works',     body: 'Type in English and they read it in Vietnamese. Type in Vietnamese and they read it in English.' },
+    vi: { title: 'Nói đúng cách bạn cảm nhận',     body: 'Bạn nhắn bằng tiếng Anh, họ đọc bằng tiếng Việt. Bạn nhắn bằng tiếng Việt, họ đọc bằng tiếng Anh. Voeli mang theo cả sự ấm áp, lo lắng, câu đùa và sự sắc lạnh, để người kia cảm nhận đúng điều bạn muốn nói thay vì một bản dịch khô cứng.' }
+  },
+];
+
+function showOnboarding(){
+  if(localStorage.getItem('onboarding_done')) return;
+  let slide = 0;
+  let obLang = 'en'; // set on language picker screen
+  const ov = document.createElement('div');
+  ov.id = 'onboardingOverlay';
+  document.body.appendChild(ov);
+
+  function renderLangPicker(){
+    ov.innerHTML = `
+      <div id="obCard">
+        <div id="obIcon">👋</div>
+        <div id="obTitle" style="font-size:20px">Welcome / Chào mừng</div>
+        <div id="obBody">Choose your language to get started.<br><span style="color:var(--sub);font-size:13px">Chọn ngôn ngữ của bạn để bắt đầu.</span></div>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">
+          <button class="ob-lang-btn" onclick="window.obPickLang('en')">
+            <span style="font-size:22px">🇺🇸</span>
+            <span>English</span>
+          </button>
+          <button class="ob-lang-btn" onclick="window.obPickLang('vi')">
+            <span style="font-size:22px">🇻🇳</span>
+            <span>Tiếng Việt</span>
+          </button>
+        </div>
+      </div>`;
+  }
+
+  function renderSlide(){
+    const s = ONBOARDING_SLIDES[slide];
+    const t = s[obLang];
+    const isLast = slide === ONBOARDING_SLIDES.length - 1;
+    const dots = ONBOARDING_SLIDES.map((_,i) =>
+      `<span class="ob-dot${i===slide?' active':''}"></span>`).join('');
+    const nextLbl = obLang === 'vi' ? (isLast ? 'Bắt đầu' : 'Tiếp theo') : (isLast ? 'Get started' : 'Next');
+    const skipLbl = obLang === 'vi' ? 'Bỏ qua' : 'Skip';
+    ov.innerHTML = `
+      <div id="obCard">
+        <button id="obSkip" onclick="finishOnboarding()">${skipLbl}</button>
+        <div id="obIcon">${s.icon}</div>
+        <div id="obTitle">${esc(t.title)}</div>
+        <div id="obBody">${esc(t.body)}</div>
+        <div id="obDots">${dots}</div>
+        <button id="obNext" onclick="${isLast ? 'finishOnboarding()' : 'advanceOnboarding()'}">
+          ${nextLbl}
+        </button>
+      </div>`;
+  }
+
+  window.obPickLang = (lang) => {
+    obLang = lang;
+    // Set the app direction to match chosen language
+    if(lang === 'vi') setAppDir('vi-en');
+    else setAppDir('en-vi');
+    renderSlide();
+  };
+  window.advanceOnboarding = () => { slide++; renderSlide(); };
+  window.finishOnboarding = () => {
+    localStorage.setItem('onboarding_done','true');
+    ov.remove();
+  };
+
+  renderLangPicker();
+  renderNotificationSettings();
+}
 
 function renderNotificationSettings(){
   const isVI = appDir === 'vi-en';
